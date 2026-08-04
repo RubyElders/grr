@@ -1,0 +1,128 @@
+import { useEffect, useRef, useState } from "preact/hooks";
+import type { CommitSummary, ReviewData } from "../types";
+import styles from "./CommitSelector.module.css";
+
+interface CommitSelectorProps {
+  data: ReviewData;
+  open: boolean;
+  loading: boolean;
+  disabled: boolean;
+  onOpenChange(open: boolean): void;
+  onSelect(commitIds: string[]): void;
+}
+
+export function CommitSelector(props: CommitSelectorProps) {
+  const root = useRef<HTMLDivElement>(null);
+  const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set(props.data.selectedCommitIds));
+
+  useEffect(() => {
+    if (props.open) setChecked(new Set(props.data.selectedCommitIds));
+  }, [props.open, props.data.selectedCommitIds]);
+
+  useEffect(() => {
+    if (!props.open) return;
+    const closeOutside = (event: MouseEvent) => {
+      if (!root.current?.contains(event.target as Node)) props.onOpenChange(false);
+    };
+    document.addEventListener("mousedown", closeOutside);
+    return () => document.removeEventListener("mousedown", closeOutside);
+  }, [props.open, props.onOpenChange]);
+
+  const selected = props.data.selectedCommitIds;
+  const summary = selected.length === 1
+    ? props.data.commits.find((commit) => commit.id === selected[0]) ?? props.data.commit
+    : props.data.commit;
+  const title = selected.length > 1 ? `${selected.length} selected commits` : summary.summary;
+  const detail = selected.length === 0
+    ? `${props.data.commits.length} ${plural(props.data.commits.length, "commit")} · ${props.data.comparison.baseRef}…HEAD`
+    : selected.length === 1
+      ? `${summary.shortId} by ${summary.author}`
+      : `${props.data.commits.length} commits available · ${props.data.comparison.baseRef}…HEAD`;
+
+  const toggle = (id: string) => {
+    const next = new Set(checked);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setChecked(next);
+  };
+  const apply = (ids: string[]) => {
+    props.onOpenChange(false);
+    props.onSelect(ids);
+  };
+
+  return (
+    <div ref={root} class={styles.root}>
+      <button
+        class={styles.trigger}
+        aria-expanded={props.open}
+        aria-haspopup="dialog"
+        disabled={props.disabled}
+        title={props.disabled ? "Finish or delete draft comments before changing commits" : "Choose commits to review"}
+        onClick={() => props.onOpenChange(!props.open)}
+      >
+        <span class={styles.triggerText}>
+          <strong>{title}</strong>
+          <span>{detail}</span>
+        </span>
+        <span class={styles.caret} aria-hidden="true">▾</span>
+      </button>
+      {props.open ? (
+        <section class={styles.popover} role="dialog" aria-label="Choose commits">
+          <header class={styles.header}>
+            <span>
+              <strong>Commits to review</strong>
+              <small>{props.data.comparison.baseRef}…HEAD</small>
+            </span>
+            <button class={styles.secondary} disabled={props.loading} onClick={() => apply([])}>Show all</button>
+          </header>
+          <div class={styles.list}>
+            {props.data.commits.map((commit) => (
+              <CommitRow
+                key={commit.id}
+                commit={commit}
+                checked={checked.has(commit.id)}
+                disabled={props.loading}
+                onToggle={() => toggle(commit.id)}
+                onShow={() => apply([commit.id])}
+              />
+            ))}
+          </div>
+          <footer class={styles.footer}>
+            <span>{checked.size === 0 ? "Select commits, or show the full branch diff." : `${checked.size} selected`}</span>
+            <button
+              class={styles.primary}
+              disabled={checked.size === 0 || props.loading}
+              onClick={() => apply(props.data.commits.filter((commit) => checked.has(commit.id)).map((commit) => commit.id))}
+            >
+              {props.loading ? "Loading…" : `Show (${checked.size})`}
+            </button>
+          </footer>
+        </section>
+      ) : null}
+    </div>
+  );
+}
+
+function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
+  commit: CommitSummary;
+  checked: boolean;
+  disabled: boolean;
+  onToggle(): void;
+  onShow(): void;
+}) {
+  return (
+    <div class={styles.row}>
+      <label class={styles.commitLabel}>
+        <input type="checkbox" checked={checked} disabled={disabled} onChange={onToggle} />
+        <span class={styles.commitText}>
+          <strong>{commit.summary}</strong>
+          <span><code>{commit.shortId}</code> by {commit.author}</span>
+        </span>
+      </label>
+      <button class={styles.showOne} disabled={disabled} aria-label={`Show only ${commit.summary}`} onClick={onShow}>Show</button>
+    </div>
+  );
+}
+
+function plural(count: number, noun: string): string {
+  return count === 1 ? noun : `${noun}s`;
+}

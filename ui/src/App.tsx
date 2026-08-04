@@ -1,14 +1,16 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useState } from "preact/hooks";
 import type { ReviewBackend } from "./backend";
 import { tauriBackend } from "./backend";
 import { reviewReducer, initialState, orderedComments, submissionFor } from "./state";
 import { FileTree } from "./components/FileTree";
 import { DiffView } from "./components/DiffView";
 import { ReviewActions } from "./components/ReviewActions";
+import { CommitSelector } from "./components/CommitSelector";
 import styles from "./App.module.css";
 
 export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend }) {
   const [state, dispatch] = useReducer(reviewReducer, initialState);
+  const [commitSelectorOpen, setCommitSelectorOpen] = useState(false);
   useEffect(() => {
     let mounted = true;
     backend.getReview().then(
@@ -28,18 +30,33 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     }
   }, [backend, state]);
 
+  const selectCommits = useCallback(async (commitIds: string[]) => {
+    dispatch({ type: "selection-started" });
+    try {
+      const data = await backend.selectCommits(commitIds);
+      dispatch({ type: "selection-loaded", data });
+    } catch (error) {
+      dispatch({ type: "submit-failed", error: errorMessage(error) });
+    }
+  }, [backend]);
+
   useLayoutEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const closeWithEscape = event.key === "Escape" && state.openLineId === null;
+      const dismissSelector = event.key === "Escape" && commitSelectorOpen;
+      const closeWithEscape = event.key === "Escape" && state.openLineId === null && !commitSelectorOpen;
       const closeWithW = event.key.toLowerCase() === "w" && (event.ctrlKey || event.metaKey);
       const closeWithF4 = event.key === "F4" && event.altKey;
       const runPrimaryAction = event.key === "Enter"
         && (event.ctrlKey || event.metaKey)
         && state.openLineId === null
         && state.phase === "ready";
-      if (!closeWithEscape && !closeWithW && !closeWithF4 && !runPrimaryAction) return;
+      if (!dismissSelector && !closeWithEscape && !closeWithW && !closeWithF4 && !runPrimaryAction) return;
 
       event.preventDefault();
+      if (dismissSelector) {
+        setCommitSelectorOpen(false);
+        return;
+      }
       if (runPrimaryAction) {
         void submit(comments.length === 0 ? "approve" : "share");
         return;
@@ -50,7 +67,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [backend, comments.length, state.openLineId, state.phase, submit]);
+  }, [backend, comments.length, commitSelectorOpen, state.openLineId, state.phase, submit]);
 
   if (state.phase === "loading") return <div class={styles.center} role="status">Loading commit diff…</div>;
   if (state.phase === "error" || !state.data) return <div class={styles.center}><div class={styles.fatal} role="alert"><h1>Could not load review</h1><p>{state.error}</p></div></div>;
@@ -64,10 +81,14 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     <div class={styles.app}>
       <header class={styles.topbar}>
         <div class={styles.brand}>grr</div>
-        <div class={styles.commit}>
-          <strong>{state.data.commit.summary}</strong>
-          <span>{state.data.commit.shortId} by {state.data.commit.author}</span>
-        </div>
+        <CommitSelector
+          data={state.data}
+          open={commitSelectorOpen}
+          loading={state.phase === "selecting"}
+          disabled={comments.length > 0 || state.phase === "submitting"}
+          onOpenChange={setCommitSelectorOpen}
+          onSelect={(commitIds) => void selectCommits(commitIds)}
+        />
         <div class={styles.repository} title={state.data.repositoryRoot}>{state.data.repositoryRoot}</div>
       </header>
       <div class={styles.content}>
@@ -95,7 +116,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
       </div>
       <ReviewActions
         draftCount={comments.length}
-        submitting={state.phase === "submitting"}
+        submitting={state.phase === "submitting" || state.phase === "selecting"}
         error={state.error}
         onApprove={() => void submit("approve")}
         onShare={() => void submit("share")}

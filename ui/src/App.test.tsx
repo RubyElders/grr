@@ -27,6 +27,43 @@ describe("ReviewApp", () => {
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
   });
 
+  it("selects arbitrary commits, one commit, or the full branch diff", async () => {
+    const { backend, user } = setup();
+    await screen.findByText("Improve graphics options");
+    const trigger = screen.getByTitle("Choose commits to review");
+
+    await user.click(trigger);
+    const picker = screen.getByRole("dialog", { name: "Choose commits" });
+    expect(within(picker).getAllByRole("checkbox")).toHaveLength(4);
+    await user.click(within(picker).getByText("Add graphics labels"));
+    await user.click(within(picker).getByText("Prepare graphics page"));
+    await user.click(within(picker).getByRole("button", { name: "Show (2)" }));
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([
+      "1111111111111111111111111111111111111111",
+      "3333333333333333333333333333333333333333",
+    ]));
+
+    await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: "Show only Cover rendering options" }));
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([
+      "2222222222222222222222222222222222222222",
+    ]));
+
+    await user.click(trigger);
+    await user.click(screen.getByRole("button", { name: "Show all" }));
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
+  });
+
+  it("dismisses the commit picker with Escape without closing the app", async () => {
+    const { backend, user } = setup();
+    await screen.findByText("Improve graphics options");
+    await user.click(screen.getByTitle("Choose commits to review"));
+    expect(screen.getByRole("dialog", { name: "Choose commits" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Choose commits" })).not.toBeInTheDocument();
+    expect(backend.cancelReview).not.toHaveBeenCalled();
+  });
+
   it("filters files and collapses directories", async () => {
     const { user } = setup();
     await screen.findByText("Improve graphics options");
