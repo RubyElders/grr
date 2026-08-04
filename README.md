@@ -1,6 +1,6 @@
 # grr
 
-`grr` is a small local GUI for reviewing the commit at `HEAD`. It shows a GitHub-style unified diff, lets you attach comments to individual lines, and prints a paste-ready review back to the terminal.
+`grr` is a small local GUI for reviewing the commits on the current branch. It shows a GitHub-style unified diff, lets you attach comments to individual lines, and prints a paste-ready review back to the terminal.
 
 ## Requirements
 
@@ -37,6 +37,16 @@ Or pass a repository or nested working-tree path:
 ```sh
 grr ../another-project
 ```
+
+By default, `grr` compares the merge base of `HEAD` with the detected base branch. Detection checks `grr.base` in Git config, the current branch's upstream remote, `origin/main`, `origin/master`, local `main`/`master`, and finally falls back to `HEAD^`. Override it for one run with:
+
+```sh
+grr --base release/next ../another-project
+```
+
+Set a repository-specific default with `git config grr.base release/next`.
+
+Click the commit summary in the top bar to choose what is shown. `Show all` returns to the cumulative merge-base-to-`HEAD` branch diff. A row's `Show` button displays only that commit's parent-to-commit diff. Check multiple commits and use `Show (N)` to display their individual diffs in chronological sections; repeated file paths are labelled with their source commit.
 
 `Approve` prints a friendly approval. `Share comments` prints Markdown ordered by file and diff position. Closing the window with the title-bar control cancels the review and exits with status 2.
 
