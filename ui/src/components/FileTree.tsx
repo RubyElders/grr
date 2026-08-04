@@ -80,12 +80,13 @@ function FileNode({ file, depth, activeFileId, onSelectFile }: NodeProps & { fil
       style={{ "--depth": depth } as preact.JSX.CSSProperties}
       aria-current={activeFileId === file.id ? "true" : undefined}
       onClick={() => onSelectFile(file.id)}
-      title={file.displayPath}
+      title={file.sourceCommit ? `${file.displayPath} · ${file.sourceCommit.shortId} ${file.sourceCommit.summary}` : file.displayPath}
       data-file-id={file.id}
     >
       <span class={`${styles.status} ${styles[file.status]}`}>{statusLetter(file.status)}</span>
       <Icon name="file" />
       <span class={styles.nodeName}>{baseName(file.displayPath)}</span>
+      {file.sourceCommit ? <code class={styles.commitBadge}>{file.sourceCommit.shortId}</code> : null}
     </button>
   );
 }

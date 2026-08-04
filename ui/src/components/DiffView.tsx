@@ -59,6 +59,12 @@ function DiffFileCard({ file, ...props }: DiffViewProps & { file: FileDiff }) {
           <span class={`${styles.chevron} ${collapsed ? styles.collapsed : ""}`}><Icon name="chevron" /></span>
           <span class={styles.path}>{file.displayPath}</span>
           {file.oldPath && file.newPath && file.oldPath !== file.newPath ? <span class={styles.renamedFrom}>from {file.oldPath}</span> : null}
+          {file.sourceCommit ? (
+            <span class={styles.sourceCommit} title={`${file.sourceCommit.shortId} · ${file.sourceCommit.summary}`}>
+              <code>{file.sourceCommit.shortId}</code>
+              <span>{file.sourceCommit.summary}</span>
+            </span>
+          ) : null}
         </button>
         <div class={styles.stats} aria-label={`${file.additions} additions and ${file.deletions} deletions`}>
           <strong class={styles.additions}>+{file.additions}</strong>

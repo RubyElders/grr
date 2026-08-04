@@ -73,8 +73,14 @@ pub fn format_review_result(data: &ReviewData, review: &SubmittedReview) -> Resu
             crate::model::CommentSide::Old => "old",
             crate::model::CommentSide::New => "new",
         };
+        let source_commit = file
+            .source_commit
+            .as_ref()
+            .map_or_else(String::new, |commit| {
+                format!(" · commit {}", markdown_code_span(&commit.short_id))
+            });
         output.push_str(&format!(
-            "\n### {}. {}:{} ({side})\n\n",
+            "\n### {}. {}:{} ({side}){source_commit}\n\n",
             index + 1,
             markdown_code_span(&file.display_path),
             number
@@ -290,7 +296,15 @@ mod tests {
 
     #[test]
     fn formats_safe_markdown_for_shared_comments() {
-        let data = fixture();
+        let mut data = fixture();
+        data.files[0].source_commit = Some(CommitSummary {
+            id: "1234567890abcdef".to_owned(),
+            short_id: "12345678".to_owned(),
+            parent_id: None,
+            summary: "selected change".to_owned(),
+            author: "User".to_owned(),
+            authored_at: 0,
+        });
         let review = SubmittedReview {
             outcome: ReviewOutcome::Share,
             comments: vec![ReviewComment {
@@ -302,6 +316,7 @@ mod tests {
         let result = format_review_result(&data, &review).unwrap();
         assert!(result.contains("CHANGES REQUESTED"));
         assert!(result.contains("src/`odd`.rs"));
+        assert!(result.contains("commit ```12345678```"));
         assert!(result.contains("````text"));
         assert!(result.contains("Please explain this."));
     }

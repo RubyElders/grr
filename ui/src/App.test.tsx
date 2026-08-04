@@ -64,6 +64,25 @@ describe("ReviewApp", () => {
     expect(backend.cancelReview).not.toHaveBeenCalled();
   });
 
+  it("labels repeated file diffs with their source commit", async () => {
+    const sourceCommit = (fixture as ReviewData).commits[1]!;
+    const selected = {
+      ...(fixture as ReviewData),
+      selectedCommitIds: [sourceCommit.id],
+      files: (fixture as ReviewData).files.map((file, index) => index === 0 ? { ...file, sourceCommit } : file),
+    };
+    const backend: ReviewBackend = {
+      getReview: vi.fn().mockResolvedValue(selected),
+      selectCommits: vi.fn(),
+      finishReview: vi.fn(),
+      cancelReview: vi.fn(),
+    };
+    render(<ReviewApp backend={backend} />);
+    await screen.findByTitle("Choose commits to review");
+    expect(screen.getAllByText(sourceCommit.shortId)).toHaveLength(2);
+    expect(screen.getByTitle(`${sourceCommit.shortId} · ${sourceCommit.summary}`)).toBeInTheDocument();
+  });
+
   it("filters files and collapses directories", async () => {
     const { user } = setup();
     await screen.findByText("Improve graphics options");

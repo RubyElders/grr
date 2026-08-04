@@ -8,6 +8,7 @@
 .node:hover { background: var(--canvas); }
 .node[aria-current="true"] { color: var(--blue); background: var(--blue-muted); font-weight: 600; }
 .nodeName { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.commitBadge { flex: none; margin-left: auto; padding: 1px 5px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); background: var(--canvas); font-size: 9px; font-weight: 400; }
 .chevron { display: inline-flex; transition: transform 100ms ease; }
 .chevron.collapsed { transform: rotate(-90deg); }
 .folder { color: #54aeff; display: inline-flex; }
@@ -18,4 +19,3 @@
 .modified, .type_changed, .other { color: #bf8700; }
 .renamed, .copied { color: #8250df; }
 .empty { padding: 12px 16px; color: var(--muted); }
-

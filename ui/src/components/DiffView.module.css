@@ -8,6 +8,9 @@
 .chevron.collapsed { transform: rotate(-90deg); }
 .path { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 600; white-space: nowrap; }
 .renamedFrom { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.sourceCommit { min-width: 0; max-width: 320px; display: flex; align-items: center; gap: 6px; padding: 2px 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); background: var(--bg); font-size: 11px; font-weight: 400; }
+.sourceCommit code { flex: none; color: var(--blue); }
+.sourceCommit span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stats { display: flex; gap: 8px; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
 .additions { color: var(--green); }
 .deletions { color: var(--red); }
