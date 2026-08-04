@@ -20,12 +20,23 @@ for (const args of [
   ["config", "user.email", "e2e@example.com"],
   ["add", "."],
   ["commit", "-qm", "Initial fixture"],
+  ["branch", "-M", "main"],
+  ["switch", "-qc", "feature/review-picker"],
 ]) execFileSync("git", args, { cwd: repository });
 writeFileSync(join(repository, "src", "review.rs"), "pub fn answer() -> u32 {\n    42\n}\n");
+for (const args of [["add", "src/review.rs"], ["commit", "-qm", "Return the correct answer"]]) {
+  execFileSync("git", args, { cwd: repository });
+}
 writeFileSync(cppPath, cppSource(42));
+for (const args of [["add", cppPath], ["commit", "-qm", "Update AI subgroup answer"]]) {
+  execFileSync("git", args, { cwd: repository });
+}
 writeOverflowFiles(42);
+for (const args of [["add", "overflow"], ["commit", "-qm", "Update overflow fixtures"]]) {
+  execFileSync("git", args, { cwd: repository });
+}
 writeFileSync(join(repository, "README.md"), "# Fixture\n");
-for (const args of [["add", "."], ["commit", "-qm", "Return the correct answer"]]) {
+for (const args of [["add", "README.md"], ["commit", "-qm", "Document the fixture"]]) {
   execFileSync("git", args, { cwd: repository });
 }
 
