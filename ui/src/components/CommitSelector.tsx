@@ -29,14 +29,19 @@ export function CommitSelector(props: CommitSelectorProps) {
   }, [props.open, props.onOpenChange]);
 
   const selected = props.data.selectedCommitIds;
-  const summary = selected.length === 1
-    ? props.data.commits.find((commit) => commit.id === selected[0]) ?? props.data.commit
-    : props.data.commit;
-  const title = selected.length > 1 ? `${selected.length} selected commits` : summary.summary;
-  const detail = selected.length === 0
-    ? `${props.data.commits.length} ${plural(props.data.commits.length, "commit")} · ${props.data.comparison.baseRef}…HEAD`
-    : selected.length === 1
-      ? `${summary.shortId} by ${summary.author}`
+  const displayedCommits = selected.length === 0
+    ? props.data.commits
+    : props.data.commits.filter((commit) => selected.includes(commit.id));
+  const singleCommit = displayedCommits.length === 1 ? displayedCommits[0] : null;
+  const title = singleCommit
+    ? singleCommit.summary
+    : selected.length > 0
+      ? `${displayedCommits.length} selected commits`
+      : props.data.commit.summary;
+  const detail = singleCommit
+    ? `${singleCommit.shortId} by ${singleCommit.author}`
+    : selected.length === 0
+      ? `${displayedCommits.length} ${plural(displayedCommits.length, "commit")} · ${props.data.comparison.baseRef}…HEAD`
       : `${props.data.commits.length} commits available · ${props.data.comparison.baseRef}…HEAD`;
 
   const toggle = (id: string) => {

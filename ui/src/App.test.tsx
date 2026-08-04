@@ -27,6 +27,31 @@ describe("ReviewApp", () => {
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
   });
 
+  it("shows commit details whenever the effective review contains one commit", async () => {
+    const commit = (fixture as ReviewData).commits[0]!;
+    const renderReview = (selectedCommitIds: string[]) => {
+      const data = { ...(fixture as ReviewData), commits: [commit], selectedCommitIds };
+      const backend: ReviewBackend = {
+        getReview: vi.fn().mockResolvedValue(data),
+        selectCommits: vi.fn(),
+        finishReview: vi.fn(),
+        cancelReview: vi.fn(),
+      };
+      render(<ReviewApp backend={backend} />);
+    };
+
+    renderReview([]);
+    let trigger = await screen.findByTitle("Choose commits to review");
+    expect(within(trigger).getByText(`${commit.shortId} by ${commit.author}`)).toBeInTheDocument();
+    expect(within(trigger).queryByText(/1 commit ·/)).not.toBeInTheDocument();
+
+    cleanup();
+    renderReview([commit.id]);
+    trigger = await screen.findByTitle("Choose commits to review");
+    expect(within(trigger).getByText(`${commit.shortId} by ${commit.author}`)).toBeInTheDocument();
+    expect(within(trigger).queryByText(/1 commit ·/)).not.toBeInTheDocument();
+  });
+
   it("selects arbitrary commits, one commit, or the full branch diff", async () => {
     const { backend, user } = setup();
     await screen.findByText("Improve graphics options");
