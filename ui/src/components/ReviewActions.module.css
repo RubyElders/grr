@@ -4,6 +4,9 @@
 .actions .error { color: var(--red); }
 .buttons { display: flex; gap: 9px; }
 .buttons button { min-width: 104px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 7px; font-weight: 600; cursor: pointer; }
+.buttons button:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
 .buttons button:disabled { opacity: .5; cursor: not-allowed; }
-.approve { color: var(--fg); background: var(--canvas); }
-.share { color: white; border-color: #1f883d !important; background: #1f883d; }
+.approve { color: white; border-color: var(--green) !important; background: var(--green); }
+.approve:not(:disabled):hover { background: color-mix(in srgb, var(--green) 85%, black); }
+.share { color: white; border-color: var(--blue) !important; background: var(--blue); }
+.share:not(:disabled):hover { background: color-mix(in srgb, var(--blue) 85%, black); }
