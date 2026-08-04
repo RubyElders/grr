@@ -6,6 +6,7 @@ import { FileTree } from "./components/FileTree";
 import { DiffView } from "./components/DiffView";
 import { ReviewActions } from "./components/ReviewActions";
 import { CommitSelector } from "./components/CommitSelector";
+import { reviewViewKey } from "./scrollPosition";
 import styles from "./App.module.css";
 
 export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend }) {
@@ -102,6 +103,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
           onSelectFile={selectFile}
         />
         <DiffView
+          viewKey={reviewViewKey(state.data)}
           files={state.data.files}
           collapsedFiles={state.collapsedFiles}
           openLineId={state.openLineId}

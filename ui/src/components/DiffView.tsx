@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import { fileAtViewportTop } from "../scrollSpy";
 import type { DraftComment } from "../state";
 import type { DiffHunk as DiffHunkType, DiffLine as DiffLineType, FileDiff } from "../types";
@@ -7,6 +7,7 @@ import { Icon } from "./Icon";
 import styles from "./DiffView.module.css";
 
 interface DiffViewProps {
+  viewKey: string;
   files: FileDiff[];
   collapsedFiles: ReadonlySet<string>;
   openLineId: string | null;
@@ -22,24 +23,32 @@ interface DiffViewProps {
 export function DiffView(props: DiffViewProps) {
   const pane = useRef<HTMLElement>(null);
   const animationFrame = useRef<number | null>(null);
+  const scrollPositions = useRef<Map<string, number>>(new Map());
   useEffect(() => () => {
     if (animationFrame.current !== null) cancelAnimationFrame(animationFrame.current);
   }, []);
+  useLayoutEffect(() => {
+    const element = pane.current;
+    if (!element) return;
+    element.scrollTop = scrollPositions.current.get(props.viewKey) ?? 0;
+  }, [props.viewKey]);
 
   if (props.files.length === 0) {
     return <main class={styles.empty}><h2>No changed files</h2><p>This commit has no reviewable tree changes.</p></main>;
   }
   const updateVisibleFile = () => {
+    const element = pane.current;
+    if (element) scrollPositions.current.set(props.viewKey, element.scrollTop);
     if (animationFrame.current !== null) return;
     animationFrame.current = requestAnimationFrame(() => {
       animationFrame.current = null;
-      const element = pane.current;
-      if (!element) return;
-      const positions = Array.from(element.querySelectorAll<HTMLElement>("article[data-file-id]"))
+      const currentPane = pane.current;
+      if (!currentPane) return;
+      const positions = Array.from(currentPane.querySelectorAll<HTMLElement>("article[data-file-id]"))
         .map((file) => ({ id: file.dataset.fileId ?? "", top: file.getBoundingClientRect().top }))
         .filter((file) => file.id.length > 0);
-      const atScrollEnd = element.scrollTop + element.clientHeight >= element.scrollHeight - 1;
-      const fileId = fileAtViewportTop(positions, element.getBoundingClientRect().top, atScrollEnd);
+      const atScrollEnd = currentPane.scrollTop + currentPane.clientHeight >= currentPane.scrollHeight - 1;
+      const fileId = fileAtViewportTop(positions, currentPane.getBoundingClientRect().top, atScrollEnd);
       if (fileId) props.onVisibleFile(fileId);
     });
   };

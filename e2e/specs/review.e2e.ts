@@ -26,17 +26,28 @@ describe("grr review window", () => {
     expect(picker).toEqual({ rows: 4, insideViewport: true });
     writeFileSync("e2e-results/commit-picker.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 
+    const allScrollPosition = await browser.execute(() => {
+      const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
+      if (!pane) throw new Error("diff pane was not available");
+      pane.scrollTop = 600;
+      pane.dispatchEvent(new Event("scroll"));
+      return pane.scrollTop;
+    });
+    expect(allScrollPosition).toBeGreaterThan(0);
     await clickElement("button[aria-label='Show only Return the correct answer']");
     await browser.waitUntil(async () => await browser.execute(
       () => document.body.textContent?.includes("Return the correct answer")
-        && Boolean(document.querySelector("article [title*='Return the correct answer']")),
+        && Boolean(document.querySelector("article [title*='Return the correct answer']"))
+        && document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop === 0,
     ), { timeout: 5_000, interval: 50, timeoutMsg: "single-commit diff did not load" });
     await clickElement("button[title='Choose commits to review']");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
-      () => document.body.textContent?.includes("4 commits · main…HEAD")
-        && !document.querySelector("article [title*='Return the correct answer']"),
-    ), { timeout: 5_000, interval: 50, timeoutMsg: "full branch diff did not return" });
+      (expectedScrollTop) => document.body.textContent?.includes("4 commits · main…HEAD")
+        && !document.querySelector("article [title*='Return the correct answer']")
+        && Math.abs((document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop ?? -1) - expectedScrollTop) <= 1,
+      allScrollPosition,
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "full branch diff did not restore its scroll position" });
 
     const longHeader = await browser.execute(() => {
       const section = Array.from(document.querySelectorAll<HTMLElement>("section[aria-label]"))

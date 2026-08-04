@@ -1,4 +1,4 @@
-.pane { min-width: 0; overflow: auto; padding: 20px 24px 100px; scroll-behavior: smooth; }
+.pane { min-width: 0; overflow: auto; padding: 20px 24px 100px; }
 .empty { display: grid; place-content: center; text-align: center; color: var(--muted); }
 .empty h2 { color: var(--fg); margin-bottom: 4px; }
 .file { margin: 0 0 22px; overflow: clip; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); scroll-margin-top: 12px; box-shadow: var(--shadow); }
