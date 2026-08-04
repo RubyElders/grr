@@ -1,0 +1,47 @@
+.pane { min-width: 0; overflow: auto; padding: 20px 24px 100px; scroll-behavior: smooth; }
+.empty { display: grid; place-content: center; text-align: center; color: var(--muted); }
+.empty h2 { color: var(--fg); margin-bottom: 4px; }
+.file { margin: 0 0 22px; overflow: clip; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); scroll-margin-top: 12px; box-shadow: var(--shadow); }
+.fileHeader { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 12px; background: var(--canvas); border-bottom: 1px solid var(--border); }
+.collapseButton { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px 0; border: 0; background: transparent; cursor: pointer; text-align: left; }
+.chevron { display: inline-flex; transition: transform 100ms ease; }
+.chevron.collapsed { transform: rotate(-90deg); }
+.path { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 600; white-space: nowrap; }
+.renamedFrom { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.stats { display: flex; gap: 8px; white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+.additions { color: var(--green); }
+.deletions { color: var(--red); }
+.hunk + .hunk { border-top: 1px solid var(--border); }
+.hunkHeader, .line { --line-number-width: 50px; display: grid; grid-template-columns: var(--line-number-width) var(--line-number-width) 18px minmax(0, 1fr); }
+.hunkHeader { min-height: 32px; color: var(--blue); background: var(--hunk-bg); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
+.hunkHeader span { padding: 7px 9px; }
+.hunkHeader span:last-child { min-width: 0; overflow-x: auto; white-space: pre; }
+.line { position: relative; min-height: 26px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; line-height: 20px; }
+.line > span, .code { padding: 3px 8px; }
+.oldNumber, .newNumber { color: var(--muted); text-align: right; user-select: none; border-right: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
+.marker { padding-left: 7px !important; padding-right: 2px !important; user-select: none; }
+.code { min-width: 0; display: block; overflow-x: auto; white-space: pre; color: var(--fg); }
+.addition { background: var(--green-bg); }
+.addition .oldNumber, .addition .newNumber { background: var(--green-gutter); }
+.deletion { background: var(--red-bg); }
+.deletion .oldNumber, .deletion .newNumber { background: var(--red-gutter); }
+.marker { color: var(--muted); }
+.addComment { position: absolute; left: calc(var(--line-number-width) + var(--line-number-width) - 11px); top: 3px; z-index: 2; width: 22px; height: 22px; padding: 0; display: grid; place-items: center; border: 0; border-radius: 50%; color: white; background: var(--blue); font-size: 18px; line-height: 1; cursor: pointer; opacity: 0; transform: scale(.85); transition: opacity 80ms ease, transform 80ms ease; }
+.line:hover .addComment, .addComment:focus-visible { opacity: 1; transform: scale(1); }
+.addComment:disabled { display: none; }
+.commentRow { padding: 10px 12px 12px 122px; background: color-mix(in srgb, var(--blue-muted) 45%, var(--bg)); }
+.draft { max-width: 760px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); box-shadow: var(--shadow); }
+.draftHeader { display: flex; justify-content: space-between; padding: 9px 12px; background: var(--canvas); border-bottom: 1px solid var(--border); font-size: 12px; }
+.draftHeader span { color: var(--muted); }
+.draft p { margin: 0; padding: 14px 12px; white-space: pre-wrap; }
+.draftActions { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--border); }
+.draftActions button { padding: 4px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--canvas); cursor: pointer; }
+.placeholder { min-height: 120px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 7px; color: var(--muted); }
+.placeholder strong { color: var(--fg); }
+.lossy { color: var(--red); font-weight: 700; }
+
+@media (max-width: 1000px) {
+  .pane { padding: 14px 12px 90px; }
+  .hunkHeader, .line { --line-number-width: 42px; grid-template-columns: var(--line-number-width) var(--line-number-width) 16px minmax(0, 1fr); }
+  .commentRow { padding-left: 102px; }
+}

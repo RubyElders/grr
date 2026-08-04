@@ -1,0 +1,101 @@
+{
+  "repositoryRoot": "/tmp/example",
+  "commit": {
+    "id": "0123456789abcdef0123456789abcdef01234567",
+    "shortId": "01234567",
+    "parentId": "fedcba9876543210fedcba9876543210fedcba98",
+    "summary": "Improve graphics options",
+    "author": "Local User",
+    "authoredAt": 1785800000
+  },
+  "comparison": {
+    "baseRef": "origin/main",
+    "baseId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "mergeBaseId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "headId": "0123456789abcdef0123456789abcdef01234567"
+  },
+  "commits": [
+    {
+      "id": "0123456789abcdef0123456789abcdef01234567",
+      "shortId": "01234567",
+      "parentId": "1111111111111111111111111111111111111111",
+      "summary": "Improve graphics options",
+      "author": "Local User",
+      "authoredAt": 1785800000
+    },
+    {
+      "id": "1111111111111111111111111111111111111111",
+      "shortId": "11111111",
+      "parentId": "2222222222222222222222222222222222222222",
+      "summary": "Add graphics labels",
+      "author": "Local User",
+      "authoredAt": 1785790000
+    },
+    {
+      "id": "2222222222222222222222222222222222222222",
+      "shortId": "22222222",
+      "parentId": "3333333333333333333333333333333333333333",
+      "summary": "Cover rendering options",
+      "author": "Local User",
+      "authoredAt": 1785780000
+    },
+    {
+      "id": "3333333333333333333333333333333333333333",
+      "shortId": "33333333",
+      "parentId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "summary": "Prepare graphics page",
+      "author": "Local User",
+      "authoredAt": 1785770000
+    }
+  ],
+  "selectedCommitIds": [],
+  "files": [
+    {
+      "id": "f0",
+      "oldPath": "engine/GraphicsPage.cpp",
+      "newPath": "engine/GraphicsPage.cpp",
+      "displayPath": "engine/GraphicsPage.cpp",
+      "status": "modified",
+      "oldMode": "100644",
+      "newMode": "100644",
+      "oldOid": "1111111111111111111111111111111111111111",
+      "newOid": "2222222222222222222222222222222222222222",
+      "binary": false,
+      "additions": 2,
+      "deletions": 1,
+      "sourceCommit": null,
+      "hunks": [
+        {
+          "id": "f0:h0",
+          "header": "@@ -25,3 +25,4 @@ struct GraphicsRowText",
+          "oldStart": 25,
+          "oldLines": 3,
+          "newStart": 25,
+          "newLines": 4,
+          "lines": [
+            { "id": "f0:h0:l0", "kind": "context", "oldLine": 25, "newLine": 25, "text": "struct GraphicsRowText {", "lossy": false },
+            { "id": "f0:h0:l1", "kind": "deletion", "oldLine": 26, "newLine": null, "text": "  const char* label;", "lossy": false },
+            { "id": "f0:h0:l2", "kind": "addition", "oldLine": null, "newLine": 26, "text": "  const char* labelEn;", "lossy": false },
+            { "id": "f0:h0:l3", "kind": "addition", "oldLine": null, "newLine": 27, "text": "  const char* descEn;", "lossy": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "f1",
+      "oldPath": null,
+      "newPath": "tests/rendering/reference.png",
+      "displayPath": "tests/rendering/reference.png",
+      "status": "added",
+      "oldMode": "000000",
+      "newMode": "100644",
+      "oldOid": "0000000000000000000000000000000000000000",
+      "newOid": "3333333333333333333333333333333333333333",
+      "binary": true,
+      "additions": 0,
+      "deletions": 0,
+      "sourceCommit": null,
+      "hunks": []
+    }
+  ]
+}

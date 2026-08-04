@@ -1,0 +1,10 @@
+.editor { max-width: 760px; overflow: hidden; border: 1px solid var(--blue); border-radius: 7px; background: var(--bg); box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 18%, transparent); }
+.heading { padding: 10px 12px; border-bottom: 1px solid var(--border); background: var(--canvas); font-weight: 600; }
+.editor textarea { width: calc(100% - 16px); min-height: 120px; margin: 8px; padding: 10px; resize: vertical; border: 1px solid var(--border); border-radius: 5px; color: var(--fg); background: var(--bg); line-height: 1.5; }
+.footer { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
+.footer span { margin-right: auto; }
+.footer button { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+.cancel { background: var(--canvas); }
+.save { border-color: #1f883d !important; color: white; background: #1f883d; font-weight: 600; }
+.save:disabled { opacity: .5; cursor: not-allowed; }
+

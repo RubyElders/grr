@@ -1,0 +1,8 @@
+/dist/
+/node_modules/
+/target/
+/coverage/
+/ui/coverage/
+/gen/schemas/
+/e2e-results/
+*.log

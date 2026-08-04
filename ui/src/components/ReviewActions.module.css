@@ -1,0 +1,9 @@
+.actions { z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 10px 20px; border-top: 1px solid var(--border); background: var(--bg); box-shadow: 0 -4px 14px rgba(31, 35, 40, .06); }
+.actions > div:first-child { display: flex; flex-direction: column; gap: 3px; }
+.actions span { color: var(--muted); font-size: 12px; }
+.actions .error { color: var(--red); }
+.buttons { display: flex; gap: 9px; }
+.buttons button { min-width: 104px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 7px; font-weight: 600; cursor: pointer; }
+.buttons button:disabled { opacity: .5; cursor: not-allowed; }
+.approve { color: var(--fg); background: var(--canvas); }
+.share { color: white; border-color: #1f883d !important; background: #1f883d; }
