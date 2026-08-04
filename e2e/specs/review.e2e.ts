@@ -120,10 +120,11 @@ describe("grr review window", () => {
       return {
         comment: document.body.textContent?.includes("Please add a focused unit test."),
         approveDisabled: buttons.find((button) => button.textContent === "Approve")?.disabled,
-        shareEnabled: !buttons.find((button) => button.textContent === "Share comments")?.disabled,
+        shareEnabled: !buttons.find((button) => button.textContent === "Share comments (1)")?.disabled,
+        shareLabel: buttons.find((button) => button.textContent?.startsWith("Share comments"))?.textContent,
       };
     });
-    expect(result).toEqual({ comment: true, approveDisabled: true, shareEnabled: true });
+    expect(result).toEqual({ comment: true, approveDisabled: true, shareEnabled: true, shareLabel: "Share comments (1)" });
 
     try {
       await browser.execute(() => {

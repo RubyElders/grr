@@ -191,20 +191,39 @@ describe("ReviewApp", () => {
   it("creates, edits, and shares a line comment", async () => {
     const { user, submissions } = setup();
     await screen.findByText("Improve graphics options");
+    expect(screen.getByRole("button", { name: "Share comments (0)" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R26/ }));
     const editor = screen.getByRole("group", { name: "Comment on R26" });
     await user.type(within(editor).getByRole("textbox", { name: "Review comment" }), "Please explain this.");
     await user.click(within(editor).getByRole("button", { name: "Save comment" }));
     expect(screen.getByText("Please explain this.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Share comments (1)" })).toBeEnabled();
     await user.click(screen.getByRole("button", { name: "Edit" }));
     const edited = screen.getByRole("textbox", { name: "Review comment" });
     await user.clear(edited);
     await user.type(edited, "Use a named constant.");
     await user.keyboard("{Control>}{Enter}{/Control}");
-    await user.click(screen.getByRole("button", { name: "Share comments" }));
+    await user.click(screen.getByRole("button", { name: "Share comments (1)" }));
     await waitFor(() => expect(submissions).toHaveLength(1));
     expect(submissions[0]).toEqual({ outcome: "share", comments: [{ fileId: "f0", lineId: "f0:h0:l2", body: "Use a named constant." }] });
+  });
+
+  it("updates the queued-comment count as drafts are added and removed", async () => {
+    const { user } = setup();
+    await screen.findByText("Improve graphics options");
+    await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R26/ }));
+    await user.type(screen.getByRole("textbox", { name: "Review comment" }), "First note.");
+    await user.click(screen.getByRole("button", { name: "Save comment" }));
+    expect(screen.getByRole("button", { name: "Share comments (1)" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R27/ }));
+    await user.type(screen.getByRole("textbox", { name: "Review comment" }), "Second note.");
+    await user.click(screen.getByRole("button", { name: "Save comment" }));
+    expect(screen.getByRole("button", { name: "Share comments (2)" })).toBeEnabled();
+
+    await user.click(screen.getAllByRole("button", { name: "Delete" })[0]!);
+    expect(screen.getByRole("button", { name: "Share comments (1)" })).toBeEnabled();
   });
 
   it("approves when no drafts exist", async () => {

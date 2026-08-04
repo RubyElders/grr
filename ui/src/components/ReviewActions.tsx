@@ -17,7 +17,7 @@ export function ReviewActions({ draftCount, submitting, error, onApprove, onShar
       </div>
       <div class={styles.buttons}>
         <button title="Ctrl+Enter" class={styles.approve} disabled={submitting || draftCount > 0} onClick={onApprove}>Approve</button>
-        <button title="Ctrl+Enter" class={styles.share} disabled={submitting || draftCount === 0} onClick={onShare}>{submitting ? "Sharing…" : "Share comments"}</button>
+        <button title="Ctrl+Enter" class={styles.share} disabled={submitting || draftCount === 0} onClick={onShare}>Share comments ({draftCount})</button>
       </div>
     </footer>
   );
