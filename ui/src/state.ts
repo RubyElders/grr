@@ -4,7 +4,7 @@ export interface DraftComment extends ReviewComment {}
 
 export interface ReviewState {
   data: ReviewData | null;
-  phase: "loading" | "ready" | "submitting" | "error";
+  phase: "loading" | "ready" | "selecting" | "submitting" | "error";
   error: string | null;
   filter: string;
   collapsedDirectories: ReadonlySet<string>;
@@ -29,6 +29,8 @@ export const initialState: ReviewState = {
 export type ReviewAction =
   | { type: "loaded"; data: ReviewData }
   | { type: "failed"; error: string }
+  | { type: "selection-started" }
+  | { type: "selection-loaded"; data: ReviewData }
   | { type: "filter"; value: string }
   | { type: "toggle-directory"; path: string }
   | { type: "toggle-file"; fileId: string }
@@ -52,6 +54,19 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
       };
     case "failed":
       return { ...state, phase: "error", error: action.error };
+    case "selection-started":
+      return { ...state, phase: "selecting", error: null, openLineId: null };
+    case "selection-loaded":
+      return {
+        ...state,
+        data: action.data,
+        phase: "ready",
+        error: null,
+        activeFileId: action.data.files[0]?.id ?? null,
+        collapsedFiles: new Set(),
+        drafts: {},
+        openLineId: null,
+      };
     case "filter":
       return { ...state, filter: action.value };
     case "toggle-directory":

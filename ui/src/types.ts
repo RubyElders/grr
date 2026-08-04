@@ -50,12 +50,23 @@ export interface FileDiff {
   binary: boolean;
   additions: number;
   deletions: number;
+  sourceCommit: CommitSummary | null;
   hunks: DiffHunk[];
+}
+
+export interface ComparisonSummary {
+  baseRef: string;
+  baseId: string | null;
+  mergeBaseId: string | null;
+  headId: string;
 }
 
 export interface ReviewData {
   repositoryRoot: string;
   commit: CommitSummary;
+  comparison: ComparisonSummary;
+  commits: CommitSummary[];
+  selectedCommitIds: string[];
   files: FileDiff[];
 }
 
@@ -69,4 +80,3 @@ export interface SubmittedReview {
   outcome: "approve" | "share";
   comments: ReviewComment[];
 }
-

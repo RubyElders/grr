@@ -59,4 +59,17 @@ describe("review state", () => {
     expect(state.collapsedDirectories.has("tests")).toBe(false);
     expect(state.collapsedDirectories.has("tests/rendering")).toBe(false);
   });
+
+  it("resets review-local state when a commit selection loads", () => {
+    let state = reviewReducer(initialState, { type: "loaded", data });
+    state = reviewReducer(state, { type: "save-comment", comment: {
+      fileId: "f0", lineId: "f0:h0:l2", body: "draft",
+    } });
+    state = reviewReducer(state, { type: "selection-started" });
+    expect(state.phase).toBe("selecting");
+    state = reviewReducer(state, { type: "selection-loaded", data: { ...data, selectedCommitIds: [data.commits[0]!.id] } });
+    expect(state.phase).toBe("ready");
+    expect(state.drafts).toEqual({});
+    expect(state.data?.selectedCommitIds).toEqual([data.commits[0]!.id]);
+  });
 });

@@ -10,6 +10,7 @@ function setup() {
   const submissions: SubmittedReview[] = [];
   const backend: ReviewBackend = {
     getReview: vi.fn().mockResolvedValue(fixture as ReviewData),
+    selectCommits: vi.fn().mockResolvedValue(fixture as ReviewData),
     finishReview: vi.fn(async (review) => { submissions.push(review); }),
     cancelReview: vi.fn().mockResolvedValue(undefined),
   };
@@ -166,6 +167,7 @@ describe("ReviewApp", () => {
   it("reports submission failures and restores the actions", async () => {
     const backend: ReviewBackend = {
       getReview: vi.fn().mockResolvedValue(fixture as ReviewData),
+      selectCommits: vi.fn(),
       finishReview: vi.fn().mockRejectedValue(new Error("IPC failed")),
       cancelReview: vi.fn(),
     };
@@ -180,6 +182,7 @@ describe("ReviewApp", () => {
   it("shows loading failures", async () => {
     const backend: ReviewBackend = {
       getReview: vi.fn().mockRejectedValue(new Error("No repository")),
+      selectCommits: vi.fn(),
       finishReview: vi.fn(),
       cancelReview: vi.fn(),
     };
@@ -191,6 +194,7 @@ describe("ReviewApp", () => {
     const empty = { ...(fixture as ReviewData), files: [] };
     const backend: ReviewBackend = {
       getReview: vi.fn().mockResolvedValue(empty),
+      selectCommits: vi.fn(),
       finishReview: vi.fn(),
       cancelReview: vi.fn(),
     };

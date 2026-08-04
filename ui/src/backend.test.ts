@@ -21,6 +21,12 @@ describe("tauri backend adapter", () => {
     expect(invoke).toHaveBeenCalledWith("finish_review", { review });
   });
 
+  it("loads a validated commit selection", async () => {
+    invoke.mockResolvedValue({ selectedCommitIds: ["abc"] });
+    await expect(tauriBackend.selectCommits(["abc"])).resolves.toEqual({ selectedCommitIds: ["abc"] });
+    expect(invoke).toHaveBeenCalledWith("select_commits", { commitIds: ["abc"] });
+  });
+
   it("closes a cancelled review through the expected command", async () => {
     invoke.mockResolvedValue(undefined);
     await tauriBackend.cancelReview();
