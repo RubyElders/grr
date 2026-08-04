@@ -45,9 +45,11 @@ export function CommitSelector(props: CommitSelectorProps) {
       : `${props.data.commits.length} commits available · ${props.data.comparison.baseRef}…HEAD`;
 
   const toggle = (id: string) => {
-    const next = new Set(checked);
-    next.has(id) ? next.delete(id) : next.add(id);
-    setChecked(next);
+    setChecked((current) => {
+      const next = new Set(current);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
   };
   const apply = (ids: string[]) => {
     props.onOpenChange(false);
