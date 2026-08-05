@@ -246,14 +246,24 @@ fn commits_since(
 fn commit_summary(commit: &Commit<'_>) -> Result<CommitSummary, git2::Error> {
     let id = commit.id().to_string();
     let author = commit.author();
+    let summary = commit
+        .summary()?
+        .unwrap_or("(no commit message)")
+        .to_owned();
+    let message = String::from_utf8_lossy(commit.message_bytes())
+        .replace("\r\n", "\n")
+        .trim_end_matches(['\r', '\n'])
+        .to_owned();
     Ok(CommitSummary {
         short_id: id.chars().take(8).collect(),
         id,
         parent_id: commit.parent_id(0).ok().map(|id| id.to_string()),
-        summary: commit
-            .summary()?
-            .unwrap_or("(no commit message)")
-            .to_owned(),
+        message: if message.is_empty() {
+            summary.clone()
+        } else {
+            message
+        },
+        summary,
         author: author.name().unwrap_or("Unknown author").to_owned(),
         authored_at: author.when().seconds(),
     })

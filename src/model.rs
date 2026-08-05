@@ -27,6 +27,7 @@ pub struct CommitSummary {
     pub short_id: String,
     pub parent_id: Option<String>,
     pub summary: String,
+    pub message: String,
     pub author: String,
     pub authored_at: i64,
 }

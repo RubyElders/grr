@@ -158,6 +158,7 @@ mod tests {
                 short_id: "abc".to_owned(),
                 parent_id: None,
                 summary: "initial".to_owned(),
+                message: "initial".to_owned(),
                 author: "User".to_owned(),
                 authored_at: 0,
             },
@@ -302,6 +303,7 @@ mod tests {
             short_id: "12345678".to_owned(),
             parent_id: None,
             summary: "selected change".to_owned(),
+            message: "selected change".to_owned(),
             author: "User".to_owned(),
             authored_at: 0,
         });

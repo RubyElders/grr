@@ -5,6 +5,7 @@
     "shortId": "01234567",
     "parentId": "fedcba9876543210fedcba9876543210fedcba98",
     "summary": "Improve graphics options",
+    "message": "Improve graphics options\n\nAdd localized labels for every graphics quality setting.\n\nKeep the fallback text aligned with the loaded data package.",
     "author": "Local User",
     "authoredAt": 1785800000
   },
@@ -20,6 +21,7 @@
       "shortId": "01234567",
       "parentId": "1111111111111111111111111111111111111111",
       "summary": "Improve graphics options",
+      "message": "Improve graphics options\n\nAdd localized labels for every graphics quality setting.\n\nKeep the fallback text aligned with the loaded data package.",
       "author": "Local User",
       "authoredAt": 1785800000
     },
@@ -28,6 +30,7 @@
       "shortId": "11111111",
       "parentId": "2222222222222222222222222222222222222222",
       "summary": "Add graphics labels",
+      "message": "Add graphics labels",
       "author": "Local User",
       "authoredAt": 1785790000
     },
@@ -36,6 +39,7 @@
       "shortId": "22222222",
       "parentId": "3333333333333333333333333333333333333333",
       "summary": "Cover rendering options",
+      "message": "Cover rendering options",
       "author": "Local User",
       "authoredAt": 1785780000
     },
@@ -44,6 +48,7 @@
       "shortId": "33333333",
       "parentId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "summary": "Prepare graphics page",
+      "message": "Prepare graphics page",
       "author": "Local User",
       "authoredAt": 1785770000
     }

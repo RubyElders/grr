@@ -14,6 +14,7 @@ export interface CommitSummary {
   shortId: string;
   parentId: string | null;
   summary: string;
+  message: string;
   author: string;
   authoredAt: number;
 }

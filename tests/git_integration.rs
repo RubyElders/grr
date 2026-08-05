@@ -46,11 +46,15 @@ fn loads_root_commit_as_an_addition() {
         &repository,
         "src/main.rs",
         b"fn main() {}\n",
-        "Initial commit",
+        "Initial commit\n\nExplain why this fixture exists.\nKeep the full message.",
     );
 
     let review = load_review(directory.path()).unwrap();
     assert_eq!(review.commit.summary, "Initial commit");
+    assert_eq!(
+        review.commit.message,
+        "Initial commit\n\nExplain why this fixture exists.\nKeep the full message."
+    );
     assert_eq!(review.commit.parent_id, None);
     assert_eq!(review.files.len(), 1);
     assert_eq!(review.files[0].status, FileStatus::Added);
