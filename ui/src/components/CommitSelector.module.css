@@ -14,7 +14,7 @@
 .header > span { min-width: 0; display: flex; flex-direction: column; }
 .header small { overflow: hidden; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
 .list { max-height: min(360px, calc(100vh - 190px)); overflow-y: auto; }
-.row { min-height: 60px; display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-bottom: 1px solid var(--border); }
+.row { min-height: 60px; display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--border); }
 .row:last-child { border-bottom: 0; }
 .row:hover { background: var(--canvas); }
 .commitLabel { min-width: 0; display: flex; flex: 1; align-items: center; gap: 10px; cursor: pointer; }
@@ -23,13 +23,17 @@
 .commitText strong, .commitText span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .commitText span { color: var(--muted); font-size: 12px; }
 .commitText code { color: var(--blue); }
-.secondary, .showOne, .primary { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font-weight: 600; cursor: pointer; white-space: nowrap; }
-.secondary:hover, .showOne:hover { background: var(--canvas); }
-.showOne { padding: 5px 10px; font-size: 12px; }
+.secondary, .showOne, .expandMessage, .primary { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font-weight: 600; cursor: pointer; white-space: nowrap; }
+.secondary:hover, .showOne:hover, .expandMessage:hover { background: var(--canvas); }
+.expandMessage { grid-column: 2; height: 28px; display: flex; align-items: center; gap: 3px; padding: 0 7px; font-size: 11px; }
+.messageChevron { display: inline-flex; transform: rotate(-90deg); transition: transform 100ms ease; }
+.messageChevron.expanded { transform: rotate(0); }
+.showOne { grid-column: 3; padding: 5px 10px; font-size: 12px; }
+.fullMessage { grid-column: 1 / -1; margin: 0 -10px -7px; padding: 10px 14px 12px 46px; border-top: 1px solid var(--border); color: var(--fg); background: color-mix(in srgb, var(--canvas) 65%, var(--bg)); font-size: 12px; line-height: 1.45; white-space: pre-wrap; }
 .footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; }
 .primary { border-color: #1f883d; color: white; background: #1f883d; }
 .primary:hover { background: #1a7f37; }
-.secondary:disabled, .showOne:disabled, .primary:disabled { cursor: default; opacity: .55; }
+.secondary:disabled, .showOne:disabled, .expandMessage:disabled, .primary:disabled { cursor: default; opacity: .55; }
 
 @media (max-width: 700px) {
   .root { max-width: calc(100vw - 96px); }

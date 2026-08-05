@@ -37,6 +37,10 @@ describe("grr review window", () => {
       } : null;
     });
     expect(picker).toEqual({ rows: 4, insideViewport: true });
+    await clickElement("button[aria-label='Show full message for Return the correct answer']");
+    expect(await browser.execute(
+      () => document.body.textContent?.includes("Keep this body visible in the review picker."),
+    )).toBe(true);
     writeFileSync("e2e-results/commit-picker.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 
     const allScrollPosition = await browser.execute(() => {

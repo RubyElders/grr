@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import type { CommitSummary, ReviewData } from "../types";
+import { Icon } from "./Icon";
 import styles from "./CommitSelector.module.css";
 
 interface CommitSelectorProps {
@@ -116,6 +117,8 @@ function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
   onToggle(): void;
   onShow(): void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const messageBody = fullMessageBody(commit);
   return (
     <div class={styles.row}>
       <label class={styles.commitLabel}>
@@ -125,9 +128,27 @@ function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
           <span><code>{commit.shortId}</code> by {commit.author}</span>
         </span>
       </label>
+      {messageBody ? (
+        <button
+          class={styles.expandMessage}
+          aria-label={`${expanded ? "Hide" : "Show"} full message for ${commit.summary}`}
+          aria-expanded={expanded}
+          title="Full commit message"
+          onClick={() => setExpanded(!expanded)}
+        >
+          <span>Message</span>
+          <span class={`${styles.messageChevron} ${expanded ? styles.expanded : ""}`}><Icon name="chevron" size={14} /></span>
+        </button>
+      ) : null}
       <button class={styles.showOne} disabled={disabled} aria-label={`Show only ${commit.summary}`} onClick={onShow}>Show</button>
+      {expanded ? <div class={styles.fullMessage}>{messageBody}</div> : null}
     </div>
   );
+}
+
+export function fullMessageBody(commit: CommitSummary): string {
+  const firstNewline = commit.message.indexOf("\n");
+  return firstNewline === -1 ? "" : commit.message.slice(firstNewline + 1).trim();
 }
 
 function plural(count: number, noun: string): string {

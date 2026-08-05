@@ -60,8 +60,8 @@ describe("ReviewApp", () => {
     await user.click(trigger);
     const picker = screen.getByRole("dialog", { name: "Choose commits" });
     expect(within(picker).getAllByRole("checkbox")).toHaveLength(4);
-    await user.click(within(picker).getByText("Add graphics labels"));
-    await user.click(within(picker).getByText("Prepare graphics page"));
+    await user.click(within(picker).getByRole("checkbox", { name: /Add graphics labels/ }));
+    await user.click(within(picker).getByRole("checkbox", { name: /Prepare graphics page/ }));
     await user.click(within(picker).getByRole("button", { name: "Show (2)" }));
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([
       "1111111111111111111111111111111111111111",
@@ -77,6 +77,25 @@ describe("ReviewApp", () => {
     await user.click(trigger);
     await user.click(screen.getByRole("button", { name: "Show all" }));
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
+  });
+
+  it("expands and collapses a full multiline commit message", async () => {
+    const { user } = setup();
+    await screen.findByText("Improve graphics options");
+    await user.click(screen.getByTitle("Choose commits to review"));
+    const picker = screen.getByRole("dialog", { name: "Choose commits" });
+    const expand = within(picker).getByRole("button", { name: "Show full message for Improve graphics options" });
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+    expect(within(picker).queryByText(/Add localized labels for every graphics quality setting/)).not.toBeInTheDocument();
+
+    await user.click(expand);
+    expect(within(picker).getByText(/Add localized labels for every graphics quality setting/)).toBeInTheDocument();
+    expect(within(picker).getByText(/Keep the fallback text aligned/)).toBeInTheDocument();
+    expect(within(picker).getByRole("button", { name: "Hide full message for Improve graphics options" })).toHaveAttribute("aria-expanded", "true");
+
+    await user.click(within(picker).getByRole("button", { name: "Hide full message for Improve graphics options" }));
+    expect(within(picker).queryByText(/Add localized labels for every graphics quality setting/)).not.toBeInTheDocument();
+    expect(within(picker).queryAllByTitle("Full commit message")).toHaveLength(1);
   });
 
   it("dismisses the commit picker with Escape without closing the app", async () => {

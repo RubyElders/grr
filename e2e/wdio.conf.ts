@@ -24,7 +24,7 @@ for (const args of [
   ["switch", "-qc", "feature/review-picker"],
 ]) execFileSync("git", args, { cwd: repository });
 writeFileSync(join(repository, "src", "review.rs"), "pub fn answer() -> u32 {\n    42\n}\n");
-for (const args of [["add", "src/review.rs"], ["commit", "-qm", "Return the correct answer"]]) {
+for (const args of [["add", "src/review.rs"], ["commit", "-qm", "Return the correct answer\n\nExplain why the fixture answer changes.\nKeep this body visible in the review picker."]]) {
   execFileSync("git", args, { cwd: repository });
 }
 writeFileSync(cppPath, cppSource(42));
