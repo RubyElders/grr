@@ -4,6 +4,7 @@ import type { DraftComment } from "../state";
 import type { DiffHunk as DiffHunkType, DiffLine as DiffLineType, FileDiff } from "../types";
 import { CommentEditor } from "./CommentEditor";
 import { Icon } from "./Icon";
+import { SyntaxLine } from "./SyntaxLine";
 import styles from "./DiffView.module.css";
 
 interface DiffViewProps {
@@ -122,7 +123,7 @@ function DiffRow({ file, line, ...props }: DiffViewProps & { file: FileDiff; lin
         <span class={styles.oldNumber}>{line.oldLine ?? ""}</span>
         <span class={styles.newNumber}>{line.newLine ?? ""}</span>
         <span class={styles.marker}>{marker(line.kind)}</span>
-        <code class={styles.code}>{line.text}{line.lossy ? <span class={styles.lossy} title="This line contained invalid UTF-8"> �</span> : null}</code>
+        <code class={styles.code} aria-label={line.text}><SyntaxLine path={file.displayPath} text={line.text} />{line.lossy ? <span class={styles.lossy} title="This line contained invalid UTF-8"> �</span> : null}</code>
       </div>
       {editorOpen ? (
         <div class={styles.commentRow}>

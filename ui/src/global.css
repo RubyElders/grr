@@ -17,6 +17,13 @@
   --red-bg: #ffebe9;
   --red-gutter: #ffcecb;
   --hunk-bg: #ddf4ff;
+  --syntax-keyword: #cf222e;
+  --syntax-string: #0a3069;
+  --syntax-comment: #6e7781;
+  --syntax-number: #0550ae;
+  --syntax-function: #8250df;
+  --syntax-type: #953800;
+  --syntax-meta: #116329;
   --shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
 }
 
@@ -37,6 +44,13 @@
     --red-bg: #2d1618;
     --red-gutter: #4c1f24;
     --hunk-bg: #121d2f;
+    --syntax-keyword: #ff7b72;
+    --syntax-string: #a5d6ff;
+    --syntax-comment: #8b949e;
+    --syntax-number: #79c0ff;
+    --syntax-function: #d2a8ff;
+    --syntax-type: #ffa657;
+    --syntax-meta: #7ee787;
     --shadow: none;
   }
 }
@@ -47,4 +61,3 @@ body { background: var(--canvas); color: var(--fg); font-size: 14px; }
 button, input, textarea { font: inherit; }
 button { color: inherit; }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: -1px; }
-

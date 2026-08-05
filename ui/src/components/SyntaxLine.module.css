@@ -1,0 +1,7 @@
+.keyword { color: var(--syntax-keyword); }
+.string { color: var(--syntax-string); }
+.comment { color: var(--syntax-comment); font-style: italic; }
+.number, .literal { color: var(--syntax-number); }
+.function { color: var(--syntax-function); }
+.type { color: var(--syntax-type); }
+.meta { color: var(--syntax-meta); }

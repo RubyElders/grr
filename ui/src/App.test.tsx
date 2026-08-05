@@ -23,7 +23,7 @@ describe("ReviewApp", () => {
     setup();
     expect(await screen.findByText("Improve graphics options")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "File tree" })).toBeInTheDocument();
-    expect(screen.getByText("const char* labelEn;", { exact: false })).toBeInTheDocument();
+    expect(screen.getByLabelText(/const char\* labelEn;/)).toBeInTheDocument();
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
   });
 
