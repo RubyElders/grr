@@ -14,6 +14,19 @@ describe("grr review window", () => {
     writeFileSync("e2e-results/window.html", await browser.getPageSource());
     writeFileSync("e2e-results/window.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true, cancelable: true }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      () => (document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop ?? 0) > 0,
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "Space did not page the diff down" });
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", shiftKey: true, bubbles: true, cancelable: true }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      () => (document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop ?? -1) === 0,
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "Shift+Space did not page the diff up" });
+
     await clickElement("button[title='Choose commits to review']");
     const picker = await browser.execute(() => {
       const dialog = document.querySelector<HTMLElement>("section[role='dialog'][aria-label='Choose commits']");

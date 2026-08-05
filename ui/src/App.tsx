@@ -51,9 +51,25 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && (event.ctrlKey || event.metaKey)
         && state.openLineId === null
         && state.phase === "ready";
-      if (!dismissSelector && !closeWithEscape && !closeWithW && !closeWithF4 && !runPrimaryAction) return;
+      const pageDiff = (event.key === " " || event.code === "Space")
+        && !event.ctrlKey
+        && !event.metaKey
+        && !event.altKey
+        && !commitSelectorOpen
+        && state.openLineId === null
+        && state.phase === "ready"
+        && !isInteractiveTarget(event.target);
+      if (!dismissSelector && !closeWithEscape && !closeWithW && !closeWithF4 && !runPrimaryAction && !pageDiff) return;
 
       event.preventDefault();
+      if (pageDiff) {
+        const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
+        pane?.scrollBy({
+          top: (event.shiftKey ? -1 : 1) * Math.max(1, pane.clientHeight - 48),
+          behavior: "smooth",
+        });
+        return;
+      }
       if (dismissSelector) {
         setCommitSelectorOpen(false);
         return;
@@ -129,4 +145,9 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function isInteractiveTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  return target.closest("button, input, textarea, select, a, [contenteditable='true']") !== null;
 }

@@ -264,6 +264,29 @@ describe("ReviewApp", () => {
     expect(submissions).toHaveLength(0);
   });
 
+  it("pages the diff with Space and Shift+Space without stealing interactive input", async () => {
+    const { user } = setup();
+    await screen.findByText("Improve graphics options");
+    const pane = screen.getByRole("main", { name: "Commit diff" });
+    const scrollBy = vi.fn();
+    pane.scrollBy = scrollBy;
+    Object.defineProperty(pane, "clientHeight", { configurable: true, value: 600 });
+
+    fireEvent.keyDown(document, { key: " ", code: "Space" });
+    expect(scrollBy).toHaveBeenLastCalledWith({ top: 552, behavior: "smooth" });
+    fireEvent.keyDown(document, { key: " ", code: "Space", shiftKey: true });
+    expect(scrollBy).toHaveBeenLastCalledWith({ top: -552, behavior: "smooth" });
+
+    const filter = screen.getByRole("searchbox", { name: "Filter files" });
+    await user.click(filter);
+    fireEvent.keyDown(filter, { key: " ", code: "Space" });
+    expect(scrollBy).toHaveBeenCalledTimes(2);
+
+    await user.click(screen.getByTitle("Choose commits to review"));
+    fireEvent.keyDown(document, { key: " ", code: "Space" });
+    expect(scrollBy).toHaveBeenCalledTimes(2);
+  });
+
   it("reports submission failures and restores the actions", async () => {
     const backend: ReviewBackend = {
       getReview: vi.fn().mockResolvedValue(fixture as ReviewData),
