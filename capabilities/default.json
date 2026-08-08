@@ -3,6 +3,9 @@
   "identifier": "default",
   "description": "Default capability for the local review window",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-close"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-show"
+  ]
 }
-
