@@ -59,7 +59,7 @@ describe("ReviewApp", () => {
 
     await user.click(trigger);
     const picker = screen.getByRole("dialog", { name: "Choose commits" });
-    expect(within(picker).getAllByRole("checkbox")).toHaveLength(4);
+    expect(within(picker).getAllByRole("checkbox")).toHaveLength(5);
     await user.click(within(picker).getByRole("checkbox", { name: /Add graphics labels/ }));
     await user.click(within(picker).getByRole("checkbox", { name: /Prepare graphics page/ }));
     await user.click(within(picker).getByRole("button", { name: "Show (2)" }));
@@ -79,6 +79,17 @@ describe("ReviewApp", () => {
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
   });
 
+  it("shows and selects the virtual working-tree commit", async () => {
+    const { backend, user } = setup();
+    await screen.findByText("Improve graphics options");
+    await user.click(screen.getByTitle("Choose commits to review"));
+    const picker = screen.getByRole("dialog", { name: "Choose commits" });
+    expect(within(picker).getByText("Uncommitted changes")).toBeInTheDocument();
+    expect(within(picker).getByText("Virtual")).toBeInTheDocument();
+    await user.click(within(picker).getByRole("button", { name: "Show only Uncommitted changes" }));
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
+  });
+
   it("expands and collapses a full multiline commit message", async () => {
     const { user } = setup();
     await screen.findByText("Improve graphics options");
@@ -95,7 +106,7 @@ describe("ReviewApp", () => {
 
     await user.click(within(picker).getByRole("button", { name: "Hide full message for Improve graphics options" }));
     expect(within(picker).queryByText(/Add localized labels for every graphics quality setting/)).not.toBeInTheDocument();
-    expect(within(picker).queryAllByTitle("Full commit message")).toHaveLength(1);
+    expect(within(picker).queryAllByTitle("Full commit message")).toHaveLength(2);
   });
 
   it("dismisses the commit picker with Escape without closing the app", async () => {

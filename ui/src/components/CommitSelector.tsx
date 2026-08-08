@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import type { CommitSummary, ReviewData } from "../types";
+import { WORKTREE_COMMIT_ID, type CommitSummary, type ReviewData } from "../types";
 import { Icon } from "./Icon";
 import styles from "./CommitSelector.module.css";
 
@@ -119,13 +119,14 @@ function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
 }) {
   const [expanded, setExpanded] = useState(false);
   const messageBody = fullMessageBody(commit);
+  const virtual = commit.id === WORKTREE_COMMIT_ID;
   return (
-    <div class={styles.row}>
+    <div class={`${styles.row} ${virtual ? styles.virtualRow : ""}`}>
       <label class={styles.commitLabel}>
         <input type="checkbox" checked={checked} disabled={disabled} onChange={onToggle} />
         <span class={styles.commitText}>
           <strong>{commit.summary}</strong>
-          <span><code>{commit.shortId}</code> by {commit.author}</span>
+          <span><code>{commit.shortId}</code> by {commit.author}{virtual ? <em class={styles.virtualBadge}>Virtual</em> : null}</span>
         </span>
       </label>
       {messageBody ? (

@@ -39,6 +39,7 @@ writeFileSync(join(repository, "README.md"), "# Fixture\n");
 for (const args of [["add", "README.md"], ["commit", "-qm", "Document the fixture"]]) {
   execFileSync("git", args, { cwd: repository });
 }
+writeFileSync(join(repository, "worktree-note.txt"), "This change has not been committed.\n");
 
 export const config: WdioTauriConfig = {
   runner: "local",

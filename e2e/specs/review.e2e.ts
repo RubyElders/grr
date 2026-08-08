@@ -8,7 +8,7 @@ describe("grr review window", () => {
     ), { timeout: 10_000, interval: 100, timeoutMsg: "review UI did not finish loading" });
     const ready = await browser.execute(() => ({
       filter: Boolean(document.querySelector("input[aria-label='Filter files']")),
-      commit: document.body.textContent?.includes("4 commits · main…HEAD"),
+      commit: document.body.textContent?.includes("5 commits · main…HEAD"),
     }));
     expect(ready).toEqual({ filter: true, commit: true });
     writeFileSync("e2e-results/window.html", await browser.getPageSource());
@@ -36,7 +36,11 @@ describe("grr review window", () => {
         insideViewport: rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight,
       } : null;
     });
-    expect(picker).toEqual({ rows: 4, insideViewport: true });
+    expect(picker).toEqual({ rows: 5, insideViewport: true });
+    expect(await browser.execute(
+      () => document.body.textContent?.includes("Uncommitted changes")
+        && document.body.textContent?.includes("Virtual"),
+    )).toBe(true);
     await clickElement("button[aria-label='Show full message for Return the correct answer']");
     expect(await browser.execute(
       () => document.body.textContent?.includes("Keep this body visible in the review picker."),
@@ -60,11 +64,23 @@ describe("grr review window", () => {
     await clickElement("button[title='Choose commits to review']");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
-      (expectedScrollTop) => document.body.textContent?.includes("4 commits · main…HEAD")
+      (expectedScrollTop) => document.body.textContent?.includes("5 commits · main…HEAD")
         && !document.querySelector("article [title*='Return the correct answer']")
         && Math.abs((document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop ?? -1) - expectedScrollTop) <= 1,
       allScrollPosition,
     ), { timeout: 5_000, interval: 50, timeoutMsg: "full branch diff did not restore its scroll position" });
+
+    await clickElement("button[title='Choose commits to review']");
+    await clickElement("button[aria-label='Show only Uncommitted changes']");
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.body.textContent?.includes("worktree by Local working tree")
+        && Boolean(document.querySelector("article [title='worktree · Uncommitted changes']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "virtual worktree commit did not load" });
+    await clickElement("button[title='Choose commits to review']");
+    await clickButton("Show all");
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.body.textContent?.includes("5 commits · main…HEAD"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "full diff did not return after worktree review" });
 
     const longHeader = await browser.execute(() => {
       const section = Array.from(document.querySelectorAll<HTMLElement>("section[aria-label]"))

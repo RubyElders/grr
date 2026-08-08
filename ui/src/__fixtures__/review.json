@@ -17,6 +17,15 @@
   },
   "commits": [
     {
+      "id": "WORKTREE",
+      "shortId": "worktree",
+      "parentId": "0123456789abcdef0123456789abcdef01234567",
+      "summary": "Uncommitted changes",
+      "message": "Uncommitted changes\n\nStaged, unstaged, and untracked changes relative to HEAD.",
+      "author": "Local working tree",
+      "authoredAt": 1785800000
+    },
+    {
       "id": "0123456789abcdef0123456789abcdef01234567",
       "shortId": "01234567",
       "parentId": "1111111111111111111111111111111111111111",

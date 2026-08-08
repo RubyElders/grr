@@ -7,6 +7,8 @@ export type FileStatus =
   | "type_changed"
   | "other";
 
+export const WORKTREE_COMMIT_ID = "WORKTREE";
+
 export type LineKind = "context" | "addition" | "deletion" | "marker";
 
 export interface CommitSummary {
