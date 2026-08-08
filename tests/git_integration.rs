@@ -2,7 +2,9 @@ use std::fs;
 use std::path::Path;
 
 use git2::{Commit, Repository, Signature};
-use grr::{FileStatus, ReviewData, ReviewLoadError, load_review, load_review_selection};
+use grr::{
+    FileStatus, ReviewData, ReviewLoadError, WORKTREE_COMMIT_ID, load_review, load_review_selection,
+};
 
 fn commit_file<'repo>(
     repository: &'repo Repository,
@@ -222,6 +224,93 @@ fn detects_base_branch_and_loads_cumulative_or_selected_commits() {
 
     let error = load_review_selection(directory.path(), Some("main"), &[root.id().to_string()]);
     assert!(matches!(error, Err(ReviewLoadError::InvalidSelection(_))));
+}
+
+#[test]
+fn exposes_staged_unstaged_deleted_and_untracked_changes_as_a_virtual_commit() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let head = commit_file(&repository, "tracked.txt", b"old tracked\n", "base");
+    commit_file(
+        &repository,
+        "deleted.txt",
+        b"remove me\n",
+        "add deletion target",
+    );
+    commit_file(
+        &repository,
+        ".gitignore",
+        b"ignored.txt\n",
+        "ignore fixture",
+    );
+
+    fs::write(directory.path().join("tracked.txt"), b"new tracked\n").unwrap();
+    fs::remove_file(directory.path().join("deleted.txt")).unwrap();
+    fs::write(directory.path().join("staged.txt"), b"staged content\n").unwrap();
+    let mut index = repository.index().unwrap();
+    index.add_path(Path::new("staged.txt")).unwrap();
+    index.write().unwrap();
+    fs::write(
+        directory.path().join("untracked.txt"),
+        b"untracked content\n",
+    )
+    .unwrap();
+    fs::write(directory.path().join("ignored.txt"), b"ignored content\n").unwrap();
+
+    let cumulative = load_review(directory.path()).unwrap();
+    let worktree = cumulative
+        .commits
+        .iter()
+        .find(|commit| commit.id == WORKTREE_COMMIT_ID)
+        .unwrap();
+    assert_eq!(worktree.summary, "Uncommitted changes");
+    assert_eq!(
+        worktree.parent_id,
+        Some(repository.head().unwrap().target().unwrap().to_string())
+    );
+    assert_ne!(
+        head.id().to_string(),
+        worktree.parent_id.as_deref().unwrap()
+    );
+    let cumulative_paths = cumulative
+        .files
+        .iter()
+        .map(|file| file.display_path.as_str())
+        .collect::<Vec<_>>();
+    assert!(cumulative_paths.contains(&"tracked.txt"));
+    assert!(cumulative_paths.contains(&"deleted.txt"));
+    assert!(cumulative_paths.contains(&"staged.txt"));
+    assert!(cumulative_paths.contains(&"untracked.txt"));
+    assert!(!cumulative_paths.contains(&"ignored.txt"));
+
+    let selected =
+        load_review_selection(directory.path(), None, &[WORKTREE_COMMIT_ID.to_owned()]).unwrap();
+    assert_eq!(selected.selected_commit_ids, [WORKTREE_COMMIT_ID]);
+    assert!(selected.files.iter().all(|file| {
+        file.source_commit.as_ref().map(|commit| commit.id.as_str()) == Some(WORKTREE_COMMIT_ID)
+    }));
+    let untracked = selected
+        .files
+        .iter()
+        .find(|file| file.display_path == "untracked.txt")
+        .unwrap();
+    assert_eq!(untracked.status, FileStatus::Added);
+    assert_eq!(untracked.new_mode, "100644");
+    assert_eq!(untracked.additions, 1);
+}
+
+#[test]
+fn omits_the_virtual_commit_for_a_clean_worktree() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    commit_file(&repository, "clean.txt", b"clean\n", "clean");
+    let review = load_review(directory.path()).unwrap();
+    assert!(
+        review
+            .commits
+            .iter()
+            .all(|commit| commit.id != WORKTREE_COMMIT_ID)
+    );
 }
 
 #[test]

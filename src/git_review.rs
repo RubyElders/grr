@@ -4,14 +4,16 @@ use std::fmt;
 use std::path::Path;
 
 use git2::{
-    Commit, Delta, DiffFindOptions, DiffLineType, DiffOptions, FileMode, Patch, Repository, Sort,
-    Tree,
+    Commit, Delta, Diff, DiffFindOptions, DiffLineType, DiffOptions, FileMode, Patch, Repository,
+    Sort, Tree,
 };
 
 use crate::model::{
     CommitSummary, ComparisonSummary, DiffHunk, DiffLine, FileDiff, FileStatus, LineKind,
     ReviewData,
 };
+
+pub const WORKTREE_COMMIT_ID: &str = "WORKTREE";
 
 #[derive(Debug)]
 pub enum ReviewLoadError {
@@ -61,7 +63,19 @@ pub fn load_review_selection(
         })?
         .peel_to_commit()?;
     let base = resolve_base(&repository, &head, requested_base)?;
-    let commits = commits_since(&repository, &head, base.merge_base_id)?;
+    let mut commits = commits_since(&repository, &head, base.merge_base_id)?;
+    let head_tree = head.tree()?;
+    let worktree_summary = worktree_summary(&head);
+    let worktree_files = diff_worktree_files(
+        &repository,
+        Some(&head_tree),
+        "worktree",
+        Some(worktree_summary.clone()),
+    )?;
+    let has_worktree_changes = !worktree_files.is_empty();
+    if has_worktree_changes {
+        commits.insert(0, worktree_summary);
+    }
     let known_ids = commits
         .iter()
         .map(|commit| commit.id.as_str())
@@ -81,13 +95,16 @@ pub fn load_review_selection(
         .collect::<HashSet<_>>();
     let mut files = Vec::new();
     if selected.is_empty() {
-        let new_tree = head.tree()?;
         let merge_base = base
             .merge_base_id
             .map(|id| repository.find_commit(id))
             .transpose()?;
         let old_tree = merge_base.as_ref().map(Commit::tree).transpose()?;
-        files = diff_files(&repository, old_tree.as_ref(), &new_tree, "all", None)?;
+        files = if has_worktree_changes {
+            diff_worktree_files(&repository, old_tree.as_ref(), "all", None)?
+        } else {
+            diff_tree_files(&repository, old_tree.as_ref(), &head_tree, "all", None)?
+        };
     } else {
         for (section_index, summary) in commits
             .iter()
@@ -95,11 +112,15 @@ pub fn load_review_selection(
             .filter(|commit| selected.contains(commit.id.as_str()))
             .enumerate()
         {
+            if summary.id == WORKTREE_COMMIT_ID {
+                files.extend(worktree_files.clone());
+                continue;
+            }
             let commit = repository.find_commit(git2::Oid::from_str(&summary.id)?)?;
             let parent = commit.parent(0).ok();
             let old_tree = parent.as_ref().map(Commit::tree).transpose()?;
             let new_tree = commit.tree()?;
-            files.extend(diff_files(
+            files.extend(diff_tree_files(
                 &repository,
                 old_tree.as_ref(),
                 &new_tree,
@@ -269,19 +290,60 @@ fn commit_summary(commit: &Commit<'_>) -> Result<CommitSummary, git2::Error> {
     })
 }
 
-fn diff_files(
+fn worktree_summary(head: &Commit<'_>) -> CommitSummary {
+    CommitSummary {
+        id: WORKTREE_COMMIT_ID.to_owned(),
+        short_id: "worktree".to_owned(),
+        parent_id: Some(head.id().to_string()),
+        summary: "Uncommitted changes".to_owned(),
+        message: "Uncommitted changes\n\nStaged, unstaged, and untracked changes relative to HEAD."
+            .to_owned(),
+        author: "Local working tree".to_owned(),
+        authored_at: head.time().seconds(),
+    }
+}
+
+fn diff_options() -> DiffOptions {
+    let mut options = DiffOptions::new();
+    options
+        .context_lines(3)
+        .include_typechange(true)
+        .indent_heuristic(true);
+    options
+}
+
+fn diff_tree_files(
     repository: &Repository,
     old_tree: Option<&Tree<'_>>,
     new_tree: &Tree<'_>,
     id_prefix: &str,
     source_commit: Option<CommitSummary>,
 ) -> Result<Vec<FileDiff>, ReviewLoadError> {
-    let mut options = DiffOptions::new();
-    options
-        .context_lines(3)
-        .include_typechange(true)
-        .indent_heuristic(true);
+    let mut options = diff_options();
     let mut diff = repository.diff_tree_to_tree(old_tree, Some(new_tree), Some(&mut options))?;
+    parse_diff(&mut diff, id_prefix, source_commit)
+}
+
+fn diff_worktree_files(
+    repository: &Repository,
+    old_tree: Option<&Tree<'_>>,
+    id_prefix: &str,
+    source_commit: Option<CommitSummary>,
+) -> Result<Vec<FileDiff>, ReviewLoadError> {
+    let mut options = diff_options();
+    options
+        .include_untracked(true)
+        .recurse_untracked_dirs(true)
+        .show_untracked_content(true);
+    let mut diff = repository.diff_tree_to_workdir_with_index(old_tree, Some(&mut options))?;
+    parse_diff(&mut diff, id_prefix, source_commit)
+}
+
+fn parse_diff(
+    diff: &mut Diff<'_>,
+    id_prefix: &str,
+    source_commit: Option<CommitSummary>,
+) -> Result<Vec<FileDiff>, ReviewLoadError> {
     let mut find = DiffFindOptions::new();
     find.renames(true);
     diff.find_similar(Some(&mut find))?;
@@ -302,7 +364,7 @@ fn diff_files(
         let mut additions = 0;
         let mut deletions = 0;
 
-        if let Some(patch) = Patch::from_diff(&diff, file_index)? {
+        if let Some(patch) = Patch::from_diff(diff, file_index)? {
             for hunk_index in 0..patch.num_hunks() {
                 let (hunk, line_count) = patch.hunk(hunk_index)?;
                 let mut lines = Vec::with_capacity(line_count);
@@ -398,12 +460,12 @@ fn escape_path(bytes: &[u8]) -> String {
 }
 
 fn mode_name(mode: FileMode) -> String {
-    format!("{:06o}", mode as i32)
+    format!("{:06o}", i32::from(mode))
 }
 
 fn map_status(delta: Delta) -> FileStatus {
     match delta {
-        Delta::Added => FileStatus::Added,
+        Delta::Added | Delta::Untracked => FileStatus::Added,
         Delta::Deleted => FileStatus::Deleted,
         Delta::Modified => FileStatus::Modified,
         Delta::Renamed => FileStatus::Renamed,
