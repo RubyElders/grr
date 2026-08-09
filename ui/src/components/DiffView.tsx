@@ -82,10 +82,12 @@ function DiffFileCard({ file, ...props }: DiffViewProps & { file: FileDiff }) {
         </div>
       </header>
       {!collapsed ? (
-        <div>
-          {file.binary ? <Placeholder title="Binary file changed" detail="Binary contents cannot be reviewed line by line." /> : null}
-          {!file.binary && file.hunks.length === 0 ? <Placeholder title="File metadata changed" detail={`${file.oldMode} → ${file.newMode}`} /> : null}
-          {!file.binary && file.hunks.map((hunk) => <DiffHunk key={hunk.id} file={file} hunk={hunk} {...props} />)}
+        <div class={styles.fileScroller} aria-label={`Scrollable diff for ${file.displayPath}`}>
+          <div class={styles.fileContent}>
+            {file.binary ? <Placeholder title="Binary file changed" detail="Binary contents cannot be reviewed line by line." /> : null}
+            {!file.binary && file.hunks.length === 0 ? <Placeholder title="File metadata changed" detail={`${file.oldMode} → ${file.newMode}`} /> : null}
+            {!file.binary && file.hunks.map((hunk) => <DiffHunk key={hunk.id} file={file} hunk={hunk} {...props} />)}
+          </div>
         </div>
       ) : null}
     </article>

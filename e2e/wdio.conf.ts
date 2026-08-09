@@ -80,7 +80,7 @@ function cppSource(answer: number): string {
     "    if (task == nullptr)",
     "        return;",
     `    const int answer = ${answer};`,
-    "    consume(answer);",
+    `    consume(answer, "${"shared horizontal scrolling fixture ".repeat(12)}");`,
     "}",
     "",
   ].join("\n");

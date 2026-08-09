@@ -3,6 +3,8 @@
 .empty h2 { color: var(--fg); margin-bottom: 4px; }
 .file { margin: 0 0 22px; overflow: clip; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); scroll-margin-top: 12px; box-shadow: var(--shadow); }
 .fileHeader { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 12px; background: var(--canvas); border-bottom: 1px solid var(--border); }
+.fileScroller { max-width: 100%; overflow-x: auto; }
+.fileContent { min-width: 100%; width: max-content; }
 .collapseButton { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px 0; border: 0; background: transparent; cursor: pointer; text-align: left; }
 .chevron { display: inline-flex; transition: transform 100ms ease; }
 .chevron.collapsed { transform: rotate(-90deg); }
@@ -18,12 +20,12 @@
 .hunkHeader, .line { --line-number-width: 50px; display: grid; grid-template-columns: var(--line-number-width) var(--line-number-width) 18px minmax(0, 1fr); }
 .hunkHeader { min-height: 32px; color: var(--blue); background: var(--hunk-bg); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
 .hunkHeader span { padding: 7px 9px; }
-.hunkHeader span:last-child { min-width: 0; overflow-x: auto; white-space: pre; }
+.hunkHeader span:last-child { min-width: 0; white-space: pre; }
 .line { position: relative; min-height: 26px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; line-height: 20px; }
 .line > span, .code { padding: 3px 8px; }
 .oldNumber, .newNumber { color: var(--muted); text-align: right; user-select: none; border-right: 1px solid color-mix(in srgb, var(--border) 60%, transparent); }
 .marker { padding-left: 7px !important; padding-right: 2px !important; user-select: none; }
-.code { min-width: 0; display: block; overflow-x: auto; white-space: pre; color: var(--fg); }
+.code { min-width: 0; display: block; white-space: pre; color: var(--fg); }
 .addition { background: var(--green-bg); }
 .addition .oldNumber, .addition .newNumber { background: var(--green-gutter); }
 .deletion { background: var(--red-bg); }

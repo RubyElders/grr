@@ -97,6 +97,19 @@ describe("grr review window", () => {
     expect(longHeader?.whiteSpace).toBe("pre");
     expect(longHeader?.height).toBeLessThanOrEqual(32);
 
+    const horizontalScroll = await browser.execute(() => {
+      const scroller = document.querySelector<HTMLElement>("[aria-label='Scrollable diff for engine/Poseidon/AI/AISubgroup.cpp']");
+      if (!scroller) return null;
+      const codeCells = Array.from(scroller.querySelectorAll<HTMLElement>("[data-line-id] code"));
+      scroller.scrollLeft = 180;
+      return {
+        overflows: scroller.scrollWidth > scroller.clientWidth,
+        scrollLeft: scroller.scrollLeft,
+        nestedScrollers: codeCells.filter((cell) => ["auto", "scroll"].includes(getComputedStyle(cell).overflowX)).length,
+      };
+    });
+    expect(horizontalScroll).toEqual({ overflows: true, scrollLeft: 180, nestedScrollers: 0 });
+
     const commentButtonAlignment = await browser.execute(() => {
       const button = document.querySelector<HTMLButtonElement>("button[aria-label*='AISubgroup.cpp R1059']");
       const newLineNumber = button?.nextElementSibling?.nextElementSibling;

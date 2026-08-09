@@ -38,6 +38,16 @@ describe("DiffView scroll positions", () => {
     rerender(diff("commit-a+commit-b"));
     expect(pane.scrollTop).toBe(230);
   });
+
+  it("uses one horizontal scroll container for each file", () => {
+    renderDiff("all");
+
+    const scrollers = files.map((file) => screen.getByLabelText(`Scrollable diff for ${file.displayPath}`));
+    expect(scrollers).toHaveLength(files.length);
+    for (const code of document.querySelectorAll("[data-line-id] code")) {
+      expect(scrollers).toContain(code.closest("[aria-label^='Scrollable diff for ']") as HTMLElement);
+    }
+  });
 });
 
 function renderDiff(viewKey: string) {
