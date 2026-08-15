@@ -5,6 +5,8 @@ use std::sync::{Arc, Mutex};
 use grr::{
     ReviewData, SubmittedReview, format_review_result, load_review_selection, validate_submission,
 };
+#[cfg(target_os = "linux")]
+use tauri::Manager;
 use tauri::{State, Window};
 
 struct AppState {
@@ -86,6 +88,11 @@ fn main() {
     let submitted = Arc::new(Mutex::new(None));
     let review_data = Arc::new(Mutex::new(review));
     let app = tauri::Builder::default()
+        .setup(|_app| {
+            #[cfg(target_os = "linux")]
+            enable_wayland_titlebar_controls(_app)?;
+            Ok(())
+        })
         .manage(AppState {
             repository: options.repository,
             requested_base: options.requested_base,
@@ -127,6 +134,22 @@ fn main() {
         }
     }
     std::process::exit(exit_code);
+}
+
+#[cfg(target_os = "linux")]
+fn enable_wayland_titlebar_controls(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    use gtk::prelude::*;
+
+    let window = app
+        .get_webview_window("main")
+        .ok_or("main window was not created")?;
+    let gtk_window = window.gtk_window()?;
+    if let Some(titlebar) = gtk_window.titlebar()
+        && let Ok(event_box) = titlebar.downcast::<gtk::EventBox>()
+    {
+        event_box.set_above_child(false);
+    }
+    Ok(())
 }
 
 struct CliOptions {
