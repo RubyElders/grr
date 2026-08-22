@@ -6,6 +6,8 @@ import { FileTree } from "./components/FileTree";
 import { DiffView } from "./components/DiffView";
 import { ReviewActions } from "./components/ReviewActions";
 import { CommitSelector } from "./components/CommitSelector";
+import { FindPopover } from "./components/FindPopover";
+import { adjacentMatch, findCodeMatches } from "./codeSearch";
 import { reviewViewKey } from "./scrollPosition";
 import { filesInTreeOrder } from "./tree";
 import type { ReviewData } from "./types";
@@ -14,6 +16,9 @@ import styles from "./App.module.css";
 export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend }) {
   const [state, dispatch] = useReducer(reviewReducer, initialState);
   const [commitSelectorOpen, setCommitSelectorOpen] = useState(false);
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [activeFindIndex, setActiveFindIndex] = useState(-1);
   useEffect(() => {
     let mounted = true;
     backend.getReview().then(
@@ -24,6 +29,28 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
   }, [backend]);
 
   const comments = useMemo(() => orderedComments(state), [state]);
+  const findMatches = useMemo(
+    () => findCodeMatches(state.data?.files ?? [], findQuery),
+    [findQuery, state.data?.files],
+  );
+  const updateFindQuery = useCallback((query: string) => {
+    setFindQuery(query);
+    setActiveFindIndex(findCodeMatches(state.data?.files ?? [], query).length > 0 ? 0 : -1);
+  }, [state.data?.files]);
+  useEffect(() => {
+    setActiveFindIndex(findCodeMatches(state.data?.files ?? [], findQuery).length > 0 ? 0 : -1);
+  }, [state.data?.files]);
+  useEffect(() => {
+    if (!findOpen) return;
+    const match = findMatches[activeFindIndex];
+    if (!match) return;
+    if (state.collapsedFiles.has(match.fileId)) dispatch({ type: "toggle-file", fileId: match.fileId });
+    dispatch({ type: "activate-file", fileId: match.fileId });
+  }, [activeFindIndex, findMatches, findOpen, state.collapsedFiles]);
+
+  const moveFind = useCallback((direction: 1 | -1) => {
+    setActiveFindIndex((current) => adjacentMatch(current, findMatches.length, direction));
+  }, [findMatches.length]);
   const submit = useCallback(async (outcome: "approve" | "share") => {
     dispatch({ type: "submitting" });
     try {
@@ -45,25 +72,58 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
 
   useLayoutEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      const nativeModifier = event.ctrlKey || event.metaKey;
+      const findShortcut = event.key.toLowerCase() === "f" && nativeModifier && !event.altKey;
+      const openFind = findShortcut || (!findOpen && event.key === "F3" && !nativeModifier && !event.altKey);
+      const repeatFind = findOpen && (
+        (event.key === "F3" && !nativeModifier && !event.altKey)
+        || (event.key.toLowerCase() === "g" && nativeModifier && !event.altKey)
+      );
+      const findInputEnter = findOpen
+        && event.key === "Enter"
+        && event.target instanceof HTMLElement
+        && event.target.matches("[data-find-input]");
+      const dismissFind = event.key === "Escape" && findOpen;
       const dismissSelector = event.key === "Escape" && commitSelectorOpen;
-      const closeWithEscape = event.key === "Escape" && state.openLineId === null && !commitSelectorOpen;
+      const closeWithEscape = event.key === "Escape" && state.openLineId === null && !commitSelectorOpen && !findOpen;
       const closeWithW = event.key.toLowerCase() === "w" && (event.ctrlKey || event.metaKey);
       const closeWithF4 = event.key === "F4" && event.altKey;
       const runPrimaryAction = event.key === "Enter"
         && (event.ctrlKey || event.metaKey)
         && state.openLineId === null
+        && !findOpen
         && state.phase === "ready";
       const pageDiff = (event.key === " " || event.code === "Space")
         && !event.ctrlKey
         && !event.metaKey
         && !event.altKey
         && !commitSelectorOpen
+        && !findOpen
         && state.openLineId === null
         && state.phase === "ready"
         && !isInteractiveTarget(event.target);
-      if (!dismissSelector && !closeWithEscape && !closeWithW && !closeWithF4 && !runPrimaryAction && !pageDiff) return;
+      if (!openFind && !repeatFind && !findInputEnter && !dismissFind && !dismissSelector && !closeWithEscape && !closeWithW && !closeWithF4 && !runPrimaryAction && !pageDiff) return;
 
       event.preventDefault();
+      if (openFind) {
+        setCommitSelectorOpen(false);
+        if (findOpen) {
+          const input = document.querySelector<HTMLInputElement>("[data-find-input]");
+          input?.focus();
+          input?.select();
+        } else {
+          setFindOpen(true);
+        }
+        return;
+      }
+      if (repeatFind || findInputEnter) {
+        moveFind(event.shiftKey ? -1 : 1);
+        return;
+      }
+      if (dismissFind) {
+        setFindOpen(false);
+        return;
+      }
       if (pageDiff) {
         const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
         pane?.scrollBy({
@@ -86,7 +146,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [backend, comments.length, commitSelectorOpen, state.openLineId, state.phase, submit]);
+  }, [backend, comments.length, commitSelectorOpen, findOpen, moveFind, state.openLineId, state.phase, submit]);
 
   if (state.phase === "loading") return <div class={styles.center} role="status">Loading commit diff…</div>;
   if (state.phase === "error" || !state.data) return <div class={styles.center}><div class={styles.fatal} role="alert"><h1>Could not load review</h1><p>{state.error}</p></div></div>;
@@ -126,6 +186,8 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
           collapsedFiles={state.collapsedFiles}
           openLineId={state.openLineId}
           drafts={state.drafts}
+          searchMatches={findOpen ? findMatches : []}
+          activeSearchMatchIndex={findOpen ? activeFindIndex : -1}
           onToggleFile={(fileId) => dispatch({ type: "toggle-file", fileId })}
           onOpenComment={(lineId) => dispatch({ type: "open-comment", lineId })}
           onCloseComment={() => dispatch({ type: "close-comment" })}
@@ -133,6 +195,17 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
           onDeleteComment={(lineId) => dispatch({ type: "delete-comment", lineId })}
           onVisibleFile={(fileId) => dispatch({ type: "activate-file", fileId })}
         />
+        {findOpen ? (
+          <FindPopover
+            query={findQuery}
+            activeIndex={activeFindIndex}
+            matchCount={findMatches.length}
+            onQuery={updateFindQuery}
+            onPrevious={() => moveFind(-1)}
+            onNext={() => moveFind(1)}
+            onClose={() => setFindOpen(false)}
+          />
+        ) : null}
       </div>
       <ReviewActions
         draftCount={comments.length}

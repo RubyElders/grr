@@ -56,6 +56,8 @@ Use `Ctrl+W` (`Cmd+W` on macOS), `Alt+F4`, or `Escape` to cancel and close the w
 
 Use `Ctrl+Enter` (`Cmd+Enter` on macOS) for the current primary action: it approves when there are no draft comments and shares comments when drafts exist. Inside an open comment editor, it saves that comment without submitting the review.
 
+Use `Ctrl+F` (`Cmd+F` on macOS) or `F3` to find text in changed code. Press `Enter`, `F3`, or `Ctrl+G` (`Cmd+G` on macOS) for the next match, and add `Shift` for the previous match. `Escape` closes find without closing the review.
+
 ## Tests
 
 ```sh

@@ -5,3 +5,5 @@
 .function { color: var(--syntax-function); }
 .type { color: var(--syntax-type); }
 .meta { color: var(--syntax-meta); }
+.match { padding: 0; color: inherit; background: var(--search-match); }
+.activeMatch { background: var(--search-active); box-shadow: 0 0 0 1px var(--search-active); }

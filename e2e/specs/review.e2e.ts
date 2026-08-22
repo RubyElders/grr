@@ -15,6 +15,38 @@ describe("grr review window", () => {
     writeFileSync("e2e-results/window.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 
     await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, bubbles: true, cancelable: true }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      () => Boolean(document.querySelector("input[aria-label='Find in code']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "Ctrl+F did not open code search" });
+    await setInputValue("input[aria-label='Find in code']", "answer");
+    const find = await browser.execute(() => {
+      const search = document.querySelector<HTMLElement>("section[role='search'][aria-label='Find in diff']");
+      const content = search?.parentElement;
+      const searchRect = search?.getBoundingClientRect();
+      const contentRect = content?.getBoundingClientRect();
+      return search && searchRect && contentRect ? {
+        result: search.querySelector("[role='status']")?.textContent,
+        marked: document.querySelectorAll("mark[data-search-match]").length,
+        topRight: searchRect.top >= contentRect.top && contentRect.right - searchRect.right <= 40,
+      } : null;
+    });
+    expect(find?.result).toMatch(/^1 of \d+$/);
+    expect(find?.marked).toBeGreaterThan(0);
+    expect(find?.topRight).toBe(true);
+    writeFileSync("e2e-results/code-search.png", Buffer.from(await browser.takeScreenshot(), "base64"));
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    expect(await browser.execute(() => Boolean(document.querySelector("input[aria-label='Filter files']"))
+      && !document.querySelector("input[aria-label='Find in code']"))).toBe(true);
+    await browser.execute(() => {
+      const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
+      if (pane) pane.scrollTop = 0;
+    });
+
+    await browser.execute(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: " ", code: "Space", bubbles: true, cancelable: true }));
     });
     await browser.waitUntil(async () => await browser.execute(

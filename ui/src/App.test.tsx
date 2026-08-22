@@ -337,6 +337,52 @@ describe("ReviewApp", () => {
     expect(scrollBy).toHaveBeenCalledTimes(2);
   });
 
+  it("finds code with native shortcuts and navigates matches", async () => {
+    const { backend, user } = setup();
+    await screen.findByText("Improve graphics options");
+    const firstFile = screen.getByRole("button", { name: /^engine\/GraphicsPage\.cpp$/ });
+    await user.click(firstFile);
+    expect(firstFile).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.keyDown(document, { key: "f", ctrlKey: true });
+    const input = await screen.findByRole("searchbox", { name: "Find in code" });
+    expect(input).toHaveFocus();
+    expect(screen.getByRole("status")).toHaveTextContent("Type to search");
+    await user.type(input, "const");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("1 of 3"));
+    expect(firstFile).toHaveAttribute("aria-expanded", "true");
+    expect(document.querySelector('[data-search-match="0"]')).toHaveClass(/activeMatch/);
+
+    expect(input).toHaveFocus();
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("2 of 3"));
+    fireEvent.keyDown(document, { key: "F3" });
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("3 of 3"));
+    fireEvent.keyDown(document, { key: "g", ctrlKey: true, shiftKey: true });
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("2 of 3"));
+
+    await user.clear(input);
+    await user.type(input, "not present");
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("No results"));
+    expect(screen.getByRole("button", { name: "Previous match" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next match" })).toBeDisabled();
+
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("search", { name: "Find in diff" })).not.toBeInTheDocument();
+    expect(document.querySelector("[data-search-match]")).not.toBeInTheDocument();
+    expect(backend.cancelReview).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["Command+F", { key: "f", metaKey: true }],
+    ["F3", { key: "F3" }],
+  ])("opens find with %s", async (_name, shortcut) => {
+    setup();
+    await screen.findByText("Improve graphics options");
+    fireEvent.keyDown(document, shortcut);
+    expect(await screen.findByRole("searchbox", { name: "Find in code" })).toHaveFocus();
+  });
+
   it("reports submission failures and restores the actions", async () => {
     const backend: ReviewBackend = {
       getReview: vi.fn().mockResolvedValue(fixture as ReviewData),

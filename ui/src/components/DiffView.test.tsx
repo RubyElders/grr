@@ -62,6 +62,8 @@ function diff(viewKey: string) {
       collapsedFiles={new Set()}
       openLineId={null}
       drafts={{}}
+      searchMatches={[]}
+      activeSearchMatchIndex={-1}
       {...callbacks}
     />
   );

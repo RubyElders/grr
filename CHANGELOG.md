@@ -2,6 +2,10 @@
 
 ## 0.3.0 - 2026-08-22
 
+### Added
+
+- Find text in changed code with native keyboard shortcuts and match navigation.
+
 ### Changed
 
 - Keep the file tree and diff pane in the same directory-first order.

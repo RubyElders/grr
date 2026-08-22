@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
+import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
+import type { CodeMatch } from "../codeSearch";
 import { fileAtViewportTop } from "../scrollSpy";
 import type { DraftComment } from "../state";
 import type { DiffHunk as DiffHunkType, DiffLine as DiffLineType, FileDiff } from "../types";
@@ -13,6 +14,8 @@ interface DiffViewProps {
   collapsedFiles: ReadonlySet<string>;
   openLineId: string | null;
   drafts: Readonly<Record<string, DraftComment>>;
+  searchMatches: ReadonlyArray<CodeMatch>;
+  activeSearchMatchIndex: number;
   onToggleFile(fileId: string): void;
   onOpenComment(lineId: string): void;
   onCloseComment(): void;
@@ -25,6 +28,15 @@ export function DiffView(props: DiffViewProps) {
   const pane = useRef<HTMLElement>(null);
   const animationFrame = useRef<number | null>(null);
   const scrollPositions = useRef<Map<string, number>>(new Map());
+  const searchMatchesByLine = useMemo(() => {
+    const byLine = new Map<string, Array<CodeMatch & { index: number }>>();
+    props.searchMatches.forEach((match, index) => {
+      const matches = byLine.get(match.lineId) ?? [];
+      matches.push({ ...match, index });
+      byLine.set(match.lineId, matches);
+    });
+    return byLine;
+  }, [props.searchMatches]);
   useEffect(() => () => {
     if (animationFrame.current !== null) cancelAnimationFrame(animationFrame.current);
   }, []);
@@ -33,6 +45,11 @@ export function DiffView(props: DiffViewProps) {
     if (!element) return;
     element.scrollTop = scrollPositions.current.get(props.viewKey) ?? 0;
   }, [props.viewKey]);
+  useLayoutEffect(() => {
+    if (props.activeSearchMatchIndex < 0) return;
+    pane.current?.querySelector<HTMLElement>(`[data-search-match="${props.activeSearchMatchIndex}"]`)
+      ?.scrollIntoView?.({ block: "center", inline: "center" });
+  }, [props.activeSearchMatchIndex, props.searchMatches]);
 
   if (props.files.length === 0) {
     return <main class={styles.empty}><h2>No changed files</h2><p>This commit has no reviewable tree changes.</p></main>;
@@ -55,12 +72,16 @@ export function DiffView(props: DiffViewProps) {
   };
   return (
     <main ref={pane} class={styles.pane} aria-label="Commit diff" onScroll={updateVisibleFile}>
-      {props.files.map((file) => <DiffFileCard key={file.id} file={file} {...props} />)}
+      {props.files.map((file) => <DiffFileCard key={file.id} file={file} searchMatchesByLine={searchMatchesByLine} {...props} />)}
     </main>
   );
 }
 
-function DiffFileCard({ file, ...props }: DiffViewProps & { file: FileDiff }) {
+interface DiffContentProps extends DiffViewProps {
+  searchMatchesByLine: ReadonlyMap<string, ReadonlyArray<CodeMatch & { index: number }>>;
+}
+
+function DiffFileCard({ file, ...props }: DiffContentProps & { file: FileDiff }) {
   const collapsed = props.collapsedFiles.has(file.id);
   return (
     <article class={styles.file} id={`file-${file.id}`} data-file-id={file.id}>
@@ -98,7 +119,7 @@ function Placeholder({ title, detail }: { title: string; detail: string }) {
   return <div class={styles.placeholder}><strong>{title}</strong><span>{detail}</span></div>;
 }
 
-function DiffHunk({ file, hunk, ...props }: DiffViewProps & { file: FileDiff; hunk: DiffHunkType }) {
+function DiffHunk({ file, hunk, ...props }: DiffContentProps & { file: FileDiff; hunk: DiffHunkType }) {
   return (
     <section class={styles.hunk} aria-label={hunk.header}>
       <div class={styles.hunkHeader}><span /><span /><span /><span>{hunk.header}</span></div>
@@ -107,7 +128,7 @@ function DiffHunk({ file, hunk, ...props }: DiffViewProps & { file: FileDiff; hu
   );
 }
 
-function DiffRow({ file, line, ...props }: DiffViewProps & { file: FileDiff; line: DiffLineType }) {
+function DiffRow({ file, line, ...props }: DiffContentProps & { file: FileDiff; line: DiffLineType }) {
   const draft = props.drafts[line.id];
   const editorOpen = props.openLineId === line.id;
   const lineNumber = line.kind === "deletion" ? line.oldLine : line.newLine;
@@ -125,7 +146,7 @@ function DiffRow({ file, line, ...props }: DiffViewProps & { file: FileDiff; lin
         <span class={styles.oldNumber}>{line.oldLine ?? ""}</span>
         <span class={styles.newNumber}>{line.newLine ?? ""}</span>
         <span class={styles.marker}>{marker(line.kind)}</span>
-        <code class={styles.code} aria-label={line.text}><SyntaxLine path={file.displayPath} text={line.text} />{line.lossy ? <span class={styles.lossy} title="This line contained invalid UTF-8"> �</span> : null}</code>
+        <code class={styles.code} aria-label={line.text}><SyntaxLine path={file.displayPath} text={line.text} matches={props.searchMatchesByLine.get(line.id)} activeMatchIndex={props.activeSearchMatchIndex} />{line.lossy ? <span class={styles.lossy} title="This line contained invalid UTF-8"> �</span> : null}</code>
       </div>
       {editorOpen ? (
         <div class={styles.commentRow}>
