@@ -27,6 +27,26 @@ describe("ReviewApp", () => {
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
   });
 
+  it("renders diff files in the same order as the file tree", async () => {
+    const data = { ...(fixture as ReviewData), files: [...(fixture as ReviewData).files].reverse() };
+    const backend: ReviewBackend = {
+      getReview: vi.fn().mockResolvedValue(data),
+      selectCommits: vi.fn(),
+      finishReview: vi.fn(),
+      cancelReview: vi.fn(),
+    };
+    render(<ReviewApp backend={backend} />);
+    await screen.findByText("Improve graphics options");
+
+    const tree = screen.getByRole("navigation", { name: "File tree" });
+    const pane = screen.getByRole("main", { name: "Commit diff" });
+    const fileIds = (root: HTMLElement, selector: string) => Array.from(root.querySelectorAll<HTMLElement>(selector))
+      .map((element) => element.dataset.fileId);
+
+    expect(fileIds(pane, "article[data-file-id]")).toEqual(fileIds(tree, "[data-file-id]"));
+    expect(fileIds(pane, "article[data-file-id]")).toEqual(["f0", "f1"]);
+  });
+
   it("shows commit details whenever the effective review contains one commit", async () => {
     const commit = (fixture as ReviewData).commits[0]!;
     const renderReview = (selectedCommitIds: string[]) => {

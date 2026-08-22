@@ -15,6 +15,7 @@
 - Scroll long code across a complete file instead of scrolling individual lines.
 - Show queued comment counts and make the primary review action available with `Ctrl+Enter` or `Cmd+Enter`.
 - Reveal the native window only after the initial interface is rendered.
+- Keep the file tree and diff pane in the same directory-first order.
 
 ### Fixed
 

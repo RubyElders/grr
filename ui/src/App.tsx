@@ -7,6 +7,8 @@ import { DiffView } from "./components/DiffView";
 import { ReviewActions } from "./components/ReviewActions";
 import { CommitSelector } from "./components/CommitSelector";
 import { reviewViewKey } from "./scrollPosition";
+import { filesInTreeOrder } from "./tree";
+import type { ReviewData } from "./types";
 import styles from "./App.module.css";
 
 export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend }) {
@@ -15,7 +17,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
   useEffect(() => {
     let mounted = true;
     backend.getReview().then(
-      (data) => mounted && dispatch({ type: "loaded", data }),
+      (data) => mounted && dispatch({ type: "loaded", data: orderReviewFiles(data) }),
       (error: unknown) => mounted && dispatch({ type: "failed", error: errorMessage(error) }),
     );
     return () => { mounted = false; };
@@ -35,7 +37,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     dispatch({ type: "selection-started" });
     try {
       const data = await backend.selectCommits(commitIds);
-      dispatch({ type: "selection-loaded", data });
+      dispatch({ type: "selection-loaded", data: orderReviewFiles(data) });
     } catch (error) {
       dispatch({ type: "submit-failed", error: errorMessage(error) });
     }
@@ -145,6 +147,10 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function orderReviewFiles(data: ReviewData): ReviewData {
+  return { ...data, files: filesInTreeOrder(data.files) };
 }
 
 function isInteractiveTarget(target: EventTarget | null): boolean {

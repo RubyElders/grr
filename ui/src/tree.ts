@@ -28,6 +28,17 @@ export function buildFileTree(files: FileDiff[]): FileTreeNode {
   return root;
 }
 
+export function filesInTreeOrder(files: FileDiff[]): FileDiff[] {
+  const ordered: FileDiff[] = [];
+  appendFiles(buildFileTree(files), ordered);
+  return ordered;
+}
+
+function appendFiles(node: FileTreeNode, ordered: FileDiff[]): void {
+  node.directories.forEach((directory) => appendFiles(directory, ordered));
+  ordered.push(...node.files);
+}
+
 function sortTree(node: FileTreeNode): void {
   node.directories.sort((left, right) => left.name.localeCompare(right.name));
   node.files.sort((left, right) => left.displayPath.localeCompare(right.displayPath));
