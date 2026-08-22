@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.0 - 2026-08-22
+
+### Changed
+
+- Keep the file tree and diff pane in the same directory-first order.
+
 ## 0.2.0 - 2026-08-16
 
 ### Added
@@ -15,7 +21,6 @@
 - Scroll long code across a complete file instead of scrolling individual lines.
 - Show queued comment counts and make the primary review action available with `Ctrl+Enter` or `Cmd+Enter`.
 - Reveal the native window only after the initial interface is rendered.
-- Keep the file tree and diff pane in the same directory-first order.
 
 ### Fixed
 
