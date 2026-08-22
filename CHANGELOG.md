@@ -1,10 +1,12 @@
 # Changelog
 
-## 0.3.0 - 2026-08-22
+## 0.3.1 - 2026-08-22
 
 ### Added
 
 - Find text in changed code with native keyboard shortcuts and match navigation.
+
+## 0.3.0 - 2026-08-22
 
 ### Changed
 
