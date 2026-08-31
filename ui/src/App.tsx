@@ -6,6 +6,7 @@ import { FileTree } from "./components/FileTree";
 import { DiffView } from "./components/DiffView";
 import { ReviewActions } from "./components/ReviewActions";
 import { CommitSelector } from "./components/CommitSelector";
+import { CommitMessagePanel } from "./components/CommitMessagePanel";
 import { FindPopover } from "./components/FindPopover";
 import { adjacentMatch, findCodeMatches } from "./codeSearch";
 import { reviewViewKey } from "./scrollPosition";
@@ -158,18 +159,21 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
 
   return (
     <div class={styles.app}>
-      <header class={styles.topbar}>
-        <div class={styles.brand}>grr</div>
-        <CommitSelector
-          data={state.data}
-          open={commitSelectorOpen}
-          loading={state.phase === "selecting"}
-          disabled={comments.length > 0 || state.phase === "submitting"}
-          onOpenChange={setCommitSelectorOpen}
-          onSelect={(commitIds) => void selectCommits(commitIds)}
-        />
-        <div class={styles.repository} title={state.data.repositoryRoot}>{state.data.repositoryRoot}</div>
-      </header>
+      <div class={styles.headerArea}>
+        <header class={styles.topbar}>
+          <div class={styles.brand}>grr</div>
+          <CommitSelector
+            data={state.data}
+            open={commitSelectorOpen}
+            loading={state.phase === "selecting"}
+            disabled={comments.length > 0 || state.phase === "submitting"}
+            onOpenChange={setCommitSelectorOpen}
+            onSelect={(commitIds) => void selectCommits(commitIds)}
+          />
+          <div class={styles.repository} title={state.data.repositoryRoot}>{state.data.repositoryRoot}</div>
+        </header>
+        <CommitMessagePanel data={state.data} />
+      </div>
       <div class={styles.content}>
         <FileTree
           files={state.data.files}

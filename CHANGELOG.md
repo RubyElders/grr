@@ -5,6 +5,7 @@
 ### Added
 
 - Find text in changed code with native keyboard shortcuts and match navigation.
+- Read full commit messages below the header and step through newer or older commits.
 
 ## 0.3.0 - 2026-08-22
 

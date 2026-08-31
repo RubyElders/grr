@@ -1,10 +1,12 @@
 .app {
   display: grid;
-  grid-template-rows: 56px minmax(0, 1fr) 68px;
+  grid-template-rows: auto minmax(0, 1fr) 68px;
   height: 100%;
   overflow: hidden;
   background: var(--canvas);
 }
+
+.headerArea { position: relative; z-index: 3; background: var(--bg); box-shadow: var(--shadow); }
 
 .topbar {
   display: flex;
@@ -13,8 +15,6 @@
   padding: 0 20px;
   border-bottom: 1px solid var(--border);
   background: var(--bg);
-  box-shadow: var(--shadow);
-  z-index: 3;
 }
 
 .brand {

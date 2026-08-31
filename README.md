@@ -48,6 +48,8 @@ Set a repository-specific default with `git config grr.base release/next`.
 
 Click the commit summary in the top bar to choose what is shown. `Show all` returns to the cumulative merge-base-to-`HEAD` branch diff. A row's `Show` button displays only that commit's parent-to-commit diff, while `Message` expands its full commit message. Check multiple commits and use `Show (N)` to display their individual diffs in chronological sections; repeated file paths are labelled with their source commit.
 
+The strip below the top bar shows the focused commit's message on one line; click it to expand a longer message. The left arrow steps to the newer commit and the right arrow steps to the older commit. These controls are disabled for multi-commit selections.
+
 When the repository is dirty, the picker adds an `Uncommitted changes` virtual commit. It combines staged, unstaged, deleted, and untracked changes relative to `HEAD`; ignored files remain excluded. Select it alone to review only the working tree, or combine it with real commits. In this state, `Show all` compares the merge base to the final working tree so committed and uncommitted changes are reviewed together.
 
 `Approve` prints a friendly approval. `Share comments` prints Markdown ordered by file and diff position. Closing the window with the title-bar control cancels the review and exits with status 2.

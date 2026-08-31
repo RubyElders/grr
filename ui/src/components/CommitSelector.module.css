@@ -1,8 +1,12 @@
-.root { position: relative; min-width: 0; max-width: 520px; }
-.trigger { max-width: 100%; min-width: 260px; height: 44px; display: flex; align-items: center; gap: 10px; padding: 5px 10px; border: 1px solid transparent; border-radius: 7px; color: var(--fg); background: transparent; text-align: left; cursor: pointer; }
+.root { position: relative; min-width: 0; max-width: 600px; }
+.navigation { min-width: 0; display: flex; align-items: center; gap: 3px; }
+.trigger { min-width: 260px; height: 44px; display: flex; flex: 1; align-items: center; gap: 10px; padding: 5px 10px; border: 1px solid transparent; border-radius: 7px; color: var(--fg); background: transparent; text-align: left; cursor: pointer; }
 .trigger:hover, .trigger[aria-expanded="true"] { border-color: var(--border); background: var(--canvas); }
 .trigger:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
 .trigger:disabled { cursor: default; opacity: .65; }
+.step { width: 30px; height: 34px; flex: none; display: grid; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted); cursor: pointer; }
+.step:hover:not(:disabled) { border-color: var(--border); color: var(--fg); background: var(--canvas); }
+.step:disabled { cursor: default; opacity: .35; }
 .triggerText { min-width: 0; display: flex; flex: 1; flex-direction: column; }
 .triggerText strong, .triggerText span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .triggerText span { color: var(--muted); font-size: 12px; }

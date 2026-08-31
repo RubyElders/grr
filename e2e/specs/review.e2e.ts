@@ -93,6 +93,29 @@ describe("grr review window", () => {
         && Boolean(document.querySelector("article [title*='Return the correct answer']"))
         && document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop === 0,
     ), { timeout: 5_000, interval: 50, timeoutMsg: "single-commit diff did not load" });
+    const collapsedMessageHeight = await browser.execute(() => {
+      const panel = document.querySelector<HTMLElement>("section[aria-label='Commit message']");
+      const expand = panel?.querySelector<HTMLButtonElement>("button[aria-label='Expand commit message']");
+      return panel && expand ? {
+        height: panel.getBoundingClientRect().height,
+        body: panel.textContent?.includes("Explain why the fixture answer changes."),
+        newer: Boolean(document.querySelector("button[aria-label='Show newer commit Update AI subgroup answer']")),
+        olderDisabled: document.querySelector<HTMLButtonElement>("button[aria-label='No older commit']")?.disabled,
+      } : null;
+    });
+    expect(collapsedMessageHeight?.height).toBeLessThanOrEqual(36);
+    expect(collapsedMessageHeight).toMatchObject({ body: true, newer: true, olderDisabled: true });
+    await clickElement("button[aria-label='Expand commit message']");
+    const expandedMessageHeight = await browser.execute(() => (
+      document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.getBoundingClientRect().height ?? 0
+    ));
+    expect(expandedMessageHeight).toBeGreaterThan(collapsedMessageHeight?.height ?? 0);
+    writeFileSync("e2e-results/commit-message.png", Buffer.from(await browser.takeScreenshot(), "base64"));
+    await clickElement("button[aria-label='Show newer commit Update AI subgroup answer']");
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.body.textContent?.includes("Update AI subgroup answer")
+        && Boolean(document.querySelector("article [title*='Update AI subgroup answer']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "newer commit arrow did not load its neighbor" });
     await clickElement("button[title='Choose commits to review']");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
@@ -169,7 +192,7 @@ describe("grr review window", () => {
       if (!row || !sidebar || row.getAttribute("aria-current") !== "true") return false;
       const rowRect = row.getBoundingClientRect();
       const sidebarRect = sidebar.getBoundingClientRect();
-      return rowRect.top >= sidebarRect.top && rowRect.bottom <= sidebarRect.bottom;
+      return rowRect.top >= sidebarRect.top - 1 && rowRect.bottom <= sidebarRect.bottom + 1;
     }, finalFileId), {
       timeout: 5_000,
       interval: 50,

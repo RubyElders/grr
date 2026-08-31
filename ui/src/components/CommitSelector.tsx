@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+import { adjacentCommit, displayedCommits, fullMessageBody } from "../commitPresentation";
 import { WORKTREE_COMMIT_ID, type CommitSummary, type ReviewData } from "../types";
 import { Icon } from "./Icon";
 import styles from "./CommitSelector.module.css";
@@ -30,20 +31,21 @@ export function CommitSelector(props: CommitSelectorProps) {
   }, [props.open, props.onOpenChange]);
 
   const selected = props.data.selectedCommitIds;
-  const displayedCommits = selected.length === 0
-    ? props.data.commits
-    : props.data.commits.filter((commit) => selected.includes(commit.id));
-  const singleCommit = displayedCommits.length === 1 ? displayedCommits[0] : null;
+  const visibleCommits = displayedCommits(props.data);
+  const singleCommit = visibleCommits.length === 1 ? visibleCommits[0] : null;
   const title = singleCommit
     ? singleCommit.summary
     : selected.length > 0
-      ? `${displayedCommits.length} selected commits`
+      ? `${visibleCommits.length} selected commits`
       : props.data.commit.summary;
   const detail = singleCommit
     ? `${singleCommit.shortId} by ${singleCommit.author}`
     : selected.length === 0
-      ? `${displayedCommits.length} ${plural(displayedCommits.length, "commit")} · ${props.data.comparison.baseRef}…HEAD`
+      ? `${visibleCommits.length} ${plural(visibleCommits.length, "commit")} · ${props.data.comparison.baseRef}…HEAD`
       : `${props.data.commits.length} commits available · ${props.data.comparison.baseRef}…HEAD`;
+  const newer = adjacentCommit(props.data, "newer");
+  const older = adjacentCommit(props.data, "older");
+  const navigationDisabled = props.disabled || props.loading;
 
   const toggle = (id: string) => {
     setChecked((current) => {
@@ -59,20 +61,38 @@ export function CommitSelector(props: CommitSelectorProps) {
 
   return (
     <div ref={root} class={styles.root}>
-      <button
-        class={styles.trigger}
-        aria-expanded={props.open}
-        aria-haspopup="dialog"
-        disabled={props.disabled}
-        title={props.disabled ? "Finish or delete draft comments before changing commits" : "Choose commits to review"}
-        onClick={() => props.onOpenChange(!props.open)}
-      >
-        <span class={styles.triggerText}>
-          <strong>{title}</strong>
-          <span>{detail}</span>
-        </span>
-        <span class={styles.caret} aria-hidden="true">▾</span>
-      </button>
+      <div class={styles.navigation}>
+        <button
+          type="button"
+          class={styles.step}
+          disabled={navigationDisabled || !newer}
+          aria-label={newer ? `Show newer commit ${newer.summary}` : "No newer commit"}
+          title={newer ? `Newer: ${newer.summary}` : "No newer commit"}
+          onClick={() => newer && apply([newer.id])}
+        ><Icon name="arrow-left" /></button>
+        <button
+          class={styles.trigger}
+          aria-expanded={props.open}
+          aria-haspopup="dialog"
+          disabled={props.disabled}
+          title={props.disabled ? "Finish or delete draft comments before changing commits" : "Choose commits to review"}
+          onClick={() => props.onOpenChange(!props.open)}
+        >
+          <span class={styles.triggerText}>
+            <strong>{title}</strong>
+            <span>{detail}</span>
+          </span>
+          <span class={styles.caret} aria-hidden="true">▾</span>
+        </button>
+        <button
+          type="button"
+          class={styles.step}
+          disabled={navigationDisabled || !older}
+          aria-label={older ? `Show older commit ${older.summary}` : "No older commit"}
+          title={older ? `Older: ${older.summary}` : "No older commit"}
+          onClick={() => older && apply([older.id])}
+        ><Icon name="arrow-right" /></button>
+      </div>
       {props.open ? (
         <section class={styles.popover} role="dialog" aria-label="Choose commits">
           <header class={styles.header}>
@@ -145,11 +165,6 @@ function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
       {expanded ? <div class={styles.fullMessage}>{messageBody}</div> : null}
     </div>
   );
-}
-
-export function fullMessageBody(commit: CommitSummary): string {
-  const firstNewline = commit.message.indexOf("\n");
-  return firstNewline === -1 ? "" : commit.message.slice(firstNewline + 1).trim();
 }
 
 function plural(count: number, noun: string): string {

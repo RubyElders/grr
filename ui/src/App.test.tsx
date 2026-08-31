@@ -99,6 +99,46 @@ describe("ReviewApp", () => {
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
   });
 
+  it("steps left to newer and right to older commits", async () => {
+    const { backend, user } = setup();
+    await screen.findByText("Improve graphics options");
+
+    await user.click(screen.getByRole("button", { name: "Show newer commit Uncommitted changes" }));
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
+
+    await user.click(screen.getByRole("button", { name: "Show older commit Add graphics labels" }));
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([
+      "1111111111111111111111111111111111111111",
+    ]));
+  });
+
+  it("shows a compact expandable message for the focused commit", async () => {
+    const { user } = setup();
+    await screen.findByText("Improve graphics options");
+    const panel = screen.getByRole("region", { name: "Commit message" });
+    expect(within(panel).getByText(/Add localized labels for every graphics quality setting/)).toBeInTheDocument();
+    const expand = within(panel).getByRole("button", { name: "Expand commit message" });
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+    await user.click(expand);
+    expect(within(panel).getByRole("button", { name: "Collapse commit message" })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("omits the message panel and disables stepping for aggregate selections", async () => {
+    const source = fixture as ReviewData;
+    const data = { ...source, selectedCommitIds: [source.commits[1]!.id, source.commits[2]!.id] };
+    const backend: ReviewBackend = {
+      getReview: vi.fn().mockResolvedValue(data),
+      selectCommits: vi.fn(),
+      finishReview: vi.fn(),
+      cancelReview: vi.fn(),
+    };
+    render(<ReviewApp backend={backend} />);
+    await screen.findByText("2 selected commits");
+    expect(screen.queryByRole("region", { name: "Commit message" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "No newer commit" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "No older commit" })).toBeDisabled();
+  });
+
   it("shows and selects the virtual working-tree commit", async () => {
     const { backend, user } = setup();
     await screen.findByText("Improve graphics options");
@@ -154,7 +194,7 @@ describe("ReviewApp", () => {
     };
     render(<ReviewApp backend={backend} />);
     await screen.findByTitle("Choose commits to review");
-    expect(screen.getAllByText(sourceCommit.shortId)).toHaveLength(2);
+    expect(screen.getAllByText(sourceCommit.shortId)).toHaveLength(3);
     expect(screen.getByTitle(`${sourceCommit.shortId} · ${sourceCommit.summary}`)).toBeInTheDocument();
   });
 
