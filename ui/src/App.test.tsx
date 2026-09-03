@@ -64,12 +64,38 @@ describe("ReviewApp", () => {
     let trigger = await screen.findByTitle("Choose commits to review");
     expect(within(trigger).getByText(`${commit.shortId} by ${commit.author}`)).toBeInTheDocument();
     expect(within(trigger).queryByText(/1 commit ·/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "No newer commit" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "No older commit" })).toBeDisabled();
+    await userEvent.setup().click(trigger);
+    expect(screen.queryByRole("button", { name: "Show all" })).not.toBeInTheDocument();
 
     cleanup();
     renderReview([commit.id]);
     trigger = await screen.findByTitle("Choose commits to review");
     expect(within(trigger).getByText(`${commit.shortId} by ${commit.author}`)).toBeInTheDocument();
     expect(within(trigger).queryByText(/1 commit ·/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "No newer commit" })).toBeDisabled();
+  });
+
+  it("shows an empty comparison without inventing a grouped commit", async () => {
+    const source = fixture as ReviewData;
+    const data = { ...source, commits: [], selectedCommitIds: [], files: [] };
+    const backend: ReviewBackend = {
+      getReview: vi.fn().mockResolvedValue(data),
+      selectCommits: vi.fn(),
+      finishReview: vi.fn(),
+      cancelReview: vi.fn(),
+    };
+    const user = userEvent.setup();
+    render(<ReviewApp backend={backend} />);
+
+    const trigger = await screen.findByTitle("Choose commits to review");
+    expect(within(trigger).getByText("No commits to review")).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Commit message" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "No newer commit" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "No older commit" })).toBeDisabled();
+    await user.click(trigger);
+    expect(screen.queryByRole("button", { name: "Show all" })).not.toBeInTheDocument();
   });
 
   it("selects arbitrary commits, one commit, or the full branch diff", async () => {

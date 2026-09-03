@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { commitNavigationTarget, displayedCommits, fullMessageBody } from "../commitPresentation";
+import { commitNavigationTarget, displayedCommits, fullMessageBody, hasGroupedCommitView } from "../commitPresentation";
 import { WORKTREE_COMMIT_ID, type CommitSummary, type ReviewData } from "../types";
 import { Icon } from "./Icon";
 import styles from "./CommitSelector.module.css";
@@ -33,16 +33,21 @@ export function CommitSelector(props: CommitSelectorProps) {
   const selected = props.data.selectedCommitIds;
   const visibleCommits = displayedCommits(props.data);
   const singleCommit = visibleCommits.length === 1 ? visibleCommits[0] : null;
+  const grouped = hasGroupedCommitView(props.data);
   const title = singleCommit
     ? singleCommit.summary
-    : selected.length > 0
-      ? `${visibleCommits.length} selected commits`
-      : props.data.commit.summary;
+    : props.data.commits.length === 0
+      ? "No commits to review"
+      : selected.length > 0
+        ? `${visibleCommits.length} selected commits`
+        : props.data.commit.summary;
   const detail = singleCommit
     ? `${singleCommit.shortId} by ${singleCommit.author}`
-    : selected.length === 0
-      ? `${visibleCommits.length} ${plural(visibleCommits.length, "commit")} · ${props.data.comparison.baseRef}…HEAD`
-      : `${props.data.commits.length} commits available · ${props.data.comparison.baseRef}…HEAD`;
+    : props.data.commits.length === 0
+      ? `${props.data.comparison.baseRef}…HEAD`
+      : selected.length === 0
+        ? `${visibleCommits.length} ${plural(visibleCommits.length, "commit")} · ${props.data.comparison.baseRef}…HEAD`
+        : `${props.data.commits.length} commits available · ${props.data.comparison.baseRef}…HEAD`;
   const newer = commitNavigationTarget(props.data, "newer");
   const older = commitNavigationTarget(props.data, "older");
   const navigationDisabled = props.disabled || props.loading;
@@ -104,7 +109,7 @@ export function CommitSelector(props: CommitSelectorProps) {
               <strong>Commits to review</strong>
               <small>{props.data.comparison.baseRef}…HEAD</small>
             </span>
-            <button class={styles.secondary} disabled={props.loading} onClick={() => apply([])}>Show all</button>
+            {grouped ? <button class={styles.secondary} disabled={props.loading} onClick={() => apply([])}>Show all</button> : null}
           </header>
           <div class={styles.list}>
             {props.data.commits.map((commit) => (

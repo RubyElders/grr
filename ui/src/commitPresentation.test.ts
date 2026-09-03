@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./__fixtures__/review.json";
-import { commitNavigationTarget, displayedCommits, focusedCommit, fullMessageBody } from "./commitPresentation";
+import { commitNavigationTarget, displayedCommits, focusedCommit, fullMessageBody, hasGroupedCommitView } from "./commitPresentation";
 import type { ReviewData } from "./types";
 
 const data = fixture as ReviewData;
@@ -31,6 +31,18 @@ describe("commit presentation", () => {
     expect(focusedCommit(single)?.id).toBe(data.commits[2]!.id);
     expect(displayedCommits(single)).toEqual([data.commits[2]]);
     expect(focusedCommit({ ...data, selectedCommitIds: [data.commits[1]!.id, data.commits[2]!.id] })).toBeNull();
+  });
+
+  it("does not create a grouped view for zero or one commit", () => {
+    const one = { ...data, commits: [data.commits[0]!] };
+    const selected = { ...one, selectedCommitIds: [one.commits[0]!.id] };
+    const empty = { ...data, commits: [], selectedCommitIds: [] };
+
+    expect(hasGroupedCommitView(one)).toBe(false);
+    expect(commitNavigationTarget(one, "older")).toBeNull();
+    expect(commitNavigationTarget(selected, "newer")).toBeNull();
+    expect(focusedCommit(empty)).toBeNull();
+    expect(commitNavigationTarget(empty, "older")).toBeNull();
   });
 
   it("extracts the body from a full commit message", () => {
