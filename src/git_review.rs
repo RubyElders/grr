@@ -41,13 +41,22 @@ impl From<git2::Error> for ReviewLoadError {
 }
 
 pub fn load_review(path: impl AsRef<Path>) -> Result<ReviewData, ReviewLoadError> {
-    load_review_selection(path, None, &[])
+    load_review_impl(path, None, &[], true)
 }
 
 pub fn load_review_selection(
     path: impl AsRef<Path>,
     requested_base: Option<&str>,
     selected_commit_ids: &[String],
+) -> Result<ReviewData, ReviewLoadError> {
+    load_review_impl(path, requested_base, selected_commit_ids, false)
+}
+
+fn load_review_impl(
+    path: impl AsRef<Path>,
+    requested_base: Option<&str>,
+    requested_commit_ids: &[String],
+    prefer_worktree: bool,
 ) -> Result<ReviewData, ReviewLoadError> {
     let repository = Repository::discover(path)?;
     let head = repository
@@ -76,6 +85,11 @@ pub fn load_review_selection(
     if has_worktree_changes {
         commits.insert(0, worktree_summary);
     }
+    let selected_commit_ids = if prefer_worktree && has_worktree_changes {
+        vec![WORKTREE_COMMIT_ID.to_owned()]
+    } else {
+        requested_commit_ids.to_vec()
+    };
     let known_ids = commits
         .iter()
         .map(|commit| commit.id.as_str())
@@ -146,7 +160,7 @@ pub fn load_review_selection(
         },
         commit: head_summary,
         commits,
-        selected_commit_ids: selected_commit_ids.to_vec(),
+        selected_commit_ids,
         files,
     })
 }

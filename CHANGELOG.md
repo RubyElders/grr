@@ -6,6 +6,14 @@
 
 - Read full commit messages below the header and step through newer or older commits.
 
+### Changed
+
+- Open dirty repositories on their uncommitted changes and navigate grouped or individual commits with arrow keys.
+
+### Fixed
+
+- Keep file selection from scrolling the whole application horizontally.
+
 ## 0.3.1 - 2026-08-22
 
 ### Added

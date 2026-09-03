@@ -9,6 +9,7 @@ import { CommitSelector } from "./components/CommitSelector";
 import { CommitMessagePanel } from "./components/CommitMessagePanel";
 import { FindPopover } from "./components/FindPopover";
 import { adjacentMatch, findCodeMatches } from "./codeSearch";
+import { commitNavigationTarget } from "./commitPresentation";
 import { reviewViewKey } from "./scrollPosition";
 import { filesInTreeOrder } from "./tree";
 import type { ReviewData } from "./types";
@@ -71,6 +72,12 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     }
   }, [backend]);
 
+  const navigateCommits = useCallback((direction: "newer" | "older") => {
+    if (!state.data) return;
+    const target = commitNavigationTarget(state.data, direction);
+    if (target) void selectCommits(target.selectedCommitIds);
+  }, [selectCommits, state.data]);
+
   useLayoutEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       const nativeModifier = event.ctrlKey || event.metaKey;
@@ -103,7 +110,17 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && state.openLineId === null
         && state.phase === "ready"
         && !isInteractiveTarget(event.target);
-      if (!openFind && !repeatFind && !findInputEnter && !dismissFind && !dismissSelector && !closeWithEscape && !closeWithW && !closeWithF4 && !runPrimaryAction && !pageDiff) return;
+      const stepCommit = (event.key === "ArrowLeft" || event.key === "ArrowRight")
+        && !nativeModifier
+        && !event.altKey
+        && !event.shiftKey
+        && !commitSelectorOpen
+        && !findOpen
+        && state.openLineId === null
+        && state.phase === "ready"
+        && comments.length === 0
+        && !isInteractiveTarget(event.target);
+      if (!openFind && !repeatFind && !findInputEnter && !dismissFind && !dismissSelector && !closeWithEscape && !closeWithW && !closeWithF4 && !runPrimaryAction && !pageDiff && !stepCommit) return;
 
       event.preventDefault();
       if (openFind) {
@@ -133,6 +150,10 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         });
         return;
       }
+      if (stepCommit) {
+        navigateCommits(event.key === "ArrowLeft" ? "newer" : "older");
+        return;
+      }
       if (dismissSelector) {
         setCommitSelectorOpen(false);
         return;
@@ -147,14 +168,18 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [backend, comments.length, commitSelectorOpen, findOpen, moveFind, state.openLineId, state.phase, submit]);
+  }, [backend, comments.length, commitSelectorOpen, findOpen, moveFind, navigateCommits, state.openLineId, state.phase, submit]);
 
   if (state.phase === "loading") return <div class={styles.center} role="status">Loading commit diff…</div>;
   if (state.phase === "error" || !state.data) return <div class={styles.center}><div class={styles.fatal} role="alert"><h1>Could not load review</h1><p>{state.error}</p></div></div>;
 
   const selectFile = (fileId: string) => {
     dispatch({ type: "activate-file", fileId });
-    document.getElementById(`file-${fileId}`)?.scrollIntoView?.({ behavior: "smooth", block: "start" });
+    const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
+    const file = document.getElementById(`file-${fileId}`);
+    if (!pane || !file) return;
+    const top = pane.scrollTop + file.getBoundingClientRect().top - pane.getBoundingClientRect().top - 12;
+    pane.scrollTo({ top, behavior: "smooth" });
   };
 
   return (

@@ -14,12 +14,30 @@ export function focusedCommit(data: ReviewData): CommitSummary | null {
   return data.commits.find((commit) => commit.id === data.commit.id) ?? data.commit;
 }
 
-export function adjacentCommit(data: ReviewData, direction: "newer" | "older"): CommitSummary | null {
-  const current = focusedCommit(data);
-  if (!current) return null;
-  const index = data.commits.findIndex((commit) => commit.id === current.id);
+export interface CommitNavigationTarget {
+  commit: CommitSummary | null;
+  selectedCommitIds: string[];
+}
+
+export function commitNavigationTarget(
+  data: ReviewData,
+  direction: "newer" | "older",
+): CommitNavigationTarget | null {
+  if (data.selectedCommitIds.length > 1) return null;
+  if (data.selectedCommitIds.length === 0) {
+    const latest = data.commits[0];
+    return direction === "older" && latest
+      ? { commit: latest, selectedCommitIds: [latest.id] }
+      : null;
+  }
+
+  const index = data.commits.findIndex((commit) => commit.id === data.selectedCommitIds[0]);
   if (index < 0) return null;
-  return data.commits[index + (direction === "newer" ? -1 : 1)] ?? null;
+  if (direction === "newer" && index === 0) {
+    return { commit: null, selectedCommitIds: [] };
+  }
+  const commit = data.commits[index + (direction === "newer" ? -1 : 1)];
+  return commit ? { commit, selectedCommitIds: [commit.id] } : null;
 }
 
 export function fullMessageBody(commit: CommitSummary): string {

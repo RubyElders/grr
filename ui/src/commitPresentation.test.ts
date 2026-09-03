@@ -1,15 +1,29 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./__fixtures__/review.json";
-import { adjacentCommit, displayedCommits, focusedCommit, fullMessageBody } from "./commitPresentation";
+import { commitNavigationTarget, displayedCommits, focusedCommit, fullMessageBody } from "./commitPresentation";
 import type { ReviewData } from "./types";
 
 const data = fixture as ReviewData;
 
 describe("commit presentation", () => {
-  it("anchors the cumulative view on HEAD and navigates newer or older", () => {
+  it("opens the latest commit from the cumulative view and returns to it", () => {
     expect(focusedCommit(data)?.id).toBe(data.commit.id);
-    expect(adjacentCommit(data, "newer")?.id).toBe("WORKTREE");
-    expect(adjacentCommit(data, "older")?.id).toBe(data.commits[2]?.id);
+    expect(commitNavigationTarget(data, "newer")).toBeNull();
+    expect(commitNavigationTarget(data, "older")?.selectedCommitIds).toEqual(["WORKTREE"]);
+    expect(commitNavigationTarget(
+      { ...data, selectedCommitIds: ["WORKTREE"] },
+      "newer",
+    )?.selectedCommitIds).toEqual([]);
+  });
+
+  it("steps through individual commits in both directions", () => {
+    const selected = { ...data, selectedCommitIds: [data.commits[2]!.id] };
+    expect(commitNavigationTarget(selected, "newer")?.commit?.id).toBe(data.commits[1]?.id);
+    expect(commitNavigationTarget(selected, "older")?.commit?.id).toBe(data.commits[3]?.id);
+    expect(commitNavigationTarget(
+      { ...data, selectedCommitIds: [data.commits.at(-1)!.id] },
+      "older",
+    )).toBeNull();
   });
 
   it("focuses one selection and leaves aggregate selections unfocused", () => {

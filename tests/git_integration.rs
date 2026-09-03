@@ -257,8 +257,8 @@ fn exposes_staged_unstaged_deleted_and_untracked_changes_as_a_virtual_commit() {
     .unwrap();
     fs::write(directory.path().join("ignored.txt"), b"ignored content\n").unwrap();
 
-    let cumulative = load_review(directory.path()).unwrap();
-    let worktree = cumulative
+    let initial = load_review(directory.path()).unwrap();
+    let worktree = initial
         .commits
         .iter()
         .find(|commit| commit.id == WORKTREE_COMMIT_ID)
@@ -272,6 +272,12 @@ fn exposes_staged_unstaged_deleted_and_untracked_changes_as_a_virtual_commit() {
         head.id().to_string(),
         worktree.parent_id.as_deref().unwrap()
     );
+    assert_eq!(initial.selected_commit_ids, [WORKTREE_COMMIT_ID]);
+    assert!(initial.files.iter().all(|file| {
+        file.source_commit.as_ref().map(|commit| commit.id.as_str()) == Some(WORKTREE_COMMIT_ID)
+    }));
+
+    let cumulative = load_review_selection(directory.path(), None, &[]).unwrap();
     let cumulative_paths = cumulative
         .files
         .iter()

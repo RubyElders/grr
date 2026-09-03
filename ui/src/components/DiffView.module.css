@@ -1,9 +1,9 @@
-.pane { min-width: 0; overflow: auto; padding: 20px 24px 100px; }
+.pane { min-width: 0; overflow-x: hidden; overflow-y: auto; padding: 20px 24px 100px; }
 .empty { display: grid; place-content: center; text-align: center; color: var(--muted); }
 .empty h2 { color: var(--fg); margin-bottom: 4px; }
-.file { margin: 0 0 22px; overflow: clip; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); scroll-margin-top: 12px; box-shadow: var(--shadow); }
+.file { min-width: 0; margin: 0 0 22px; overflow: clip; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); scroll-margin-top: 12px; box-shadow: var(--shadow); }
 .fileHeader { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 12px; background: var(--canvas); border-bottom: 1px solid var(--border); }
-.fileScroller { max-width: 100%; overflow-x: auto; }
+.fileScroller { width: 100%; max-width: 100%; overflow-x: auto; }
 .fileContent { min-width: 100%; width: max-content; }
 .collapseButton { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px 0; border: 0; background: transparent; cursor: pointer; text-align: left; }
 .chevron { display: inline-flex; transition: transform 100ms ease; }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { adjacentCommit, displayedCommits, fullMessageBody } from "../commitPresentation";
+import { commitNavigationTarget, displayedCommits, fullMessageBody } from "../commitPresentation";
 import { WORKTREE_COMMIT_ID, type CommitSummary, type ReviewData } from "../types";
 import { Icon } from "./Icon";
 import styles from "./CommitSelector.module.css";
@@ -43,8 +43,8 @@ export function CommitSelector(props: CommitSelectorProps) {
     : selected.length === 0
       ? `${visibleCommits.length} ${plural(visibleCommits.length, "commit")} · ${props.data.comparison.baseRef}…HEAD`
       : `${props.data.commits.length} commits available · ${props.data.comparison.baseRef}…HEAD`;
-  const newer = adjacentCommit(props.data, "newer");
-  const older = adjacentCommit(props.data, "older");
+  const newer = commitNavigationTarget(props.data, "newer");
+  const older = commitNavigationTarget(props.data, "older");
   const navigationDisabled = props.disabled || props.loading;
 
   const toggle = (id: string) => {
@@ -66,9 +66,9 @@ export function CommitSelector(props: CommitSelectorProps) {
           type="button"
           class={styles.step}
           disabled={navigationDisabled || !newer}
-          aria-label={newer ? `Show newer commit ${newer.summary}` : "No newer commit"}
-          title={newer ? `Newer: ${newer.summary}` : "No newer commit"}
-          onClick={() => newer && apply([newer.id])}
+          aria-label={newer ? navigationLabel(newer.commit, "newer") : "No newer commit"}
+          title={newer ? navigationTitle(newer.commit, "newer") : "No newer commit"}
+          onClick={() => newer && apply(newer.selectedCommitIds)}
         ><Icon name="arrow-left" /></button>
         <button
           class={styles.trigger}
@@ -88,9 +88,13 @@ export function CommitSelector(props: CommitSelectorProps) {
           type="button"
           class={styles.step}
           disabled={navigationDisabled || !older}
-          aria-label={older ? `Show older commit ${older.summary}` : "No older commit"}
-          title={older ? `Older: ${older.summary}` : "No older commit"}
-          onClick={() => older && apply([older.id])}
+          aria-label={older ? props.data.selectedCommitIds.length === 0
+            ? `Show latest commit ${older.commit?.summary}`
+            : navigationLabel(older.commit, "older") : "No older commit"}
+          title={older ? props.data.selectedCommitIds.length === 0
+            ? `Latest: ${older.commit?.summary}`
+            : navigationTitle(older.commit, "older") : "No older commit"}
+          onClick={() => older && apply(older.selectedCommitIds)}
         ><Icon name="arrow-right" /></button>
       </div>
       {props.open ? (
@@ -169,4 +173,12 @@ function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
 
 function plural(count: number, noun: string): string {
   return count === 1 ? noun : `${noun}s`;
+}
+
+function navigationLabel(commit: CommitSummary | null, direction: "newer" | "older"): string {
+  return commit ? `Show ${direction} commit ${commit.summary}` : "Show full commit range";
+}
+
+function navigationTitle(commit: CommitSummary | null, direction: "newer" | "older"): string {
+  return commit ? `${direction === "newer" ? "Newer" : "Older"}: ${commit.summary}` : "Full commit range";
 }

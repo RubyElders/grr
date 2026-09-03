@@ -99,17 +99,54 @@ describe("ReviewApp", () => {
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
   });
 
-  it("steps left to newer and right to older commits", async () => {
+  it("steps from the range through commits and back with buttons", async () => {
     const { backend, user } = setup();
     await screen.findByText("Improve graphics options");
 
-    await user.click(screen.getByRole("button", { name: "Show newer commit Uncommitted changes" }));
+    await user.click(screen.getByRole("button", { name: "Show latest commit Uncommitted changes" }));
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
+  });
 
-    await user.click(screen.getByRole("button", { name: "Show older commit Add graphics labels" }));
-    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([
-      "1111111111111111111111111111111111111111",
-    ]));
+  it("steps through commits with Right and returns to the range with Left", async () => {
+    const source = fixture as ReviewData;
+    let current = { ...source, selectedCommitIds: [] as string[] };
+    const backend: ReviewBackend = {
+      getReview: vi.fn().mockImplementation(async () => current),
+      selectCommits: vi.fn().mockImplementation(async (selectedCommitIds: string[]) => {
+        current = { ...source, selectedCommitIds };
+        return current;
+      }),
+      finishReview: vi.fn(),
+      cancelReview: vi.fn(),
+    };
+    render(<ReviewApp backend={backend} />);
+    await screen.findByText("Improve graphics options");
+
+    fireEvent.keyDown(document, { key: "ArrowRight" });
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
+    fireEvent.keyDown(document, { key: "ArrowRight" });
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([source.commit.id]));
+    fireEvent.keyDown(document, { key: "ArrowLeft" });
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
+    fireEvent.keyDown(document, { key: "ArrowLeft" });
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
+  });
+
+  it("jumps to a selected file vertically without scrolling the app sideways", async () => {
+    const { user } = setup();
+    await screen.findByText("Improve graphics options");
+    const pane = screen.getByRole("main", { name: "Commit diff" });
+    const file = document.getElementById("file-f1")!;
+    const scrollTo = vi.fn();
+    pane.scrollTo = scrollTo;
+    pane.scrollTop = 120;
+    pane.getBoundingClientRect = vi.fn(() => ({ top: 80 }) as DOMRect);
+    file.getBoundingClientRect = vi.fn(() => ({ top: 460 }) as DOMRect);
+
+    await user.click(screen.getByTitle("tests/rendering/reference.png"));
+
+    expect(scrollTo).toHaveBeenCalledWith({ top: 488, behavior: "smooth" });
+    expect(scrollTo.mock.calls[0]![0]).not.toHaveProperty("left");
   });
 
   it("shows a compact expandable message for the focused commit", async () => {

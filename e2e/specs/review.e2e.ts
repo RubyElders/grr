@@ -137,6 +137,21 @@ describe("grr review window", () => {
       () => document.body.textContent?.includes("5 commits · main…HEAD"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "full diff did not return after worktree review" });
 
+    for (const step of [
+      { key: "ArrowRight", text: "worktree by Local working tree" },
+      { key: "ArrowRight", text: "by E2E User" },
+      { key: "ArrowLeft", text: "worktree by Local working tree" },
+      { key: "ArrowLeft", text: "5 commits · main…HEAD" },
+    ]) {
+      await browser.execute((key) => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
+      }, step.key);
+      await browser.waitUntil(async () => await browser.execute(
+        (text) => document.body.textContent?.includes(text),
+        step.text,
+      ), { timeout: 5_000, interval: 50, timeoutMsg: `${step.key} did not navigate to ${step.text}` });
+    }
+
     const longHeader = await browser.execute(() => {
       const section = Array.from(document.querySelectorAll<HTMLElement>("section[aria-label]"))
         .find((candidate) => candidate.getAttribute("aria-label")?.includes("AISubgroup::DeleteCommand"));
@@ -164,6 +179,14 @@ describe("grr review window", () => {
       };
     });
     expect(horizontalScroll).toEqual({ overflows: true, scrollLeft: 180, nestedScrollers: 0 });
+
+    await clickElement("button[title='engine/Poseidon/AI/AISubgroup.cpp']");
+    const outerScroll = await browser.execute(() => ({
+      document: document.documentElement.scrollLeft,
+      body: document.body.scrollLeft,
+      pane: document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollLeft ?? -1,
+    }));
+    expect(outerScroll).toEqual({ document: 0, body: 0, pane: 0 });
 
     const commentButtonAlignment = await browser.execute(() => {
       const button = document.querySelector<HTMLButtonElement>("button[aria-label*='AISubgroup.cpp R1059']");
