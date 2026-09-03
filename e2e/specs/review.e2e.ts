@@ -11,6 +11,20 @@ describe("grr review window", () => {
       commit: document.body.textContent?.includes("5 commits · main…HEAD"),
     }));
     expect(ready).toEqual({ filter: true, commit: true });
+    const diffInsets = await browser.execute(() => {
+      const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
+      const first = pane?.querySelector<HTMLElement>("article[data-file-id]");
+      if (!pane || !first) return null;
+      const paneRect = pane.getBoundingClientRect();
+      const fileRect = first.getBoundingClientRect();
+      return {
+        top: fileRect.top - paneRect.top - pane.clientTop,
+        right: paneRect.left + pane.clientLeft + pane.clientWidth - fileRect.right,
+        left: fileRect.left - paneRect.left - pane.clientLeft,
+      };
+    });
+    expect(diffInsets).not.toBeNull();
+    for (const inset of Object.values(diffInsets ?? {})) expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
     writeFileSync("e2e-results/window.html", await browser.getPageSource());
     writeFileSync("e2e-results/window.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 
@@ -227,6 +241,16 @@ describe("grr review window", () => {
       return finalFile.dataset.fileId ?? null;
     });
     expect(finalFileId).not.toBeNull();
+    const bottomInset = await browser.execute(() => {
+      const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
+      const files = pane?.querySelectorAll<HTMLElement>("article[data-file-id]");
+      const finalFile = files?.item((files?.length ?? 1) - 1);
+      if (!pane || !finalFile) return null;
+      const paneRect = pane.getBoundingClientRect();
+      return paneRect.top + pane.clientTop + pane.clientHeight - finalFile.getBoundingClientRect().bottom;
+    });
+    expect(bottomInset).not.toBeNull();
+    expect(Math.abs((bottomInset ?? 0) - 24)).toBeLessThanOrEqual(1);
     await browser.waitUntil(async () => await browser.execute((fileId) => {
       const row = document.querySelector<HTMLElement>(`nav[aria-label='File tree'] [data-file-id="${fileId}"]`);
       const sidebar = document.querySelector<HTMLElement>("aside[aria-label='Changed files']");
