@@ -27,6 +27,11 @@
   --syntax-type: #953800;
   --syntax-meta: #116329;
   --shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+  --content-inset: 24px;
+}
+
+@media (max-width: 1000px) {
+  :root { --content-inset: 12px; }
 }
 
 @media (prefers-color-scheme: dark) {

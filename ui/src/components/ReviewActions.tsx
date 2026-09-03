@@ -11,7 +11,7 @@ interface ReviewActionsProps {
 
 export function ReviewActions({ draftCount, submitting, error, onApprove, onShare }: ReviewActionsProps) {
   return (
-    <footer class={styles.actions}>
+    <footer class={styles.actions} aria-label="Review actions">
       <div>
         <strong>{draftCount === 0 ? "No draft comments" : `${draftCount} draft comment${draftCount === 1 ? "" : "s"}`}</strong>
         {error ? <span class={styles.error} role="alert">{error}</span> : <span>Results will be printed in the invoking terminal.</span>}

@@ -14,7 +14,7 @@
 ### Fixed
 
 - Keep file selection from scrolling the whole application horizontally.
-- Keep equal spacing around every edge of the diff pane.
+- Keep equal spacing around the diff pane, commit text, header controls, and review actions.
 
 ## 0.3.1 - 2026-08-22
 

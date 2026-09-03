@@ -1,4 +1,4 @@
-.popover { position: absolute; top: 12px; right: 36px; z-index: 10; display: flex; align-items: center; gap: 6px; min-height: 42px; padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); box-shadow: 0 8px 24px rgba(27, 31, 36, .2); }
+.popover { position: absolute; top: var(--content-inset); right: var(--content-inset); z-index: 10; display: flex; align-items: center; gap: 6px; min-height: 42px; padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); box-shadow: 0 8px 24px rgba(27, 31, 36, .2); }
 .searchIcon { display: inline-flex; color: var(--muted); }
 .popover input { width: min(260px, 28vw); height: 28px; padding: 3px 7px; border: 1px solid var(--border); border-radius: 5px; color: var(--fg); background: var(--canvas); }
 .popover input:focus { border-color: var(--blue); outline: 2px solid color-mix(in srgb, var(--blue) 25%, transparent); }
@@ -9,7 +9,6 @@
 .popover .close { width: 28px; display: grid; place-items: center; padding: 0; }
 
 @media (max-width: 900px) {
-  .popover { right: 18px; }
   .popover input { width: min(220px, 25vw); }
   .result { min-width: 60px; }
 }

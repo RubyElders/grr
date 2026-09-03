@@ -25,6 +25,32 @@ describe("grr review window", () => {
     });
     expect(diffInsets).not.toBeNull();
     for (const inset of Object.values(diffInsets ?? {})) expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
+    const shellInsets = await browser.execute(() => {
+      const topbar = document.querySelector<HTMLElement>("header");
+      const brand = topbar?.firstElementChild?.getBoundingClientRect();
+      const help = document.querySelector<HTMLElement>("button[aria-label='Show keyboard shortcuts']")?.getBoundingClientRect();
+      const commit = document.querySelector<HTMLElement>("section[aria-label='Commit message']");
+      const commitCode = commit?.querySelector("code")?.getBoundingClientRect();
+      const commitMessage = commit?.querySelector("button")?.getBoundingClientRect();
+      const actions = document.querySelector<HTMLElement>("footer[aria-label='Review actions']");
+      const actionText = actions?.firstElementChild?.getBoundingClientRect();
+      const actionButtons = actions?.lastElementChild?.getBoundingClientRect();
+      if (!topbar || !brand || !help || !commit || !commitCode || !commitMessage || !actions || !actionText || !actionButtons) return null;
+      const topbarRect = topbar.getBoundingClientRect();
+      const commitRect = commit.getBoundingClientRect();
+      const actionRect = actions.getBoundingClientRect();
+      return {
+        topbarLeft: brand.left - topbarRect.left,
+        topbarRight: topbarRect.right - help.right,
+        commitLeft: commitCode.left - commitRect.left,
+        commitRight: commitRect.right - commitMessage.right,
+        actionsLeft: actionText.left - actionRect.left,
+        actionsRight: actionRect.right - actionButtons.right,
+        actionsBottom: actionRect.bottom - actionButtons.bottom,
+      };
+    });
+    expect(shellInsets).not.toBeNull();
+    for (const inset of Object.values(shellInsets ?? {})) expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
     writeFileSync("e2e-results/window.html", await browser.getPageSource());
     writeFileSync("e2e-results/window.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 

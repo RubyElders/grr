@@ -1,6 +1,6 @@
 .app {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) 68px;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   height: 100%;
   overflow: hidden;
   background: var(--canvas);
@@ -12,7 +12,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 20px;
+  padding: 0 var(--content-inset);
   border-bottom: 1px solid var(--border);
   background: var(--bg);
 }
