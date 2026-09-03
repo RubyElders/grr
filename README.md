@@ -50,6 +50,8 @@ Click the commit summary in the top bar to choose what is shown. `Show all` retu
 
 The strip below the top bar shows the focused commit's message on one line; click it to expand a longer message. The left and right buttons or keyboard arrow keys step through newer and older commits. From the grouped range, Right opens the latest individual commit; Left from that commit returns to the grouped range. These controls are disabled for multi-commit selections.
 
+Use Up and Down to jump to the previous or next changed file. Space and Shift+Space continue to page the diff down or up.
+
 When the repository is dirty, the review opens on an `Uncommitted changes` virtual commit. It combines staged, unstaged, deleted, and untracked changes relative to `HEAD`; ignored files remain excluded. Select it alone to review only the working tree, or combine it with real commits. In this state, `Show all` compares the merge base to the final working tree so committed and uncommitted changes are reviewed together.
 
 `Approve` prints a friendly approval. `Share comments` prints Markdown ordered by file and diff position. Closing the window with the title-bar control cancels the review and exits with status 2.

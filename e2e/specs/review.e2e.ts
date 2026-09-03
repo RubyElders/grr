@@ -222,6 +222,21 @@ describe("grr review window", () => {
       timeoutMsg: "file tree did not follow the visible diff file",
     });
 
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      (last) => document.querySelector<HTMLElement>("nav[aria-label='File tree'] [aria-current='true']")?.dataset.fileId !== last,
+      finalFileId,
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "ArrowUp did not select the previous file" });
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      (expected) => document.querySelector<HTMLElement>("nav[aria-label='File tree'] [aria-current='true']")?.dataset.fileId === expected,
+      finalFileId,
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "ArrowDown did not select the next file" });
+
     await setInputValue("input[aria-label='Filter files']", "review.rs");
     expect(await browser.execute(() => Boolean(document.querySelector("button[title='src/review.rs']")))).toBe(true);
     await setInputValue("input[aria-label='Filter files']", "");

@@ -149,6 +149,29 @@ describe("ReviewApp", () => {
     expect(scrollTo.mock.calls[0]![0]).not.toHaveProperty("left");
   });
 
+  it("steps between files with Down and Up while Space continues to page", async () => {
+    setup();
+    await screen.findByText("Improve graphics options");
+    const pane = screen.getByRole("main", { name: "Commit diff" });
+    const first = screen.getByTitle("engine/GraphicsPage.cpp");
+    const second = screen.getByTitle("tests/rendering/reference.png");
+    const scrollTo = vi.fn();
+    const scrollBy = vi.fn();
+    pane.scrollTo = scrollTo;
+    pane.scrollBy = scrollBy;
+    Object.defineProperty(pane, "clientHeight", { configurable: true, value: 600 });
+
+    expect(first).toHaveAttribute("aria-current", "true");
+    fireEvent.keyDown(document, { key: "ArrowDown" });
+    expect(second).toHaveAttribute("aria-current", "true");
+    fireEvent.keyDown(document, { key: "ArrowUp" });
+    expect(first).toHaveAttribute("aria-current", "true");
+    fireEvent.keyDown(document, { key: " ", code: "Space" });
+    expect(scrollBy).toHaveBeenCalledWith({ top: 552, behavior: "smooth" });
+    fireEvent.keyDown(document, { key: " ", code: "Space", shiftKey: true });
+    expect(scrollBy).toHaveBeenCalledWith({ top: -552, behavior: "smooth" });
+  });
+
   it("shows a compact expandable message for the focused commit", async () => {
     const { user } = setup();
     await screen.findByText("Improve graphics options");

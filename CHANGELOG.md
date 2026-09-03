@@ -8,7 +8,7 @@
 
 ### Changed
 
-- Open dirty repositories on their uncommitted changes and navigate grouped or individual commits with arrow keys.
+- Open dirty repositories on their uncommitted changes, navigate grouped or individual commits with Left and Right, and switch files with Up and Down.
 
 ### Fixed
 
