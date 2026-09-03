@@ -16,6 +16,7 @@
 - Keep file selection from scrolling the whole application horizontally.
 - Keep equal spacing around the diff pane, commit text, header controls, and review actions.
 - Avoid offering a grouped commit view when a comparison contains fewer than two commits.
+- Keep long commit messages from widening the application beyond its window.
 
 ## 0.3.1 - 2026-08-22
 

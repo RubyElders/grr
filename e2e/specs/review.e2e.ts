@@ -51,6 +51,19 @@ describe("grr review window", () => {
     });
     expect(shellInsets).not.toBeNull();
     for (const inset of Object.values(shellInsets ?? {})) expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
+    const shellWidths = await browser.execute(() => {
+      const app = document.querySelector<HTMLElement>("#app > div");
+      if (!app) return null;
+      const elements = [app, ...Array.from(app.children)] as HTMLElement[];
+      return {
+        viewport: innerWidth,
+        widths: elements.map((element) => element.getBoundingClientRect().width),
+        rightEdges: elements.map((element) => element.getBoundingClientRect().right),
+      };
+    });
+    expect(shellWidths).not.toBeNull();
+    for (const width of shellWidths?.widths ?? []) expect(width).toBeLessThanOrEqual((shellWidths?.viewport ?? 0) + 1);
+    for (const right of shellWidths?.rightEdges ?? []) expect(right).toBeLessThanOrEqual((shellWidths?.viewport ?? 0) + 1);
     writeFileSync("e2e-results/window.html", await browser.getPageSource());
     writeFileSync("e2e-results/window.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 
@@ -133,7 +146,7 @@ describe("grr review window", () => {
     )).toBe(true);
     await clickElement("button[aria-label='Show full message for Return the correct answer']");
     expect(await browser.execute(
-      () => document.body.textContent?.includes("Keep this body visible in the review picker."),
+      () => document.body.textContent?.includes("Keep this deliberately long commit body visible"),
     )).toBe(true);
     writeFileSync("e2e-results/commit-picker.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 
