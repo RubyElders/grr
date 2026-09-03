@@ -8,9 +8,11 @@ import { ReviewActions } from "./components/ReviewActions";
 import { CommitSelector } from "./components/CommitSelector";
 import { CommitMessagePanel } from "./components/CommitMessagePanel";
 import { FindPopover } from "./components/FindPopover";
+import { ShortcutHelp } from "./components/ShortcutHelp";
 import { adjacentMatch, findCodeMatches } from "./codeSearch";
 import { commitNavigationTarget } from "./commitPresentation";
 import { reviewViewKey } from "./scrollPosition";
+import { matchesShortcut, shortcutTitle } from "./shortcuts";
 import { filesInTreeOrder } from "./tree";
 import type { ReviewData } from "./types";
 import styles from "./App.module.css";
@@ -19,6 +21,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
   const [state, dispatch] = useReducer(reviewReducer, initialState);
   const [commitSelectorOpen, setCommitSelectorOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [findQuery, setFindQuery] = useState("");
   const [activeFindIndex, setActiveFindIndex] = useState(-1);
   useEffect(() => {
@@ -99,58 +102,76 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
 
   useLayoutEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      const nativeModifier = event.ctrlKey || event.metaKey;
-      const findShortcut = event.key.toLowerCase() === "f" && nativeModifier && !event.altKey;
-      const openFind = findShortcut || (!findOpen && event.key === "F3" && !nativeModifier && !event.altKey);
-      const repeatFind = findOpen && (
-        (event.key === "F3" && !nativeModifier && !event.altKey)
-        || (event.key.toLowerCase() === "g" && nativeModifier && !event.altKey)
-      );
-      const findInputEnter = findOpen
-        && event.key === "Enter"
-        && event.target instanceof HTMLElement
-        && event.target.matches("[data-find-input]");
-      const dismissFind = event.key === "Escape" && findOpen;
-      const dismissSelector = event.key === "Escape" && commitSelectorOpen;
-      const closeWithEscape = event.key === "Escape" && state.openLineId === null && !commitSelectorOpen && !findOpen;
-      const closeWithW = event.key.toLowerCase() === "w" && (event.ctrlKey || event.metaKey);
-      const closeWithF4 = event.key === "F4" && event.altKey;
-      const runPrimaryAction = event.key === "Enter"
-        && (event.ctrlKey || event.metaKey)
+      const dismiss = matchesShortcut(event, "dismiss");
+      const closeWindow = matchesShortcut(event, "closeWindow");
+      if (shortcutHelpOpen) {
+        if (!dismiss && !closeWindow) return;
+        event.preventDefault();
+        if (dismiss) {
+          setShortcutHelpOpen(false);
+          return;
+        }
+        void backend.cancelReview().catch((error: unknown) => {
+          dispatch({ type: "submit-failed", error: errorMessage(error) });
+        });
+        return;
+      }
+
+      const openHelp = matchesShortcut(event, "help")
+        && state.openLineId === null
+        && state.phase === "ready"
+        && !isInteractiveTarget(event.target);
+      const findNative = matchesShortcut(event, "find", "native");
+      const findFunction = matchesShortcut(event, "find", "function");
+      const openFind = findNative || (!findOpen && findFunction);
+      const findInput = event.target instanceof HTMLElement && event.target.matches("[data-find-input]");
+      const nextMatch = findOpen
+        && matchesShortcut(event, "nextMatch")
+        && (!matchesShortcut(event, "nextMatch", "enter") || findInput);
+      const previousMatch = findOpen
+        && matchesShortcut(event, "previousMatch")
+        && (!matchesShortcut(event, "previousMatch", "enter") || findInput);
+      const dismissFind = dismiss && findOpen;
+      const dismissSelector = dismiss && commitSelectorOpen;
+      const closeWithEscape = dismiss && state.openLineId === null && !commitSelectorOpen && !findOpen;
+      const runPrimaryAction = matchesShortcut(event, "primaryAction")
         && state.openLineId === null
         && !findOpen
         && state.phase === "ready";
-      const pageDiff = (event.key === " " || event.code === "Space")
-        && !event.ctrlKey
-        && !event.metaKey
-        && !event.altKey
+      const pageDown = matchesShortcut(event, "pageDown");
+      const pageUp = matchesShortcut(event, "pageUp");
+      const pageDiff = (pageDown || pageUp)
         && !commitSelectorOpen
         && !findOpen
         && state.openLineId === null
         && state.phase === "ready"
         && !isInteractiveTarget(event.target);
-      const stepCommit = (event.key === "ArrowLeft" || event.key === "ArrowRight")
-        && !nativeModifier
-        && !event.altKey
-        && !event.shiftKey
+      const newerCommit = matchesShortcut(event, "newerCommit");
+      const olderCommit = matchesShortcut(event, "olderCommit");
+      const stepCommit = (newerCommit || olderCommit)
         && !commitSelectorOpen
         && !findOpen
         && state.openLineId === null
         && state.phase === "ready"
         && comments.length === 0
         && !isInteractiveTarget(event.target);
-      const stepFile = (event.key === "ArrowUp" || event.key === "ArrowDown")
-        && !nativeModifier
-        && !event.altKey
-        && !event.shiftKey
+      const previousFile = matchesShortcut(event, "previousFile");
+      const nextFile = matchesShortcut(event, "nextFile");
+      const stepFile = (previousFile || nextFile)
         && !commitSelectorOpen
         && !findOpen
         && state.openLineId === null
         && state.phase === "ready"
         && !isInteractiveTarget(event.target);
-      if (!openFind && !repeatFind && !findInputEnter && !dismissFind && !dismissSelector && !closeWithEscape && !closeWithW && !closeWithF4 && !runPrimaryAction && !pageDiff && !stepCommit && !stepFile) return;
+      if (!openHelp && !openFind && !nextMatch && !previousMatch && !dismissFind && !dismissSelector && !closeWithEscape && !closeWindow && !runPrimaryAction && !pageDiff && !stepCommit && !stepFile) return;
 
       event.preventDefault();
+      if (openHelp) {
+        setCommitSelectorOpen(false);
+        setFindOpen(false);
+        setShortcutHelpOpen(true);
+        return;
+      }
       if (openFind) {
         setCommitSelectorOpen(false);
         if (findOpen) {
@@ -162,8 +183,8 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         }
         return;
       }
-      if (repeatFind || findInputEnter) {
-        moveFind(event.shiftKey ? -1 : 1);
+      if (nextMatch || previousMatch) {
+        moveFind(previousMatch ? -1 : 1);
         return;
       }
       if (dismissFind) {
@@ -173,17 +194,17 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
       if (pageDiff) {
         const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
         pane?.scrollBy({
-          top: (event.shiftKey ? -1 : 1) * Math.max(1, pane.clientHeight - 48),
+          top: (pageUp ? -1 : 1) * Math.max(1, pane.clientHeight - 48),
           behavior: "smooth",
         });
         return;
       }
       if (stepCommit) {
-        navigateCommits(event.key === "ArrowLeft" ? "newer" : "older");
+        navigateCommits(newerCommit ? "newer" : "older");
         return;
       }
       if (stepFile) {
-        navigateFiles(event.key === "ArrowUp" ? "previous" : "next");
+        navigateFiles(previousFile ? "previous" : "next");
         return;
       }
       if (dismissSelector) {
@@ -200,7 +221,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [backend, comments.length, commitSelectorOpen, findOpen, moveFind, navigateCommits, navigateFiles, state.openLineId, state.phase, submit]);
+  }, [backend, comments.length, commitSelectorOpen, findOpen, moveFind, navigateCommits, navigateFiles, shortcutHelpOpen, state.openLineId, state.phase, submit]);
 
   if (state.phase === "loading") return <div class={styles.center} role="status">Loading commit diff…</div>;
   if (state.phase === "error" || !state.data) return <div class={styles.center}><div class={styles.fatal} role="alert"><h1>Could not load review</h1><p>{state.error}</p></div></div>;
@@ -219,6 +240,13 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
             onSelect={(commitIds) => void selectCommits(commitIds)}
           />
           <div class={styles.repository} title={state.data.repositoryRoot}>{state.data.repositoryRoot}</div>
+          <button
+            type="button"
+            class={styles.shortcutHelp}
+            aria-label="Show keyboard shortcuts"
+            title={`Keyboard shortcuts (${shortcutTitle("help")})`}
+            onClick={() => setShortcutHelpOpen(true)}
+          >?</button>
         </header>
         <CommitMessagePanel data={state.data} />
       </div>
@@ -266,6 +294,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         onApprove={() => void submit("approve")}
         onShare={() => void submit("share")}
       />
+      {shortcutHelpOpen ? <ShortcutHelp onClose={() => setShortcutHelpOpen(false)} /> : null}
     </div>
   );
 }

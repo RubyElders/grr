@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
+import { matchesShortcut, shortcutTitle } from "../shortcuts";
 import styles from "./CommentEditor.module.css";
 
 interface CommentEditorProps {
@@ -24,13 +25,13 @@ export function CommentEditor({ lineLabel, initialBody, onSave, onCancel }: Comm
         maxLength={10_000}
         onInput={(event) => setBody(event.currentTarget.value)}
         onKeyDown={(event) => {
-          if (event.key === "Escape") {
+          if (matchesShortcut(event, "dismiss")) {
             event.preventDefault();
             event.stopPropagation();
             onCancel();
             return;
           }
-          if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          if (matchesShortcut(event, "saveComment")) {
             event.preventDefault();
             event.stopPropagation();
             if (valid) onSave(body.trim());
@@ -40,7 +41,7 @@ export function CommentEditor({ lineLabel, initialBody, onSave, onCancel }: Comm
       <div class={styles.footer}>
         <span>{body.length.toLocaleString()} / 10,000</span>
         <button type="button" class={styles.cancel} onClick={onCancel}>Cancel</button>
-        <button type="button" class={styles.save} disabled={!valid} onClick={() => onSave(body.trim())}>Save comment</button>
+        <button type="button" class={styles.save} title={shortcutTitle("saveComment")} disabled={!valid} onClick={() => onSave(body.trim())}>Save comment</button>
       </div>
     </div>
   );

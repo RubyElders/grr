@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
+import { shortcutTitle } from "../shortcuts";
 import { Icon } from "./Icon";
 import styles from "./FindPopover.module.css";
 
@@ -38,9 +39,9 @@ export function FindPopover(props: FindPopoverProps) {
         onInput={(event) => props.onQuery(event.currentTarget.value)}
       />
       <span class={styles.result} role="status">{result}</span>
-      <button type="button" disabled={props.matchCount === 0} aria-label="Previous match" title="Previous match (Shift+Enter)" onClick={props.onPrevious}>Prev</button>
-      <button type="button" disabled={props.matchCount === 0} aria-label="Next match" title="Next match (Enter)" onClick={props.onNext}>Next</button>
-      <button type="button" class={styles.close} aria-label="Close find" title="Close find (Escape)" onClick={props.onClose}><Icon name="close" /></button>
+      <button type="button" disabled={props.matchCount === 0} aria-label="Previous match" title={shortcutTitle("previousMatch")} onClick={props.onPrevious}>Prev</button>
+      <button type="button" disabled={props.matchCount === 0} aria-label="Next match" title={shortcutTitle("nextMatch")} onClick={props.onNext}>Next</button>
+      <button type="button" class={styles.close} aria-label="Close find" title={shortcutTitle("dismiss")} onClick={props.onClose}><Icon name="close" /></button>
     </section>
   );
 }

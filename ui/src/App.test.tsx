@@ -239,6 +239,32 @@ describe("ReviewApp", () => {
     expect(backend.cancelReview).not.toHaveBeenCalled();
   });
 
+  it("opens shortcut help with question mark and dismisses it before closing the app", async () => {
+    const { backend, user } = setup();
+    await screen.findByText("Improve graphics options");
+
+    fireEvent.keyDown(document, { key: "?", shiftKey: true });
+    const dialog = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
+    expect(within(dialog).getByText("Jump to the next changed file")).toBeInTheDocument();
+    expect(within(dialog).getByText("Approve or share queued comments")).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).not.toBeInTheDocument();
+    expect(backend.cancelReview).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Show keyboard shortcuts" }));
+    expect(screen.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeInTheDocument();
+  });
+
+  it("does not open shortcut help while typing a question mark", async () => {
+    const { user } = setup();
+    await screen.findByText("Improve graphics options");
+    const filter = screen.getByRole("searchbox", { name: "Filter files" });
+    await user.type(filter, "?");
+    expect(filter).toHaveValue("?");
+    expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).not.toBeInTheDocument();
+  });
+
   it("labels repeated file diffs with their source commit", async () => {
     const sourceCommit = (fixture as ReviewData).commits[1]!;
     const selected = {

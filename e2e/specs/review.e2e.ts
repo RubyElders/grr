@@ -15,6 +15,24 @@ describe("grr review window", () => {
     writeFileSync("e2e-results/window.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 
     await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "?", shiftKey: true, bubbles: true, cancelable: true }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      () => Boolean(document.querySelector("section[role='dialog'][aria-label='Keyboard shortcuts']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "question mark did not open keyboard shortcuts" });
+    expect(await browser.execute(() => (
+      document.body.textContent?.includes("Jump to the next changed file")
+      && document.body.textContent?.includes("Approve or share queued comments")
+    ))).toBe(true);
+    writeFileSync("e2e-results/keyboard-shortcuts.png", Buffer.from(await browser.takeScreenshot(), "base64"));
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      () => !document.querySelector("section[role='dialog'][aria-label='Keyboard shortcuts']"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "Escape did not close keyboard shortcuts" });
+
+    await browser.execute(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "f", ctrlKey: true, bubbles: true, cancelable: true }));
     });
     await browser.waitUntil(async () => await browser.execute(
