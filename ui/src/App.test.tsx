@@ -140,7 +140,7 @@ describe("ReviewApp", () => {
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
   });
 
-  it("steps through commits with Right and returns to the virtual commit with Left", async () => {
+  it("steps through commits with Right or L and returns with Left or H", async () => {
     const source = fixture as ReviewData;
     let current = { ...source, selectedCommitIds: [] as string[] };
     const backend: ReviewBackend = {
@@ -157,11 +157,11 @@ describe("ReviewApp", () => {
 
     fireEvent.keyDown(document, { key: "ArrowRight" });
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
-    fireEvent.keyDown(document, { key: "ArrowRight" });
+    fireEvent.keyDown(document, { key: "l" });
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([source.commit.id]));
     fireEvent.keyDown(document, { key: "ArrowLeft" });
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
-    fireEvent.keyDown(document, { key: "ArrowLeft" });
+    fireEvent.keyDown(document, { key: "h" });
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
   });
 
@@ -182,7 +182,7 @@ describe("ReviewApp", () => {
     expect(scrollTo.mock.calls[0]![0]).not.toHaveProperty("left");
   });
 
-  it("steps between files with Down and Up while Space continues to page", async () => {
+  it("steps between files with arrows or J and K while Space continues to page", async () => {
     setup();
     await screen.findByText("5 commits against origin/main");
     const pane = screen.getByRole("main", { name: "Commit diff" });
@@ -198,6 +198,10 @@ describe("ReviewApp", () => {
     fireEvent.keyDown(document, { key: "ArrowDown" });
     expect(second).toHaveAttribute("aria-current", "true");
     fireEvent.keyDown(document, { key: "ArrowUp" });
+    expect(first).toHaveAttribute("aria-current", "true");
+    fireEvent.keyDown(document, { key: "j" });
+    expect(second).toHaveAttribute("aria-current", "true");
+    fireEvent.keyDown(document, { key: "k" });
     expect(first).toHaveAttribute("aria-current", "true");
     fireEvent.keyDown(document, { key: " ", code: "Space" });
     expect(scrollBy).toHaveBeenCalledWith({ top: 552, behavior: "smooth" });

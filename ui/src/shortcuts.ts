@@ -49,10 +49,22 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
     chord("function", "Shift + F3", "F3", { shift: true }),
     chord("native", "Ctrl/Cmd + Shift + G", "g", { nativeModifier: true, shift: true }),
   ]),
-  shortcut("newerCommit", "Navigation", "Show the newer commit or virtual commit", [chord("arrow", "Left", "ArrowLeft")]),
-  shortcut("olderCommit", "Navigation", "Show the older commit or latest commit", [chord("arrow", "Right", "ArrowRight")]),
-  shortcut("previousFile", "Navigation", "Jump to the previous changed file", [chord("arrow", "Up", "ArrowUp")]),
-  shortcut("nextFile", "Navigation", "Jump to the next changed file", [chord("arrow", "Down", "ArrowDown")]),
+  shortcut("newerCommit", "Navigation", "Show the newer commit or virtual commit", [
+    chord("arrow", "Left", "ArrowLeft"),
+    chord("vim", "H", "h"),
+  ]),
+  shortcut("olderCommit", "Navigation", "Show the older commit or latest commit", [
+    chord("arrow", "Right", "ArrowRight"),
+    chord("vim", "L", "l"),
+  ]),
+  shortcut("previousFile", "Navigation", "Jump to the previous changed file", [
+    chord("arrow", "Up", "ArrowUp"),
+    chord("vim", "K", "k"),
+  ]),
+  shortcut("nextFile", "Navigation", "Jump to the next changed file", [
+    chord("arrow", "Down", "ArrowDown"),
+    chord("vim", "J", "j"),
+  ]),
   shortcut("pageUp", "Navigation", "Page the diff up", [chord("space", "Shift + Space", " ", { code: "Space", shift: true })]),
   shortcut("pageDown", "Navigation", "Page the diff down", [chord("space", "Space", " ", { code: "Space" })]),
   shortcut("primaryAction", "Review", "Approve or share queued comments", [chord("native", "Ctrl/Cmd + Enter", "Enter", { nativeModifier: true })]),

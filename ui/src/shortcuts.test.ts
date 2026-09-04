@@ -23,6 +23,11 @@ describe("shortcut registry", () => {
 
   it("distinguishes navigation and shifted paging", () => {
     expect(matchesShortcut(key("ArrowDown"), "nextFile")).toBe(true);
+    expect(matchesShortcut(key("j"), "nextFile")).toBe(true);
+    expect(matchesShortcut(key("k"), "previousFile")).toBe(true);
+    expect(matchesShortcut(key("h"), "newerCommit")).toBe(true);
+    expect(matchesShortcut(key("l"), "olderCommit")).toBe(true);
+    expect(matchesShortcut(key("j", { shiftKey: true }), "nextFile")).toBe(false);
     expect(matchesShortcut(key("ArrowDown", { altKey: true }), "nextFile")).toBe(false);
     expect(matchesShortcut(key(" "), "pageDown")).toBe(true);
     expect(matchesShortcut(key(" ", { shiftKey: true }), "pageUp")).toBe(true);
@@ -31,6 +36,7 @@ describe("shortcut registry", () => {
 
   it("formats every chord from the registry", () => {
     expect(shortcutTitle("find")).toBe("Ctrl/Cmd + F or F3");
+    expect(shortcutTitle("nextFile")).toBe("Down or J");
     expect(shortcutTitle("closeWindow")).toBe("Ctrl/Cmd + W or Alt + F4");
   });
 });
