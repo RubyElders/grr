@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { commitNavigationTarget, displayedCommits, fullMessageBody, hasGroupedCommitView } from "../commitPresentation";
+import { commitNavigationTarget, displayedCommits, fullMessageBody, hasGroupedCommitView, summarizeCommitAuthors } from "../commitPresentation";
 import { WORKTREE_COMMIT_ID, type CommitSummary, type ReviewData } from "../types";
 import { Icon } from "./Icon";
 import styles from "./CommitSelector.module.css";
@@ -40,14 +40,7 @@ export function CommitSelector(props: CommitSelectorProps) {
       ? "No commits to review"
       : selected.length > 0
         ? `${visibleCommits.length} selected commits`
-        : props.data.commit.summary;
-  const detail = singleCommit
-    ? `${singleCommit.shortId} by ${singleCommit.author}`
-    : props.data.commits.length === 0
-      ? `${props.data.comparison.baseRef}…HEAD`
-      : selected.length === 0
-        ? `${visibleCommits.length} ${plural(visibleCommits.length, "commit")} · ${props.data.comparison.baseRef}…HEAD`
-        : `${props.data.commits.length} commits available · ${props.data.comparison.baseRef}…HEAD`;
+        : `${visibleCommits.length} commits against ${props.data.comparison.baseRef}`;
   const newer = commitNavigationTarget(props.data, "newer");
   const older = commitNavigationTarget(props.data, "older");
   const navigationDisabled = props.disabled || props.loading;
@@ -85,7 +78,13 @@ export function CommitSelector(props: CommitSelectorProps) {
         >
           <span class={styles.triggerText}>
             <strong>{title}</strong>
-            <span>{detail}</span>
+            {singleCommit ? (
+              <span><code>{singleCommit.shortId}</code> by {singleCommit.author}</span>
+            ) : props.data.commits.length === 0 ? (
+              <span>{props.data.comparison.baseRef}…HEAD</span>
+            ) : (
+              <span><code>range</code> by {summarizeCommitAuthors(visibleCommits)}<em class={styles.virtualBadge}>Virtual</em></span>
+            )}
           </span>
           <span class={styles.caret} aria-hidden="true">▾</span>
         </button>
@@ -174,10 +173,6 @@ function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
       {expanded ? <div class={styles.fullMessage}>{messageBody}</div> : null}
     </div>
   );
-}
-
-function plural(count: number, noun: string): string {
-  return count === 1 ? noun : `${noun}s`;
 }
 
 function navigationLabel(commit: CommitSummary | null, direction: "newer" | "older"): string {

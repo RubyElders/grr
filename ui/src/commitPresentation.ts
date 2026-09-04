@@ -18,6 +18,12 @@ export function hasGroupedCommitView(data: ReviewData): boolean {
   return data.commits.length > 1;
 }
 
+export function summarizeCommitAuthors(commits: CommitSummary[]): string {
+  const counts = new Map<string, number>();
+  for (const commit of commits) counts.set(commit.author, (counts.get(commit.author) ?? 0) + 1);
+  return Array.from(counts, ([author, count]) => `${author} (${count})`).join(", ");
+}
+
 export interface CommitNavigationTarget {
   commit: CommitSummary | null;
   selectedCommitIds: string[];

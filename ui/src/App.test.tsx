@@ -21,7 +21,11 @@ function setup() {
 describe("ReviewApp", () => {
   it("renders the commit, tree, text diff, and binary placeholder", async () => {
     setup();
-    expect(await screen.findByText("Improve graphics options")).toBeInTheDocument();
+    expect(await screen.findByText("5 commits against origin/main")).toBeInTheDocument();
+    const commitSelector = screen.getByTitle("Choose commits to review");
+    expect(within(commitSelector).getByText("5 commits against origin/main")).toBeInTheDocument();
+    expect(commitSelector).toHaveTextContent("range by Local working tree (1), Local User (4)");
+    expect(within(commitSelector).getByText("Virtual")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "File tree" })).toBeInTheDocument();
     expect(screen.getByLabelText(/const char\* labelEn;/)).toBeInTheDocument();
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
@@ -36,7 +40,7 @@ describe("ReviewApp", () => {
       cancelReview: vi.fn(),
     };
     render(<ReviewApp backend={backend} />);
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
 
     const tree = screen.getByRole("navigation", { name: "File tree" });
     const pane = screen.getByRole("main", { name: "Commit diff" });
@@ -62,7 +66,7 @@ describe("ReviewApp", () => {
 
     renderReview([]);
     let trigger = await screen.findByTitle("Choose commits to review");
-    expect(within(trigger).getByText(`${commit.shortId} by ${commit.author}`)).toBeInTheDocument();
+    expect(trigger).toHaveTextContent(`${commit.shortId} by ${commit.author}`);
     expect(within(trigger).queryByText(/1 commit ·/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "No newer commit" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "No older commit" })).toBeDisabled();
@@ -72,7 +76,7 @@ describe("ReviewApp", () => {
     cleanup();
     renderReview([commit.id]);
     trigger = await screen.findByTitle("Choose commits to review");
-    expect(within(trigger).getByText(`${commit.shortId} by ${commit.author}`)).toBeInTheDocument();
+    expect(trigger).toHaveTextContent(`${commit.shortId} by ${commit.author}`);
     expect(within(trigger).queryByText(/1 commit ·/)).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "No newer commit" })).toBeDisabled();
   });
@@ -100,7 +104,7 @@ describe("ReviewApp", () => {
 
   it("selects arbitrary commits, one commit, or the full branch diff", async () => {
     const { backend, user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     const trigger = screen.getByTitle("Choose commits to review");
 
     await user.click(trigger);
@@ -127,7 +131,7 @@ describe("ReviewApp", () => {
 
   it("steps from the range through commits and back with buttons", async () => {
     const { backend, user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
 
     await user.click(screen.getByRole("button", { name: "Show latest commit Uncommitted changes" }));
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
@@ -146,7 +150,7 @@ describe("ReviewApp", () => {
       cancelReview: vi.fn(),
     };
     render(<ReviewApp backend={backend} />);
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
 
     fireEvent.keyDown(document, { key: "ArrowRight" });
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
@@ -160,7 +164,7 @@ describe("ReviewApp", () => {
 
   it("jumps to a selected file vertically without scrolling the app sideways", async () => {
     const { user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     const pane = screen.getByRole("main", { name: "Commit diff" });
     const file = document.getElementById("file-f1")!;
     const scrollTo = vi.fn();
@@ -177,7 +181,7 @@ describe("ReviewApp", () => {
 
   it("steps between files with Down and Up while Space continues to page", async () => {
     setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     const pane = screen.getByRole("main", { name: "Commit diff" });
     const first = screen.getByTitle("engine/GraphicsPage.cpp");
     const second = screen.getByTitle("tests/rendering/reference.png");
@@ -200,7 +204,7 @@ describe("ReviewApp", () => {
 
   it("shows a compact expandable message for the focused commit", async () => {
     const { user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     const panel = screen.getByRole("region", { name: "Commit message" });
     expect(within(panel).getByText(/Add localized labels for every graphics quality setting/)).toBeInTheDocument();
     const expand = within(panel).getByRole("button", { name: "Expand commit message" });
@@ -227,7 +231,7 @@ describe("ReviewApp", () => {
 
   it("shows and selects the virtual working-tree commit", async () => {
     const { backend, user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     await user.click(screen.getByTitle("Choose commits to review"));
     const picker = screen.getByRole("dialog", { name: "Choose commits" });
     expect(within(picker).getByText("Uncommitted changes")).toBeInTheDocument();
@@ -238,7 +242,7 @@ describe("ReviewApp", () => {
 
   it("expands and collapses a full multiline commit message", async () => {
     const { user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     await user.click(screen.getByTitle("Choose commits to review"));
     const picker = screen.getByRole("dialog", { name: "Choose commits" });
     const expand = within(picker).getByRole("button", { name: "Show full message for Improve graphics options" });
@@ -257,7 +261,7 @@ describe("ReviewApp", () => {
 
   it("dismisses the commit picker with Escape without closing the app", async () => {
     const { backend, user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     await user.click(screen.getByTitle("Choose commits to review"));
     expect(screen.getByRole("dialog", { name: "Choose commits" })).toBeInTheDocument();
     await user.keyboard("{Escape}");
@@ -267,7 +271,7 @@ describe("ReviewApp", () => {
 
   it("opens shortcut help with question mark and dismisses it before closing the app", async () => {
     const { backend, user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
 
     fireEvent.keyDown(document, { key: "?", shiftKey: true });
     const dialog = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
@@ -284,7 +288,7 @@ describe("ReviewApp", () => {
 
   it("does not open shortcut help while typing a question mark", async () => {
     const { user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     const filter = screen.getByRole("searchbox", { name: "Filter files" });
     await user.type(filter, "?");
     expect(filter).toHaveValue("?");
@@ -306,13 +310,13 @@ describe("ReviewApp", () => {
     };
     render(<ReviewApp backend={backend} />);
     await screen.findByTitle("Choose commits to review");
-    expect(screen.getAllByText(sourceCommit.shortId)).toHaveLength(3);
+    expect(within(screen.getByRole("main", { name: "Commit diff" })).getAllByText(sourceCommit.shortId)).toHaveLength(1);
     expect(screen.getByTitle(`${sourceCommit.shortId} · ${sourceCommit.summary}`)).toBeInTheDocument();
   });
 
   it("filters files and collapses directories", async () => {
     const { user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     const filter = screen.getByRole("searchbox", { name: "Filter files" });
     await user.type(filter, "reference");
     expect(screen.queryByText("GraphicsPage.cpp")).not.toBeInTheDocument();
@@ -328,7 +332,7 @@ describe("ReviewApp", () => {
     const scrollIntoView = vi.fn();
     HTMLElement.prototype.scrollIntoView = scrollIntoView;
     setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     scrollIntoView.mockClear();
     const pane = screen.getByRole("main", { name: "Commit diff" });
     const cards = pane.querySelectorAll<HTMLElement>("article[data-file-id]");
@@ -354,7 +358,7 @@ describe("ReviewApp", () => {
 
   it("collapses file cards and deletes draft comments", async () => {
     const { user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     const fileHeader = screen.getByRole("button", { name: /^engine\/GraphicsPage\.cpp$/ });
     await user.click(fileHeader);
     expect(fileHeader).toHaveAttribute("aria-expanded", "false");
@@ -370,7 +374,7 @@ describe("ReviewApp", () => {
 
   it("cancels an open editor with Escape", async () => {
     const { backend, user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R27/ }));
     await user.type(screen.getByRole("textbox", { name: "Review comment" }), "unsaved");
     await user.keyboard("{Escape}");
@@ -385,14 +389,14 @@ describe("ReviewApp", () => {
     ["Alt+F4", { key: "F4", altKey: true }],
   ])("closes the review with %s", async (_name, shortcut) => {
     const { backend } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     fireEvent.keyDown(document, "key" in shortcut ? shortcut : { key: "Escape" });
     await waitFor(() => expect(backend.cancelReview).toHaveBeenCalledOnce());
   });
 
   it("creates, edits, and shares a line comment", async () => {
     const { user, submissions } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     expect(screen.getByRole("button", { name: "Share comments (0)" })).toBeDisabled();
     await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R26/ }));
     const editor = screen.getByRole("group", { name: "Comment on R26" });
@@ -413,7 +417,7 @@ describe("ReviewApp", () => {
 
   it("updates the queued-comment count as drafts are added and removed", async () => {
     const { user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R26/ }));
     await user.type(screen.getByRole("textbox", { name: "Review comment" }), "First note.");
     await user.click(screen.getByRole("button", { name: "Save comment" }));
@@ -430,20 +434,20 @@ describe("ReviewApp", () => {
 
   it("approves when no drafts exist", async () => {
     const { user, submissions } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     await user.click(screen.getByRole("button", { name: "Approve" }));
     await waitFor(() => expect(submissions[0]).toEqual({ outcome: "approve", comments: [] }));
   });
 
   it("runs the context-sensitive primary action with Control+Enter", async () => {
     const first = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     fireEvent.keyDown(document, { key: "Enter", ctrlKey: true });
     await waitFor(() => expect(first.submissions[0]).toEqual({ outcome: "approve", comments: [] }));
 
     cleanup();
     const second = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     await second.user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R26/ }));
     await second.user.type(screen.getByRole("textbox", { name: "Review comment" }), "Please reconsider this.");
     await second.user.click(screen.getByRole("button", { name: "Save comment" }));
@@ -456,7 +460,7 @@ describe("ReviewApp", () => {
 
   it("uses Control+Enter to save an open editor without submitting the review", async () => {
     const { submissions, user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R26/ }));
     const editor = screen.getByRole("textbox", { name: "Review comment" });
     await user.type(editor, "Draft only.");
@@ -468,7 +472,7 @@ describe("ReviewApp", () => {
 
   it("pages the diff with Space and Shift+Space without stealing interactive input", async () => {
     const { user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     const pane = screen.getByRole("main", { name: "Commit diff" });
     const scrollBy = vi.fn();
     pane.scrollBy = scrollBy;
@@ -491,7 +495,7 @@ describe("ReviewApp", () => {
 
   it("finds code with native shortcuts and navigates matches", async () => {
     const { backend, user } = setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     const firstFile = screen.getByRole("button", { name: /^engine\/GraphicsPage\.cpp$/ });
     await user.click(firstFile);
     expect(firstFile).toHaveAttribute("aria-expanded", "false");
@@ -530,7 +534,7 @@ describe("ReviewApp", () => {
     ["F3", { key: "F3" }],
   ])("opens find with %s", async (_name, shortcut) => {
     setup();
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     fireEvent.keyDown(document, shortcut);
     expect(await screen.findByRole("searchbox", { name: "Find in code" })).toHaveFocus();
   });
@@ -544,7 +548,7 @@ describe("ReviewApp", () => {
     };
     const user = userEvent.setup();
     render(<ReviewApp backend={backend} />);
-    await screen.findByText("Improve graphics options");
+    await screen.findByText("5 commits against origin/main");
     await user.click(screen.getByRole("button", { name: "Approve" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("IPC failed");
     expect(screen.getByRole("button", { name: "Approve" })).toBeEnabled();

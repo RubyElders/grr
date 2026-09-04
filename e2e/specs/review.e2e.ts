@@ -8,7 +8,8 @@ describe("grr review window", () => {
     ), { timeout: 10_000, interval: 100, timeoutMsg: "review UI did not finish loading" });
     const ready = await browser.execute(() => ({
       filter: Boolean(document.querySelector("input[aria-label='Filter files']")),
-      commit: document.body.textContent?.includes("5 commits · main…HEAD"),
+      commit: document.body.textContent?.includes("5 commits against main")
+        && document.body.textContent?.includes("range by Local working tree (1), E2E User (4)"),
     }));
     expect(ready).toEqual({ filter: true, commit: true });
     const diffInsets = await browser.execute(() => {
@@ -190,7 +191,7 @@ describe("grr review window", () => {
     await clickElement("button[title='Choose commits to review']");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
-      (expectedScrollTop) => document.body.textContent?.includes("5 commits · main…HEAD")
+      (expectedScrollTop) => document.body.textContent?.includes("5 commits against main")
         && !document.querySelector("article [title*='Return the correct answer']")
         && Math.abs((document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop ?? -1) - expectedScrollTop) <= 1,
       allScrollPosition,
@@ -205,14 +206,14 @@ describe("grr review window", () => {
     await clickElement("button[title='Choose commits to review']");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
-      () => document.body.textContent?.includes("5 commits · main…HEAD"),
+      () => document.body.textContent?.includes("5 commits against main"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "full diff did not return after worktree review" });
 
     for (const step of [
       { key: "ArrowRight", text: "worktree by Local working tree" },
       { key: "ArrowRight", text: "by E2E User" },
       { key: "ArrowLeft", text: "worktree by Local working tree" },
-      { key: "ArrowLeft", text: "5 commits · main…HEAD" },
+      { key: "ArrowLeft", text: "5 commits against main" },
     ]) {
       await browser.execute((key) => {
         document.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));

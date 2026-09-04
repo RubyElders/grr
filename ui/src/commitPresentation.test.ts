@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./__fixtures__/review.json";
-import { commitNavigationTarget, displayedCommits, focusedCommit, fullMessageBody, hasGroupedCommitView } from "./commitPresentation";
+import { commitNavigationTarget, displayedCommits, focusedCommit, fullMessageBody, hasGroupedCommitView, summarizeCommitAuthors } from "./commitPresentation";
 import type { ReviewData } from "./types";
 
 const data = fixture as ReviewData;
@@ -48,5 +48,10 @@ describe("commit presentation", () => {
   it("extracts the body from a full commit message", () => {
     expect(fullMessageBody(data.commit)).toContain("Add localized labels");
     expect(fullMessageBody(data.commits[2]!)).toBe("");
+  });
+
+  it("deduplicates range authors and counts their commits", () => {
+    expect(summarizeCommitAuthors(data.commits)).toBe("Local working tree (1), Local User (4)");
+    expect(summarizeCommitAuthors([data.commits[1]!, data.commits[0]!])).toBe("Local User (1), Local working tree (1)");
   });
 });

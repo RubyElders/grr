@@ -10,6 +10,7 @@
 .triggerText { min-width: 0; display: flex; flex: 1; flex-direction: column; }
 .triggerText strong, .triggerText span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .triggerText span { color: var(--muted); font-size: 12px; }
+.triggerText code { color: var(--blue); }
 .caret { color: var(--muted); font-size: 11px; transition: transform 100ms ease; }
 .trigger[aria-expanded="true"] .caret { transform: rotate(180deg); }
 .popover { position: absolute; top: calc(100% + 7px); left: 0; z-index: 20; width: min(520px, calc(100vw - 40px)); overflow: hidden; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); box-shadow: 0 8px 28px rgba(27, 31, 36, .18); }
