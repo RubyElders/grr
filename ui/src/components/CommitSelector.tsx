@@ -172,9 +172,9 @@ function CommitIdentity({ context, className }: { context: CommitContext; classN
 }
 
 function navigationLabel(commit: CommitSummary | null, direction: "newer" | "older"): string {
-  return commit ? `Show ${direction} commit ${commit.summary}` : "Show full commit range";
+  return commit ? `Show ${direction} commit ${commit.summary}` : "Show virtual commit";
 }
 
 function navigationTitle(commit: CommitSummary | null, direction: "newer" | "older"): string {
-  return commit ? `${direction === "newer" ? "Newer" : "Older"}: ${commit.summary}` : "Full commit range";
+  return commit ? `${direction === "newer" ? "Newer" : "Older"}: ${commit.summary}` : "Virtual commit";
 }

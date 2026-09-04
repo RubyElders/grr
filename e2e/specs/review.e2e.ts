@@ -9,7 +9,7 @@ describe("grr review window", () => {
     const ready = await browser.execute(() => ({
       filter: Boolean(document.querySelector("input[aria-label='Filter files']")),
       commit: document.body.textContent?.includes("5 commits against main")
-        && document.body.textContent?.includes("range by Local working tree (1), E2E User (4)"),
+        && document.body.textContent?.includes("virtual by Local working tree (1), E2E User (4)"),
     }));
     expect(ready).toEqual({ filter: true, commit: true });
     const diffInsets = await browser.execute(() => {
@@ -31,19 +31,18 @@ describe("grr review window", () => {
       const brand = topbar?.firstElementChild?.getBoundingClientRect();
       const help = document.querySelector<HTMLElement>("button[aria-label='Show keyboard shortcuts']")?.getBoundingClientRect();
       const commit = document.querySelector<HTMLElement>("section[aria-label='Commit message']");
-      const commitCode = commit?.querySelector("code")?.getBoundingClientRect();
       const commitMessage = commit?.querySelector("button")?.getBoundingClientRect();
       const actions = document.querySelector<HTMLElement>("footer[aria-label='Review actions']");
       const actionText = actions?.firstElementChild?.getBoundingClientRect();
       const actionButtons = actions?.lastElementChild?.getBoundingClientRect();
-      if (!topbar || !brand || !help || !commit || !commitCode || !commitMessage || !actions || !actionText || !actionButtons) return null;
+      if (!topbar || !brand || !help || !commit || !commitMessage || !actions || !actionText || !actionButtons) return null;
       const topbarRect = topbar.getBoundingClientRect();
       const commitRect = commit.getBoundingClientRect();
       const actionRect = actions.getBoundingClientRect();
       return {
         topbarLeft: brand.left - topbarRect.left,
         topbarRight: topbarRect.right - help.right,
-        commitLeft: commitCode.left - commitRect.left,
+        commitLeft: commitMessage.left - commitRect.left,
         commitRight: commitRect.right - commitMessage.right,
         actionsLeft: actionText.left - actionRect.left,
         actionsRight: actionRect.right - actionButtons.right,

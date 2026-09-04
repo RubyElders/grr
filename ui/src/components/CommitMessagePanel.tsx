@@ -29,7 +29,6 @@ export function CommitMessagePanel({ data }: { data: ReviewData }) {
   const content = message || "No additional commit message.";
   return (
     <section class={`${styles.panel} ${expanded ? styles.expanded : ""}`} aria-label="Commit message">
-      <code>{context.ref}</code>
       <button
         type="button"
         class={styles.message}

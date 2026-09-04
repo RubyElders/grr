@@ -24,11 +24,11 @@ describe("ReviewApp", () => {
     expect(await screen.findByText("5 commits against origin/main")).toBeInTheDocument();
     const commitSelector = screen.getByTitle("Choose commits to review");
     expect(within(commitSelector).getByText("5 commits against origin/main")).toBeInTheDocument();
-    expect(commitSelector).toHaveTextContent("range by Local working tree (1), Local User (4)");
+    expect(commitSelector).toHaveTextContent("virtual by Local working tree (1), Local User (4)");
     expect(within(commitSelector).queryByText("Virtual")).not.toBeInTheDocument();
     const message = screen.getByRole("region", { name: "Commit message" });
-    expect(within(message).getByText("range")).toBeInTheDocument();
-    expect(message).toHaveTextContent("Virtual commit range.");
+    expect(message).toHaveTextContent("Virtual commit.");
+    expect(message.querySelector("code")).toBeNull();
     expect(screen.getByRole("navigation", { name: "File tree" })).toBeInTheDocument();
     expect(screen.getByLabelText(/const char\* labelEn;/)).toBeInTheDocument();
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
@@ -132,7 +132,7 @@ describe("ReviewApp", () => {
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
   });
 
-  it("steps from the range through commits and back with buttons", async () => {
+  it("steps from the virtual commit through commits and back with buttons", async () => {
     const { backend, user } = setup();
     await screen.findByText("5 commits against origin/main");
 
@@ -140,7 +140,7 @@ describe("ReviewApp", () => {
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
   });
 
-  it("steps through commits with Right and returns to the range with Left", async () => {
+  it("steps through commits with Right and returns to the virtual commit with Left", async () => {
     const source = fixture as ReviewData;
     let current = { ...source, selectedCommitIds: [] as string[] };
     const backend: ReviewBackend = {
@@ -219,13 +219,14 @@ describe("ReviewApp", () => {
     await screen.findByText(source.commit.summary);
     const panel = screen.getByRole("region", { name: "Commit message" });
     expect(panel).toHaveTextContent("Add localized labels for every graphics quality setting");
+    expect(panel.querySelector("code")).toBeNull();
     const expand = within(panel).getByRole("button", { name: "Expand commit message" });
     expect(expand).toHaveAttribute("aria-expanded", "false");
     await user.click(expand);
     expect(within(panel).getByRole("button", { name: "Collapse commit message" })).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("uses the range context and disables stepping for aggregate selections", async () => {
+  it("uses the virtual context and disables stepping for aggregate selections", async () => {
     const source = fixture as ReviewData;
     const data = { ...source, selectedCommitIds: [source.commits[1]!.id, source.commits[2]!.id] };
     const backend: ReviewBackend = {
@@ -237,8 +238,8 @@ describe("ReviewApp", () => {
     render(<ReviewApp backend={backend} />);
     await screen.findByText("2 selected commits");
     const message = screen.getByRole("region", { name: "Commit message" });
-    expect(within(message).getByText("range")).toBeInTheDocument();
-    expect(message).toHaveTextContent("Virtual commit range.");
+    expect(message).toHaveTextContent("Virtual commit.");
+    expect(message.querySelector("code")).toBeNull();
     expect(screen.getByRole("button", { name: "No newer commit" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "No older commit" })).toBeDisabled();
   });

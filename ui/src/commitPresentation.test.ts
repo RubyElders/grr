@@ -8,10 +8,10 @@ const data = fixture as ReviewData;
 describe("commit presentation", () => {
   it("opens the latest commit from the cumulative view and returns to it", () => {
     expect(commitContext(data)).toMatchObject({
-      ref: "range",
+      ref: "virtual",
       title: "5 commits against origin/main",
       authors: "Local working tree (1), Local User (4)",
-      message: "Virtual commit range.",
+      message: "Virtual commit.",
     });
     expect(commitNavigationTarget(data, "newer")).toBeNull();
     expect(commitNavigationTarget(data, "older")?.selectedCommitIds).toEqual(["WORKTREE"]);
@@ -31,7 +31,7 @@ describe("commit presentation", () => {
     )).toBeNull();
   });
 
-  it("resolves individual and selected-range contexts", () => {
+  it("resolves individual and selected virtual contexts", () => {
     const single = { ...data, selectedCommitIds: [data.commits[2]!.id] };
     expect(commitContext(single)).toMatchObject({
       id: data.commits[2]!.id,
@@ -41,10 +41,10 @@ describe("commit presentation", () => {
     });
     expect(displayedCommits(single)).toEqual([data.commits[2]]);
     expect(commitContext({ ...data, selectedCommitIds: [data.commits[1]!.id, data.commits[2]!.id] })).toMatchObject({
-      ref: "range",
+      ref: "virtual",
       title: "2 selected commits",
       authors: "Local User (2)",
-      message: "Virtual commit range.",
+      message: "Virtual commit.",
     });
   });
 
@@ -65,7 +65,7 @@ describe("commit presentation", () => {
     expect(fullMessageBody(data.commits[2]!)).toBe("");
   });
 
-  it("deduplicates range authors and counts their commits", () => {
+  it("deduplicates virtual commit authors and counts their commits", () => {
     expect(summarizeCommitAuthors(data.commits)).toBe("Local working tree (1), Local User (4)");
     expect(summarizeCommitAuthors([data.commits[1]!, data.commits[0]!])).toBe("Local User (1), Local working tree (1)");
   });

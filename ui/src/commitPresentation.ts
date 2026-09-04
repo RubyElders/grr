@@ -19,13 +19,13 @@ export function commitContext(data: ReviewData): CommitContext | null {
   if (commits.length === 0) return null;
   if (commits.length === 1) return commitSummaryContext(commits[0]!);
   return {
-    id: `range:${commits.map((commit) => commit.id).join(",")}`,
-    ref: "range",
+    id: `virtual:${commits.map((commit) => commit.id).join(",")}`,
+    ref: "virtual",
     title: data.selectedCommitIds.length === 0
       ? `${commits.length} commits against ${data.comparison.baseRef}`
       : `${commits.length} selected commits`,
     authors: summarizeCommitAuthors(commits),
-    message: "Virtual commit range.",
+    message: "Virtual commit.",
   };
 }
 

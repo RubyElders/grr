@@ -49,7 +49,7 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
     chord("function", "Shift + F3", "F3", { shift: true }),
     chord("native", "Ctrl/Cmd + Shift + G", "g", { nativeModifier: true, shift: true }),
   ]),
-  shortcut("newerCommit", "Navigation", "Show the newer commit or grouped range", [chord("arrow", "Left", "ArrowLeft")]),
+  shortcut("newerCommit", "Navigation", "Show the newer commit or virtual commit", [chord("arrow", "Left", "ArrowLeft")]),
   shortcut("olderCommit", "Navigation", "Show the older commit or latest commit", [chord("arrow", "Right", "ArrowRight")]),
   shortcut("previousFile", "Navigation", "Jump to the previous changed file", [chord("arrow", "Up", "ArrowUp")]),
   shortcut("nextFile", "Navigation", "Jump to the next changed file", [chord("arrow", "Down", "ArrowDown")]),
