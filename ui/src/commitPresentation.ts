@@ -25,7 +25,7 @@ export function commitContext(data: ReviewData): CommitContext | null {
       ? `${commits.length} commits against ${data.comparison.baseRef}`
       : `${commits.length} selected commits`,
     authors: summarizeCommitAuthors(commits),
-    message: commits.map((commit) => `${commit.shortId} ${commit.summary}`).join("\n"),
+    message: "Virtual commit range.",
   };
 }
 

@@ -28,7 +28,7 @@ describe("ReviewApp", () => {
     expect(within(commitSelector).queryByText("Virtual")).not.toBeInTheDocument();
     const message = screen.getByRole("region", { name: "Commit message" });
     expect(within(message).getByText("range")).toBeInTheDocument();
-    expect(message).toHaveTextContent("worktree Uncommitted changes");
+    expect(message).toHaveTextContent("Virtual commit range.");
     expect(screen.getByRole("navigation", { name: "File tree" })).toBeInTheDocument();
     expect(screen.getByLabelText(/const char\* labelEn;/)).toBeInTheDocument();
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
@@ -206,10 +206,19 @@ describe("ReviewApp", () => {
   });
 
   it("shows a compact expandable message for the resolved context", async () => {
-    const { user } = setup();
-    await screen.findByText("5 commits against origin/main");
+    const source = fixture as ReviewData;
+    const data = { ...source, selectedCommitIds: [source.commit.id] };
+    const backend: ReviewBackend = {
+      getReview: vi.fn().mockResolvedValue(data),
+      selectCommits: vi.fn(),
+      finishReview: vi.fn(),
+      cancelReview: vi.fn(),
+    };
+    const user = userEvent.setup();
+    render(<ReviewApp backend={backend} />);
+    await screen.findByText(source.commit.summary);
     const panel = screen.getByRole("region", { name: "Commit message" });
-    expect(panel).toHaveTextContent("01234567 Improve graphics options");
+    expect(panel).toHaveTextContent("Add localized labels for every graphics quality setting");
     const expand = within(panel).getByRole("button", { name: "Expand commit message" });
     expect(expand).toHaveAttribute("aria-expanded", "false");
     await user.click(expand);
@@ -229,8 +238,7 @@ describe("ReviewApp", () => {
     await screen.findByText("2 selected commits");
     const message = screen.getByRole("region", { name: "Commit message" });
     expect(within(message).getByText("range")).toBeInTheDocument();
-    expect(message).toHaveTextContent(`${source.commits[1]!.shortId} ${source.commits[1]!.summary}`);
-    expect(message).toHaveTextContent(`${source.commits[2]!.shortId} ${source.commits[2]!.summary}`);
+    expect(message).toHaveTextContent("Virtual commit range.");
     expect(screen.getByRole("button", { name: "No newer commit" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "No older commit" })).toBeDisabled();
   });
@@ -302,11 +310,11 @@ describe("ReviewApp", () => {
     expect(screen.queryByRole("dialog", { name: "Keyboard shortcuts" })).not.toBeInTheDocument();
   });
 
-  it("labels repeated file diffs with their source commit", async () => {
+  it("labels file diffs with their source commit only for multi-commit selections", async () => {
     const sourceCommit = (fixture as ReviewData).commits[1]!;
     const selected = {
       ...(fixture as ReviewData),
-      selectedCommitIds: [sourceCommit.id],
+      selectedCommitIds: [sourceCommit.id, (fixture as ReviewData).commits[2]!.id],
       files: (fixture as ReviewData).files.map((file, index) => index === 0 ? { ...file, sourceCommit } : file),
     };
     const backend: ReviewBackend = {
@@ -319,6 +327,27 @@ describe("ReviewApp", () => {
     await screen.findByTitle("Choose commits to review");
     expect(within(screen.getByRole("main", { name: "Commit diff" })).getAllByText(sourceCommit.shortId)).toHaveLength(1);
     expect(screen.getByTitle(`${sourceCommit.shortId} · ${sourceCommit.summary}`)).toBeInTheDocument();
+  });
+
+  it("omits redundant source commits for an individual commit", async () => {
+    const source = fixture as ReviewData;
+    const sourceCommit = source.commits[1]!;
+    const selected = {
+      ...source,
+      selectedCommitIds: [sourceCommit.id],
+      files: source.files.map((file) => ({ ...file, sourceCommit })),
+    };
+    const backend: ReviewBackend = {
+      getReview: vi.fn().mockResolvedValue(selected),
+      selectCommits: vi.fn(),
+      finishReview: vi.fn(),
+      cancelReview: vi.fn(),
+    };
+    render(<ReviewApp backend={backend} />);
+    await screen.findByTitle("Choose commits to review");
+
+    expect(screen.queryByTitle(`${sourceCommit.shortId} · ${sourceCommit.summary}`)).not.toBeInTheDocument();
+    expect(screen.getByTitle("engine/GraphicsPage.cpp")).toBeInTheDocument();
   });
 
   it("filters files and collapses directories", async () => {

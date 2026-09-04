@@ -11,6 +11,7 @@
 
 - Open dirty repositories on their uncommitted changes, navigate grouped or individual commits with Left and Right, and switch files with Up and Down.
 - Present commits and grouped ranges through the same title, reference, author, and message context.
+- Show source-commit labels on files only when a multi-commit selection needs them.
 
 ### Fixed
 

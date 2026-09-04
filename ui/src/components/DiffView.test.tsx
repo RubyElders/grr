@@ -59,6 +59,7 @@ function diff(viewKey: string) {
     <DiffView
       viewKey={viewKey}
       files={files}
+      showSourceCommits={false}
       collapsedFiles={new Set()}
       openLineId={null}
       drafts={{}}

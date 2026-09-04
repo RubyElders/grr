@@ -253,6 +253,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
       <div class={styles.content}>
         <FileTree
           files={state.data.files}
+          showSourceCommits={state.data.selectedCommitIds.length > 1}
           filter={state.filter}
           activeFileId={state.activeFileId}
           collapsedDirectories={state.collapsedDirectories}
@@ -263,6 +264,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         <DiffView
           viewKey={reviewViewKey(state.data)}
           files={state.data.files}
+          showSourceCommits={state.data.selectedCommitIds.length > 1}
           collapsedFiles={state.collapsedFiles}
           openLineId={state.openLineId}
           drafts={state.drafts}

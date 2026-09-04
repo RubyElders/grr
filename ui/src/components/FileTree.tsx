@@ -6,6 +6,7 @@ import styles from "./FileTree.module.css";
 
 interface FileTreeProps {
   files: FileDiff[];
+  showSourceCommits: boolean;
   filter: string;
   activeFileId: string | null;
   collapsedDirectories: ReadonlySet<string>;
@@ -73,20 +74,21 @@ function DirectoryNode({ node, depth, ...props }: NodeProps & { node: FileTreeNo
   );
 }
 
-function FileNode({ file, depth, activeFileId, onSelectFile }: NodeProps & { file: FileDiff }) {
+function FileNode({ file, depth, activeFileId, onSelectFile, showSourceCommits }: NodeProps & { file: FileDiff }) {
+  const sourceCommit = showSourceCommits ? file.sourceCommit : null;
   return (
     <button
       class={`${styles.node} ${styles.fileNode}`}
       style={{ "--depth": depth } as preact.JSX.CSSProperties}
       aria-current={activeFileId === file.id ? "true" : undefined}
       onClick={() => onSelectFile(file.id)}
-      title={file.sourceCommit ? `${file.displayPath} · ${file.sourceCommit.shortId} ${file.sourceCommit.summary}` : file.displayPath}
+      title={sourceCommit ? `${file.displayPath} · ${sourceCommit.shortId} ${sourceCommit.summary}` : file.displayPath}
       data-file-id={file.id}
     >
       <span class={`${styles.status} ${styles[file.status]}`}>{statusLetter(file.status)}</span>
       <Icon name="file" />
       <span class={styles.nodeName}>{baseName(file.displayPath)}</span>
-      {file.sourceCommit ? <code class={styles.commitBadge}>{file.sourceCommit.shortId}</code> : null}
+      {sourceCommit ? <code class={styles.commitBadge}>{sourceCommit.shortId}</code> : null}
     </button>
   );
 }

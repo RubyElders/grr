@@ -11,6 +11,7 @@ import styles from "./DiffView.module.css";
 interface DiffViewProps {
   viewKey: string;
   files: FileDiff[];
+  showSourceCommits: boolean;
   collapsedFiles: ReadonlySet<string>;
   openLineId: string | null;
   drafts: Readonly<Record<string, DraftComment>>;
@@ -83,6 +84,7 @@ interface DiffContentProps extends DiffViewProps {
 
 function DiffFileCard({ file, ...props }: DiffContentProps & { file: FileDiff }) {
   const collapsed = props.collapsedFiles.has(file.id);
+  const sourceCommit = props.showSourceCommits ? file.sourceCommit : null;
   return (
     <article class={styles.file} id={`file-${file.id}`} data-file-id={file.id}>
       <header class={styles.fileHeader}>
@@ -90,10 +92,10 @@ function DiffFileCard({ file, ...props }: DiffContentProps & { file: FileDiff })
           <span class={`${styles.chevron} ${collapsed ? styles.collapsed : ""}`}><Icon name="chevron" /></span>
           <span class={styles.path}>{file.displayPath}</span>
           {file.oldPath && file.newPath && file.oldPath !== file.newPath ? <span class={styles.renamedFrom}>from {file.oldPath}</span> : null}
-          {file.sourceCommit ? (
-            <span class={styles.sourceCommit} title={`${file.sourceCommit.shortId} · ${file.sourceCommit.summary}`}>
-              <code>{file.sourceCommit.shortId}</code>
-              <span>{file.sourceCommit.summary}</span>
+          {sourceCommit ? (
+            <span class={styles.sourceCommit} title={`${sourceCommit.shortId} · ${sourceCommit.summary}`}>
+              <code>{sourceCommit.shortId}</code>
+              <span>{sourceCommit.summary}</span>
             </span>
           ) : null}
         </button>

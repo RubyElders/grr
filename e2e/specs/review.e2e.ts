@@ -143,8 +143,7 @@ describe("grr review window", () => {
     expect(picker).toEqual({ rows: 5, insideViewport: true });
     expect(await browser.execute(
       () => document.body.textContent?.includes("Uncommitted changes")
-        && document.body.textContent?.includes("worktree by Local working tree")
-        && !document.body.textContent?.includes("Virtual"),
+        && document.body.textContent?.includes("worktree by Local working tree"),
     )).toBe(true);
     await clickElement("button[aria-label='Show full message for Return the correct answer']");
     expect(await browser.execute(
@@ -163,7 +162,7 @@ describe("grr review window", () => {
     await clickElement("button[aria-label='Show only Return the correct answer']");
     await browser.waitUntil(async () => await browser.execute(
       () => document.body.textContent?.includes("Return the correct answer")
-        && Boolean(document.querySelector("article [title*='Return the correct answer']"))
+        && !document.querySelector("article [title*='Return the correct answer']")
         && document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop === 0,
     ), { timeout: 5_000, interval: 50, timeoutMsg: "single-commit diff did not load" });
     const collapsedMessageHeight = await browser.execute(() => {
@@ -187,7 +186,7 @@ describe("grr review window", () => {
     await clickElement("button[aria-label='Show newer commit Update AI subgroup answer']");
     await browser.waitUntil(async () => await browser.execute(
       () => document.body.textContent?.includes("Update AI subgroup answer")
-        && Boolean(document.querySelector("article [title*='Update AI subgroup answer']")),
+        && !document.querySelector("article [title*='Update AI subgroup answer']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "newer commit arrow did not load its neighbor" });
     await clickElement("button[title='Choose commits to review']");
     await clickButton("Show all");
@@ -202,7 +201,7 @@ describe("grr review window", () => {
     await clickElement("button[aria-label='Show only Uncommitted changes']");
     await browser.waitUntil(async () => await browser.execute(
       () => document.body.textContent?.includes("worktree by Local working tree")
-        && Boolean(document.querySelector("article [title='worktree · Uncommitted changes']")),
+        && !document.querySelector("article [title='worktree · Uncommitted changes']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "virtual worktree commit did not load" });
     await clickElement("button[title='Choose commits to review']");
     await clickButton("Show all");

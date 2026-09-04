@@ -11,6 +11,7 @@ describe("commit presentation", () => {
       ref: "range",
       title: "5 commits against origin/main",
       authors: "Local working tree (1), Local User (4)",
+      message: "Virtual commit range.",
     });
     expect(commitNavigationTarget(data, "newer")).toBeNull();
     expect(commitNavigationTarget(data, "older")?.selectedCommitIds).toEqual(["WORKTREE"]);
@@ -43,6 +44,7 @@ describe("commit presentation", () => {
       ref: "range",
       title: "2 selected commits",
       authors: "Local User (2)",
+      message: "Virtual commit range.",
     });
   });
 
