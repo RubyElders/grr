@@ -199,9 +199,11 @@ describe("ReviewApp", () => {
     expect(second).toHaveAttribute("aria-current", "true");
     fireEvent.keyDown(document, { key: "ArrowUp" });
     expect(first).toHaveAttribute("aria-current", "true");
-    fireEvent.keyDown(document, { key: "j" });
+    const help = screen.getByRole("button", { name: "Show keyboard shortcuts" });
+    help.focus();
+    fireEvent.keyDown(help, { key: "j" });
     expect(second).toHaveAttribute("aria-current", "true");
-    fireEvent.keyDown(document, { key: "k" });
+    fireEvent.keyDown(help, { key: "k" });
     expect(first).toHaveAttribute("aria-current", "true");
     fireEvent.keyDown(document, { key: " ", code: "Space" });
     expect(scrollBy).toHaveBeenCalledWith({ top: 552, behavior: "smooth" });
@@ -529,9 +531,19 @@ describe("ReviewApp", () => {
     fireEvent.keyDown(filter, { key: " ", code: "Space" });
     expect(scrollBy).toHaveBeenCalledTimes(2);
 
+    fireEvent.keyDown(filter, { key: "j" });
+    expect(screen.getByTitle("engine/GraphicsPage.cpp")).toHaveAttribute("aria-current", "true");
+
+    const help = screen.getByRole("button", { name: "Show keyboard shortcuts" });
+    await user.click(help);
+    fireEvent.keyDown(help, { key: "Escape" });
+    help.focus();
+    fireEvent.keyDown(help, { key: " ", code: "Space" });
+    expect(scrollBy).toHaveBeenCalledTimes(3);
+
     await user.click(screen.getByTitle("Choose commits to review"));
     fireEvent.keyDown(document, { key: " ", code: "Space" });
-    expect(scrollBy).toHaveBeenCalledTimes(2);
+    expect(scrollBy).toHaveBeenCalledTimes(3);
   });
 
   it("finds code with native shortcuts and navigates matches", async () => {

@@ -14,6 +14,7 @@
 - Present commits and virtual commits through the same title, reference, author, and message context.
 - Keep commit references in the main context instead of repeating them in the message strip.
 - Show source-commit labels on files only when a multi-commit selection needs them.
+- Keep global navigation shortcuts active when a button or link has keyboard focus.
 
 ### Fixed
 

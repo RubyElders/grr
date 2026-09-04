@@ -120,7 +120,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
       const openHelp = matchesShortcut(event, "help")
         && state.openLineId === null
         && state.phase === "ready"
-        && !isInteractiveTarget(event.target);
+        && !isTextEntryTarget(event.target);
       const findNative = matchesShortcut(event, "find", "native");
       const findFunction = matchesShortcut(event, "find", "function");
       const openFind = findNative || (!findOpen && findFunction);
@@ -145,7 +145,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && !findOpen
         && state.openLineId === null
         && state.phase === "ready"
-        && !isInteractiveTarget(event.target);
+        && !isTextEntryTarget(event.target);
       const newerCommit = matchesShortcut(event, "newerCommit");
       const olderCommit = matchesShortcut(event, "olderCommit");
       const stepCommit = (newerCommit || olderCommit)
@@ -154,7 +154,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && state.openLineId === null
         && state.phase === "ready"
         && comments.length === 0
-        && !isInteractiveTarget(event.target);
+        && !isTextEntryTarget(event.target);
       const previousFile = matchesShortcut(event, "previousFile");
       const nextFile = matchesShortcut(event, "nextFile");
       const stepFile = (previousFile || nextFile)
@@ -162,7 +162,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && !findOpen
         && state.openLineId === null
         && state.phase === "ready"
-        && !isInteractiveTarget(event.target);
+        && !isTextEntryTarget(event.target);
       if (!openHelp && !openFind && !nextMatch && !previousMatch && !dismissFind && !dismissSelector && !closeWithEscape && !closeWindow && !runPrimaryAction && !pageDiff && !stepCommit && !stepFile) return;
 
       event.preventDefault();
@@ -309,7 +309,7 @@ function orderReviewFiles(data: ReviewData): ReviewData {
   return { ...data, files: filesInTreeOrder(data.files) };
 }
 
-function isInteractiveTarget(target: EventTarget | null): boolean {
+function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
-  return target.closest("button, input, textarea, select, a, [contenteditable='true']") !== null;
+  return target.closest("input, textarea, select, [contenteditable='true']") !== null;
 }
