@@ -8,6 +8,7 @@
 .step:hover:not(:disabled) { border-color: var(--border); color: var(--fg); background: var(--canvas); }
 .step:disabled { cursor: default; opacity: .35; }
 .triggerText { min-width: 0; display: flex; flex: 1; flex-direction: column; }
+.identity { min-width: 0; display: flex; flex: 1; flex-direction: column; }
 .triggerText strong, .triggerText span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .triggerText span { color: var(--muted); font-size: 12px; }
 .triggerText code { color: var(--blue); }
@@ -25,11 +26,9 @@
 .virtualRow { box-shadow: inset 3px 0 var(--blue); }
 .commitLabel { min-width: 0; display: flex; flex: 1; align-items: center; gap: 10px; cursor: pointer; }
 .commitLabel input { width: 16px; height: 16px; margin: 0; accent-color: var(--blue); }
-.commitText { min-width: 0; display: flex; flex-direction: column; }
 .commitText strong, .commitText span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .commitText span { color: var(--muted); font-size: 12px; }
 .commitText code { color: var(--blue); }
-.virtualBadge { margin-left: 7px; padding: 1px 5px; border: 1px solid color-mix(in srgb, var(--blue) 45%, var(--border)); border-radius: 999px; color: var(--blue); background: var(--blue-muted); font-size: 9px; font-style: normal; font-weight: 600; text-transform: uppercase; }
 .secondary, .showOne, .expandMessage, .primary { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font-weight: 600; cursor: pointer; white-space: nowrap; }
 .secondary:hover, .showOne:hover, .expandMessage:hover { background: var(--canvas); }
 .expandMessage { grid-column: 2; height: 28px; display: flex; align-items: center; gap: 3px; padding: 0 7px; font-size: 11px; }

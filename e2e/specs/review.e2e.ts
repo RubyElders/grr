@@ -143,7 +143,8 @@ describe("grr review window", () => {
     expect(picker).toEqual({ rows: 5, insideViewport: true });
     expect(await browser.execute(
       () => document.body.textContent?.includes("Uncommitted changes")
-        && document.body.textContent?.includes("Virtual"),
+        && document.body.textContent?.includes("worktree by Local working tree")
+        && !document.body.textContent?.includes("Virtual"),
     )).toBe(true);
     await clickElement("button[aria-label='Show full message for Return the correct answer']");
     expect(await browser.execute(

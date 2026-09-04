@@ -25,7 +25,10 @@ describe("ReviewApp", () => {
     const commitSelector = screen.getByTitle("Choose commits to review");
     expect(within(commitSelector).getByText("5 commits against origin/main")).toBeInTheDocument();
     expect(commitSelector).toHaveTextContent("range by Local working tree (1), Local User (4)");
-    expect(within(commitSelector).getByText("Virtual")).toBeInTheDocument();
+    expect(within(commitSelector).queryByText("Virtual")).not.toBeInTheDocument();
+    const message = screen.getByRole("region", { name: "Commit message" });
+    expect(within(message).getByText("range")).toBeInTheDocument();
+    expect(message).toHaveTextContent("worktree Uncommitted changes");
     expect(screen.getByRole("navigation", { name: "File tree" })).toBeInTheDocument();
     expect(screen.getByLabelText(/const char\* labelEn;/)).toBeInTheDocument();
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
@@ -202,18 +205,18 @@ describe("ReviewApp", () => {
     expect(scrollBy).toHaveBeenCalledWith({ top: -552, behavior: "smooth" });
   });
 
-  it("shows a compact expandable message for the focused commit", async () => {
+  it("shows a compact expandable message for the resolved context", async () => {
     const { user } = setup();
     await screen.findByText("5 commits against origin/main");
     const panel = screen.getByRole("region", { name: "Commit message" });
-    expect(within(panel).getByText(/Add localized labels for every graphics quality setting/)).toBeInTheDocument();
+    expect(panel).toHaveTextContent("01234567 Improve graphics options");
     const expand = within(panel).getByRole("button", { name: "Expand commit message" });
     expect(expand).toHaveAttribute("aria-expanded", "false");
     await user.click(expand);
     expect(within(panel).getByRole("button", { name: "Collapse commit message" })).toHaveAttribute("aria-expanded", "true");
   });
 
-  it("omits the message panel and disables stepping for aggregate selections", async () => {
+  it("uses the range context and disables stepping for aggregate selections", async () => {
     const source = fixture as ReviewData;
     const data = { ...source, selectedCommitIds: [source.commits[1]!.id, source.commits[2]!.id] };
     const backend: ReviewBackend = {
@@ -224,18 +227,22 @@ describe("ReviewApp", () => {
     };
     render(<ReviewApp backend={backend} />);
     await screen.findByText("2 selected commits");
-    expect(screen.queryByRole("region", { name: "Commit message" })).not.toBeInTheDocument();
+    const message = screen.getByRole("region", { name: "Commit message" });
+    expect(within(message).getByText("range")).toBeInTheDocument();
+    expect(message).toHaveTextContent(`${source.commits[1]!.shortId} ${source.commits[1]!.summary}`);
+    expect(message).toHaveTextContent(`${source.commits[2]!.shortId} ${source.commits[2]!.summary}`);
     expect(screen.getByRole("button", { name: "No newer commit" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "No older commit" })).toBeDisabled();
   });
 
-  it("shows and selects the virtual working-tree commit", async () => {
+  it("shows and selects the working-tree commit with the shared identity", async () => {
     const { backend, user } = setup();
     await screen.findByText("5 commits against origin/main");
     await user.click(screen.getByTitle("Choose commits to review"));
     const picker = screen.getByRole("dialog", { name: "Choose commits" });
     expect(within(picker).getByText("Uncommitted changes")).toBeInTheDocument();
-    expect(within(picker).getByText("Virtual")).toBeInTheDocument();
+    expect(picker).toHaveTextContent("worktree by Local working tree");
+    expect(within(picker).queryByText("Virtual")).not.toBeInTheDocument();
     await user.click(within(picker).getByRole("button", { name: "Show only Uncommitted changes" }));
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
   });

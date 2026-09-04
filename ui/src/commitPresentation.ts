@@ -6,12 +6,37 @@ export function displayedCommits(data: ReviewData): CommitSummary[] {
     : data.commits.filter((commit) => data.selectedCommitIds.includes(commit.id));
 }
 
-export function focusedCommit(data: ReviewData): CommitSummary | null {
-  if (data.selectedCommitIds.length > 1) return null;
-  if (data.selectedCommitIds.length === 1) {
-    return data.commits.find((commit) => commit.id === data.selectedCommitIds[0]) ?? null;
-  }
-  return data.commits.find((commit) => commit.id === data.commit.id) ?? null;
+export interface CommitContext {
+  id: string;
+  ref: string;
+  title: string;
+  authors: string;
+  message: string;
+}
+
+export function commitContext(data: ReviewData): CommitContext | null {
+  const commits = displayedCommits(data);
+  if (commits.length === 0) return null;
+  if (commits.length === 1) return commitSummaryContext(commits[0]!);
+  return {
+    id: `range:${commits.map((commit) => commit.id).join(",")}`,
+    ref: "range",
+    title: data.selectedCommitIds.length === 0
+      ? `${commits.length} commits against ${data.comparison.baseRef}`
+      : `${commits.length} selected commits`,
+    authors: summarizeCommitAuthors(commits),
+    message: commits.map((commit) => `${commit.shortId} ${commit.summary}`).join("\n"),
+  };
+}
+
+export function commitSummaryContext(commit: CommitSummary): CommitContext {
+  return {
+    id: commit.id,
+    ref: commit.shortId,
+    title: commit.summary,
+    authors: commit.author,
+    message: fullMessageBody(commit),
+  };
 }
 
 export function hasGroupedCommitView(data: ReviewData): boolean {

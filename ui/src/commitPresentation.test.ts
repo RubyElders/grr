@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import fixture from "./__fixtures__/review.json";
-import { commitNavigationTarget, displayedCommits, focusedCommit, fullMessageBody, hasGroupedCommitView, summarizeCommitAuthors } from "./commitPresentation";
+import { commitContext, commitNavigationTarget, displayedCommits, fullMessageBody, hasGroupedCommitView, summarizeCommitAuthors } from "./commitPresentation";
 import type { ReviewData } from "./types";
 
 const data = fixture as ReviewData;
 
 describe("commit presentation", () => {
   it("opens the latest commit from the cumulative view and returns to it", () => {
-    expect(focusedCommit(data)?.id).toBe(data.commit.id);
+    expect(commitContext(data)).toMatchObject({
+      ref: "range",
+      title: "5 commits against origin/main",
+      authors: "Local working tree (1), Local User (4)",
+    });
     expect(commitNavigationTarget(data, "newer")).toBeNull();
     expect(commitNavigationTarget(data, "older")?.selectedCommitIds).toEqual(["WORKTREE"]);
     expect(commitNavigationTarget(
@@ -26,11 +30,20 @@ describe("commit presentation", () => {
     )).toBeNull();
   });
 
-  it("focuses one selection and leaves aggregate selections unfocused", () => {
+  it("resolves individual and selected-range contexts", () => {
     const single = { ...data, selectedCommitIds: [data.commits[2]!.id] };
-    expect(focusedCommit(single)?.id).toBe(data.commits[2]!.id);
+    expect(commitContext(single)).toMatchObject({
+      id: data.commits[2]!.id,
+      ref: data.commits[2]!.shortId,
+      title: data.commits[2]!.summary,
+      authors: data.commits[2]!.author,
+    });
     expect(displayedCommits(single)).toEqual([data.commits[2]]);
-    expect(focusedCommit({ ...data, selectedCommitIds: [data.commits[1]!.id, data.commits[2]!.id] })).toBeNull();
+    expect(commitContext({ ...data, selectedCommitIds: [data.commits[1]!.id, data.commits[2]!.id] })).toMatchObject({
+      ref: "range",
+      title: "2 selected commits",
+      authors: "Local User (2)",
+    });
   });
 
   it("does not create a grouped view for zero or one commit", () => {
@@ -41,7 +54,7 @@ describe("commit presentation", () => {
     expect(hasGroupedCommitView(one)).toBe(false);
     expect(commitNavigationTarget(one, "older")).toBeNull();
     expect(commitNavigationTarget(selected, "newer")).toBeNull();
-    expect(focusedCommit(empty)).toBeNull();
+    expect(commitContext(empty)).toBeNull();
     expect(commitNavigationTarget(empty, "older")).toBeNull();
   });
 

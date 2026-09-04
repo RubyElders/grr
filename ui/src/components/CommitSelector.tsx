@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "preact/hooks";
-import { commitNavigationTarget, displayedCommits, fullMessageBody, hasGroupedCommitView, summarizeCommitAuthors } from "../commitPresentation";
+import { commitContext, commitNavigationTarget, commitSummaryContext, fullMessageBody, hasGroupedCommitView, type CommitContext } from "../commitPresentation";
 import { WORKTREE_COMMIT_ID, type CommitSummary, type ReviewData } from "../types";
 import { Icon } from "./Icon";
 import styles from "./CommitSelector.module.css";
@@ -30,17 +30,8 @@ export function CommitSelector(props: CommitSelectorProps) {
     return () => document.removeEventListener("mousedown", closeOutside);
   }, [props.open, props.onOpenChange]);
 
-  const selected = props.data.selectedCommitIds;
-  const visibleCommits = displayedCommits(props.data);
-  const singleCommit = visibleCommits.length === 1 ? visibleCommits[0] : null;
+  const context = commitContext(props.data);
   const grouped = hasGroupedCommitView(props.data);
-  const title = singleCommit
-    ? singleCommit.summary
-    : props.data.commits.length === 0
-      ? "No commits to review"
-      : selected.length > 0
-        ? `${visibleCommits.length} selected commits`
-        : `${visibleCommits.length} commits against ${props.data.comparison.baseRef}`;
   const newer = commitNavigationTarget(props.data, "newer");
   const older = commitNavigationTarget(props.data, "older");
   const navigationDisabled = props.disabled || props.loading;
@@ -77,13 +68,11 @@ export function CommitSelector(props: CommitSelectorProps) {
           onClick={() => props.onOpenChange(!props.open)}
         >
           <span class={styles.triggerText}>
-            <strong>{title}</strong>
-            {singleCommit ? (
-              <span><code>{singleCommit.shortId}</code> by {singleCommit.author}</span>
-            ) : props.data.commits.length === 0 ? (
+            {context ? <CommitIdentity context={context} /> : (
+              <>
+                <strong>No commits to review</strong>
               <span>{props.data.comparison.baseRef}…HEAD</span>
-            ) : (
-              <span><code>range</code> by {summarizeCommitAuthors(visibleCommits)}<em class={styles.virtualBadge}>Virtual</em></span>
+              </>
             )}
           </span>
           <span class={styles.caret} aria-hidden="true">▾</span>
@@ -148,14 +137,12 @@ function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
   const [expanded, setExpanded] = useState(false);
   const messageBody = fullMessageBody(commit);
   const virtual = commit.id === WORKTREE_COMMIT_ID;
+  const context = commitSummaryContext(commit);
   return (
     <div class={`${styles.row} ${virtual ? styles.virtualRow : ""}`}>
       <label class={styles.commitLabel}>
         <input type="checkbox" checked={checked} disabled={disabled} onChange={onToggle} />
-        <span class={styles.commitText}>
-          <strong>{commit.summary}</strong>
-          <span><code>{commit.shortId}</code> by {commit.author}{virtual ? <em class={styles.virtualBadge}>Virtual</em> : null}</span>
-        </span>
+        <CommitIdentity context={context} className={styles.commitText} />
       </label>
       {messageBody ? (
         <button
@@ -172,6 +159,15 @@ function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
       <button class={styles.showOne} disabled={disabled} aria-label={`Show only ${commit.summary}`} onClick={onShow}>Show</button>
       {expanded ? <div class={styles.fullMessage}>{messageBody}</div> : null}
     </div>
+  );
+}
+
+function CommitIdentity({ context, className }: { context: CommitContext; className?: string }) {
+  return (
+    <span class={`${styles.identity} ${className ?? ""}`}>
+      <strong>{context.title}</strong>
+      <span><code>{context.ref}</code> by {context.authors}</span>
+    </span>
   );
 }
 

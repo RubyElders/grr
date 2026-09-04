@@ -10,7 +10,7 @@
 ### Changed
 
 - Open dirty repositories on their uncommitted changes, navigate grouped or individual commits with Left and Right, and switch files with Up and Down.
-- Identify grouped ranges by their base branch and deduplicated author commit counts.
+- Present commits and grouped ranges through the same title, reference, author, and message context.
 
 ### Fixed
 
