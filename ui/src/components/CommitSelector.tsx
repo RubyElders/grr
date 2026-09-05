@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import { commitContext, commitNavigationTarget, commitSummaryContext, fullMessageBody, hasGroupedCommitView, type CommitContext } from "../commitPresentation";
 import { WORKTREE_COMMIT_ID, type CommitSummary, type ReviewData } from "../types";
+import { matchesShortcut } from "../shortcuts";
 import { Icon } from "./Icon";
 import styles from "./CommitSelector.module.css";
 
@@ -15,11 +16,53 @@ interface CommitSelectorProps {
 
 export function CommitSelector(props: CommitSelectorProps) {
   const root = useRef<HTMLDivElement>(null);
+  const dialog = useRef<HTMLElement>(null);
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set(props.data.selectedCommitIds));
+  const [activeIndex, setActiveIndex] = useState(0);
 
   useEffect(() => {
-    if (props.open) setChecked(new Set(props.data.selectedCommitIds));
+    if (!props.open) return;
+    setChecked(new Set(props.data.selectedCommitIds));
+    const selectedIndex = props.data.selectedCommitIds.length === 1
+      ? props.data.commits.findIndex((commit) => commit.id === props.data.selectedCommitIds[0])
+      : -1;
+    setActiveIndex(Math.max(0, selectedIndex));
+    dialog.current?.focus();
   }, [props.open, props.data.selectedCommitIds]);
+
+  useEffect(() => {
+    if (!props.open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const previous = matchesShortcut(event, "previousFile");
+      const next = matchesShortcut(event, "nextFile");
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      const actionControl = target?.closest("button, input, a");
+      const show = !actionControl && matchesShortcut(event, "showHighlightedCommit");
+      const toggleActive = !actionControl && matchesShortcut(event, "toggleHighlightedCommit");
+      if (!previous && !next && !show && !toggleActive) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (previous || next) {
+        setActiveIndex((current) => {
+          const count = props.data.commits.length;
+          return count === 0 ? 0 : (current + (previous ? -1 : 1) + count) % count;
+        });
+        dialog.current?.focus();
+        return;
+      }
+      const commit = props.data.commits[activeIndex];
+      if (!commit) return;
+      show ? apply([commit.id]) : toggle(commit.id);
+    };
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [activeIndex, props.open, props.data.commits]);
+
+  useEffect(() => {
+    if (!props.open) return;
+    const row = root.current?.querySelector<HTMLElement>(`[data-commit-index="${activeIndex}"]`);
+    row?.scrollIntoView?.({ block: "nearest" });
+  }, [activeIndex, props.open]);
 
   useEffect(() => {
     if (!props.open) return;
@@ -91,7 +134,7 @@ export function CommitSelector(props: CommitSelectorProps) {
         ><Icon name="arrow-right" /></button>
       </div>
       {props.open ? (
-        <section class={styles.popover} role="dialog" aria-label="Choose commits">
+        <section ref={dialog} class={styles.popover} role="dialog" aria-label="Choose commits" tabIndex={-1}>
           <header class={styles.header}>
             <span>
               <strong>Commits to review</strong>
@@ -100,12 +143,15 @@ export function CommitSelector(props: CommitSelectorProps) {
             {grouped ? <button class={styles.secondary} disabled={props.loading} onClick={() => apply([])}>Show all</button> : null}
           </header>
           <div class={styles.list}>
-            {props.data.commits.map((commit) => (
+            {props.data.commits.map((commit, index) => (
               <CommitRow
                 key={commit.id}
                 commit={commit}
+                index={index}
+                active={index === activeIndex}
                 checked={checked.has(commit.id)}
                 disabled={props.loading}
+                onActivate={() => setActiveIndex(index)}
                 onToggle={() => toggle(commit.id)}
                 onShow={() => apply([commit.id])}
               />
@@ -127,10 +173,13 @@ export function CommitSelector(props: CommitSelectorProps) {
   );
 }
 
-function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
+function CommitRow({ commit, index, active, checked, disabled, onActivate, onToggle, onShow }: {
   commit: CommitSummary;
+  index: number;
+  active: boolean;
   checked: boolean;
   disabled: boolean;
+  onActivate(): void;
   onToggle(): void;
   onShow(): void;
 }) {
@@ -139,7 +188,12 @@ function CommitRow({ commit, checked, disabled, onToggle, onShow }: {
   const virtual = commit.id === WORKTREE_COMMIT_ID;
   const context = commitSummaryContext(commit);
   return (
-    <div class={`${styles.row} ${virtual ? styles.virtualRow : ""}`}>
+    <div
+      class={`${styles.row} ${virtual ? styles.virtualRow : ""} ${active ? styles.activeRow : ""}`}
+      data-commit-index={index}
+      data-active={active ? "true" : undefined}
+      onMouseEnter={onActivate}
+    >
       <label class={styles.commitLabel}>
         <input type="checkbox" checked={checked} disabled={disabled} onChange={onToggle} />
         <CommitIdentity context={context} className={styles.commitText} />

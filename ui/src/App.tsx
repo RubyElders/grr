@@ -121,6 +121,12 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && state.openLineId === null
         && state.phase === "ready"
         && !isTextEntryTarget(event.target);
+      const browseCommits = matchesShortcut(event, "browseCommits")
+        && state.openLineId === null
+        && state.phase === "ready"
+        && comments.length === 0
+        && !findOpen
+        && !isTextEntryTarget(event.target);
       const findNative = matchesShortcut(event, "find", "native");
       const findFunction = matchesShortcut(event, "find", "function");
       const openFind = findNative || (!findOpen && findFunction);
@@ -163,13 +169,17 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && state.openLineId === null
         && state.phase === "ready"
         && !isTextEntryTarget(event.target);
-      if (!openHelp && !openFind && !nextMatch && !previousMatch && !dismissFind && !dismissSelector && !closeWithEscape && !closeWindow && !runPrimaryAction && !pageDiff && !stepCommit && !stepFile) return;
+      if (!openHelp && !browseCommits && !openFind && !nextMatch && !previousMatch && !dismissFind && !dismissSelector && !closeWithEscape && !closeWindow && !runPrimaryAction && !pageDiff && !stepCommit && !stepFile) return;
 
       event.preventDefault();
       if (openHelp) {
         setCommitSelectorOpen(false);
         setFindOpen(false);
         setShortcutHelpOpen(true);
+        return;
+      }
+      if (browseCommits) {
+        setCommitSelectorOpen(!commitSelectorOpen);
         return;
       }
       if (openFind) {

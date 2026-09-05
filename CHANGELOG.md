@@ -6,7 +6,8 @@
 
 - Read full commit messages below the header and step through newer or older commits.
 - Show the shared keyboard shortcut reference with `?` or the top-bar help button.
-- Navigate commits and files with Vim-style `H`, `J`, `K`, and `L` bindings.
+- Navigate commits and files with Vim-style `h`, `j`, `k`, and `l` bindings.
+- Open and browse the commit selector from the keyboard with `c`, directional keys, Enter, and Space.
 
 ### Changed
 

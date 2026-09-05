@@ -132,6 +132,30 @@ describe("ReviewApp", () => {
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
   });
 
+  it("opens and browses the commit selector entirely from the keyboard", async () => {
+    const source = fixture as ReviewData;
+    const { backend } = setup();
+    await screen.findByText("5 commits against origin/main");
+
+    fireEvent.keyDown(document, { key: "c" });
+    const picker = screen.getByRole("dialog", { name: "Choose commits" });
+    const rows = picker.querySelectorAll<HTMLElement>("[data-commit-index]");
+    expect(rows[0]).toHaveAttribute("data-active", "true");
+
+    fireEvent.keyDown(picker, { key: "j" });
+    expect(rows[1]).toHaveAttribute("data-active", "true");
+    fireEvent.keyDown(picker, { key: "ArrowUp" });
+    expect(rows[0]).toHaveAttribute("data-active", "true");
+    fireEvent.keyDown(picker, { key: "ArrowDown" });
+    expect(rows[1]).toHaveAttribute("data-active", "true");
+    fireEvent.keyDown(picker, { key: " ", code: "Space" });
+    expect(within(picker).getByRole("button", { name: "Show (1)" })).toBeEnabled();
+
+    fireEvent.keyDown(picker, { key: "Enter" });
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([source.commits[1]!.id]));
+    expect(screen.queryByRole("dialog", { name: "Choose commits" })).not.toBeInTheDocument();
+  });
+
   it("steps from the virtual commit through commits and back with buttons", async () => {
     const { backend, user } = setup();
     await screen.findByText("5 commits against origin/main");
@@ -297,7 +321,7 @@ describe("ReviewApp", () => {
 
     fireEvent.keyDown(document, { key: "?", shiftKey: true });
     const dialog = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
-    expect(within(dialog).getByText("Jump to the next changed file")).toBeInTheDocument();
+    expect(within(dialog).getByText("Jump to the next file or commit")).toBeInTheDocument();
     expect(within(dialog).getByText("Approve or share queued comments")).toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: "Escape" });

@@ -74,7 +74,8 @@ describe("grr review window", () => {
       () => Boolean(document.querySelector("section[role='dialog'][aria-label='Keyboard shortcuts']")),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "question mark did not open keyboard shortcuts" });
     expect(await browser.execute(() => (
-      document.body.textContent?.includes("Jump to the next changed file")
+      document.body.textContent?.includes("Jump to the next file or commit")
+      && document.body.textContent?.includes("Browse commits")
       && document.body.textContent?.includes("Approve or share queued comments")
     ))).toBe(true);
     writeFileSync("e2e-results/keyboard-shortcuts.png", Buffer.from(await browser.takeScreenshot(), "base64"));
@@ -130,16 +131,25 @@ describe("grr review window", () => {
       () => (document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop ?? -1) === 0,
     ), { timeout: 5_000, interval: 50, timeoutMsg: "Shift+Space did not page the diff up" });
 
-    await clickElement("button[title='Choose commits to review']");
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "c", bubbles: true, cancelable: true }));
+    });
     const picker = await browser.execute(() => {
       const dialog = document.querySelector<HTMLElement>("section[role='dialog'][aria-label='Choose commits']");
       const rect = dialog?.getBoundingClientRect();
       return dialog && rect ? {
         rows: dialog.querySelectorAll("input[type='checkbox']").length,
+        active: dialog.querySelector<HTMLElement>("[data-active='true']")?.dataset.commitIndex,
         insideViewport: rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight,
       } : null;
     });
-    expect(picker).toEqual({ rows: 5, insideViewport: true });
+    expect(picker).toEqual({ rows: 5, active: "0", insideViewport: true });
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "j", bubbles: true, cancelable: true }));
+    });
+    expect(await browser.execute(() => (
+      document.querySelector<HTMLElement>("[data-active='true']")?.dataset.commitIndex
+    ))).toBe("1");
     expect(await browser.execute(
       () => document.body.textContent?.includes("Uncommitted changes")
         && document.body.textContent?.includes("worktree by Local working tree"),

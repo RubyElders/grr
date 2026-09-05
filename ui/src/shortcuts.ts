@@ -3,6 +3,9 @@ export type ShortcutId =
   | "find"
   | "nextMatch"
   | "previousMatch"
+  | "browseCommits"
+  | "showHighlightedCommit"
+  | "toggleHighlightedCommit"
   | "newerCommit"
   | "olderCommit"
   | "previousFile"
@@ -49,21 +52,24 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
     chord("function", "Shift + F3", "F3", { shift: true }),
     chord("native", "Ctrl/Cmd + Shift + G", "g", { nativeModifier: true, shift: true }),
   ]),
+  shortcut("browseCommits", "Navigation", "Browse commits", [chord("letter", "c", "c")]),
+  shortcut("showHighlightedCommit", "Navigation", "Show the highlighted commit", [chord("enter", "Enter", "Enter")]),
+  shortcut("toggleHighlightedCommit", "Navigation", "Toggle the highlighted commit", [chord("space", "Space", " ", { code: "Space" })]),
   shortcut("newerCommit", "Navigation", "Show the newer commit or virtual commit", [
     chord("arrow", "Left", "ArrowLeft"),
-    chord("vim", "H", "h"),
+    chord("vim", "h", "h"),
   ]),
   shortcut("olderCommit", "Navigation", "Show the older commit or latest commit", [
     chord("arrow", "Right", "ArrowRight"),
-    chord("vim", "L", "l"),
+    chord("vim", "l", "l"),
   ]),
-  shortcut("previousFile", "Navigation", "Jump to the previous changed file", [
+  shortcut("previousFile", "Navigation", "Jump to the previous file or commit", [
     chord("arrow", "Up", "ArrowUp"),
-    chord("vim", "K", "k"),
+    chord("vim", "k", "k"),
   ]),
-  shortcut("nextFile", "Navigation", "Jump to the next changed file", [
+  shortcut("nextFile", "Navigation", "Jump to the next file or commit", [
     chord("arrow", "Down", "ArrowDown"),
-    chord("vim", "J", "j"),
+    chord("vim", "j", "j"),
   ]),
   shortcut("pageUp", "Navigation", "Page the diff up", [chord("space", "Shift + Space", " ", { code: "Space", shift: true })]),
   shortcut("pageDown", "Navigation", "Page the diff down", [chord("space", "Space", " ", { code: "Space" })]),

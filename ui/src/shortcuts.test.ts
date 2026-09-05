@@ -36,7 +36,7 @@ describe("shortcut registry", () => {
 
   it("formats every chord from the registry", () => {
     expect(shortcutTitle("find")).toBe("Ctrl/Cmd + F or F3");
-    expect(shortcutTitle("nextFile")).toBe("Down or J");
+    expect(shortcutTitle("nextFile")).toBe("Down or j");
     expect(shortcutTitle("closeWindow")).toBe("Ctrl/Cmd + W or Alt + F4");
   });
 });
