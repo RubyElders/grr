@@ -140,19 +140,28 @@ describe("ReviewApp", () => {
     fireEvent.keyDown(document, { key: "c" });
     const picker = screen.getByRole("dialog", { name: "Choose commits" });
     const rows = picker.querySelectorAll<HTMLElement>("[data-commit-index]");
+    const showAll = within(picker).getByRole("button", { name: "Show all" });
     expect(rows[0]).toHaveAttribute("data-active", "true");
 
-    fireEvent.keyDown(picker, { key: "j" });
-    expect(rows[1]).toHaveAttribute("data-active", "true");
     fireEvent.keyDown(picker, { key: "ArrowUp" });
-    expect(rows[0]).toHaveAttribute("data-active", "true");
-    fireEvent.keyDown(picker, { key: "ArrowDown" });
-    expect(rows[1]).toHaveAttribute("data-active", "true");
+    expect(showAll).toHaveAttribute("data-active", "true");
     fireEvent.keyDown(picker, { key: " ", code: "Space" });
-    expect(within(picker).getByRole("button", { name: "Show (1)" })).toBeEnabled();
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
 
-    fireEvent.keyDown(picker, { key: "Enter" });
-    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([source.commits[1]!.id]));
+    fireEvent.keyDown(document, { key: "c" });
+    const reopened = screen.getByRole("dialog", { name: "Choose commits" });
+    const reopenedRows = reopened.querySelectorAll<HTMLElement>("[data-commit-index]");
+    expect(reopenedRows[0]).toHaveAttribute("data-active", "true");
+    fireEvent.keyDown(reopened, { key: " ", code: "Space" });
+    const showSelected = within(reopened).getByRole("button", { name: "Show (1)" });
+    expect(showSelected).toBeEnabled();
+    for (let index = 0; index < source.commits.length; index += 1) {
+      fireEvent.keyDown(reopened, { key: index % 2 === 0 ? "j" : "ArrowDown" });
+    }
+    expect(showSelected).toHaveAttribute("data-active", "true");
+
+    fireEvent.keyDown(reopened, { key: "Enter" });
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([source.commits[0]!.id]));
     expect(screen.queryByRole("dialog", { name: "Choose commits" })).not.toBeInTheDocument();
   });
 

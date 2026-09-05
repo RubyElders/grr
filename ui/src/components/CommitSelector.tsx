@@ -17,8 +17,12 @@ interface CommitSelectorProps {
 export function CommitSelector(props: CommitSelectorProps) {
   const root = useRef<HTMLDivElement>(null);
   const dialog = useRef<HTMLElement>(null);
+  const context = commitContext(props.data);
+  const grouped = hasGroupedCommitView(props.data);
+  const rowOffset = grouped ? 1 : 0;
+  const selectionPosition = rowOffset + props.data.commits.length;
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set(props.data.selectedCommitIds));
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activePosition, setActivePosition] = useState(rowOffset);
 
   useEffect(() => {
     if (!props.open) return;
@@ -26,9 +30,9 @@ export function CommitSelector(props: CommitSelectorProps) {
     const selectedIndex = props.data.selectedCommitIds.length === 1
       ? props.data.commits.findIndex((commit) => commit.id === props.data.selectedCommitIds[0])
       : -1;
-    setActiveIndex(Math.max(0, selectedIndex));
+    setActivePosition(rowOffset + Math.max(0, selectedIndex));
     dialog.current?.focus();
-  }, [props.open, props.data.selectedCommitIds]);
+  }, [props.open, props.data.selectedCommitIds, rowOffset]);
 
   useEffect(() => {
     if (!props.open) return;
@@ -43,26 +47,35 @@ export function CommitSelector(props: CommitSelectorProps) {
       event.preventDefault();
       event.stopPropagation();
       if (previous || next) {
-        setActiveIndex((current) => {
-          const count = props.data.commits.length;
+        setActivePosition((current) => {
+          const count = selectionPosition + 1;
           return count === 0 ? 0 : (current + (previous ? -1 : 1) + count) % count;
         });
         dialog.current?.focus();
         return;
       }
-      const commit = props.data.commits[activeIndex];
+      if (grouped && activePosition === 0) {
+        apply([]);
+        return;
+      }
+      if (activePosition === selectionPosition) {
+        if (checked.size > 0) apply(selectedCommitIds(props.data.commits, checked));
+        return;
+      }
+      const commit = props.data.commits[activePosition - rowOffset];
       if (!commit) return;
       show ? apply([commit.id]) : toggle(commit.id);
     };
     document.addEventListener("keydown", onKeyDown, true);
     return () => document.removeEventListener("keydown", onKeyDown, true);
-  }, [activeIndex, props.open, props.data.commits]);
+  }, [activePosition, checked, grouped, props.open, props.data.commits, rowOffset, selectionPosition]);
 
   useEffect(() => {
     if (!props.open) return;
-    const row = root.current?.querySelector<HTMLElement>(`[data-commit-index="${activeIndex}"]`);
-    row?.scrollIntoView?.({ block: "nearest" });
-  }, [activeIndex, props.open]);
+    if (activePosition < rowOffset || activePosition >= selectionPosition) return;
+    const target = root.current?.querySelector<HTMLElement>(`[data-commit-position="${activePosition}"]`);
+    target?.scrollIntoView?.({ block: "nearest" });
+  }, [activePosition, props.open, rowOffset, selectionPosition]);
 
   useEffect(() => {
     if (!props.open) return;
@@ -73,8 +86,6 @@ export function CommitSelector(props: CommitSelectorProps) {
     return () => document.removeEventListener("mousedown", closeOutside);
   }, [props.open, props.onOpenChange]);
 
-  const context = commitContext(props.data);
-  const grouped = hasGroupedCommitView(props.data);
   const newer = commitNavigationTarget(props.data, "newer");
   const older = commitNavigationTarget(props.data, "older");
   const navigationDisabled = props.disabled || props.loading;
@@ -140,7 +151,16 @@ export function CommitSelector(props: CommitSelectorProps) {
               <strong>Commits to review</strong>
               <small>{props.data.comparison.baseRef}…HEAD</small>
             </span>
-            {grouped ? <button class={styles.secondary} disabled={props.loading} onClick={() => apply([])}>Show all</button> : null}
+            {grouped ? (
+              <button
+                class={`${styles.secondary} ${activePosition === 0 ? styles.activeAction : ""}`}
+                data-commit-position={0}
+                data-active={activePosition === 0 ? "true" : undefined}
+                disabled={props.loading}
+                onMouseEnter={() => setActivePosition(0)}
+                onClick={() => apply([])}
+              >Show all</button>
+            ) : null}
           </header>
           <div class={styles.list}>
             {props.data.commits.map((commit, index) => (
@@ -148,10 +168,11 @@ export function CommitSelector(props: CommitSelectorProps) {
                 key={commit.id}
                 commit={commit}
                 index={index}
-                active={index === activeIndex}
+                position={rowOffset + index}
+                active={rowOffset + index === activePosition}
                 checked={checked.has(commit.id)}
                 disabled={props.loading}
-                onActivate={() => setActiveIndex(index)}
+                onActivate={() => setActivePosition(rowOffset + index)}
                 onToggle={() => toggle(commit.id)}
                 onShow={() => apply([commit.id])}
               />
@@ -160,9 +181,12 @@ export function CommitSelector(props: CommitSelectorProps) {
           <footer class={styles.footer}>
             <span>{checked.size === 0 ? "Select commits, or show the full branch diff." : `${checked.size} selected`}</span>
             <button
-              class={styles.primary}
+              class={`${styles.primary} ${activePosition === selectionPosition ? styles.activeAction : ""}`}
+              data-commit-position={selectionPosition}
+              data-active={activePosition === selectionPosition ? "true" : undefined}
               disabled={checked.size === 0 || props.loading}
-              onClick={() => apply(props.data.commits.filter((commit) => checked.has(commit.id)).map((commit) => commit.id))}
+              onMouseEnter={() => setActivePosition(selectionPosition)}
+              onClick={() => apply(selectedCommitIds(props.data.commits, checked))}
             >
               {props.loading ? "Loading…" : `Show (${checked.size})`}
             </button>
@@ -173,9 +197,10 @@ export function CommitSelector(props: CommitSelectorProps) {
   );
 }
 
-function CommitRow({ commit, index, active, checked, disabled, onActivate, onToggle, onShow }: {
+function CommitRow({ commit, index, position, active, checked, disabled, onActivate, onToggle, onShow }: {
   commit: CommitSummary;
   index: number;
+  position: number;
   active: boolean;
   checked: boolean;
   disabled: boolean;
@@ -191,6 +216,7 @@ function CommitRow({ commit, index, active, checked, disabled, onActivate, onTog
     <div
       class={`${styles.row} ${virtual ? styles.virtualRow : ""} ${active ? styles.activeRow : ""}`}
       data-commit-index={index}
+      data-commit-position={position}
       data-active={active ? "true" : undefined}
       onMouseEnter={onActivate}
     >
@@ -214,6 +240,10 @@ function CommitRow({ commit, index, active, checked, disabled, onActivate, onTog
       {expanded ? <div class={styles.fullMessage}>{messageBody}</div> : null}
     </div>
   );
+}
+
+function selectedCommitIds(commits: CommitSummary[], checked: ReadonlySet<string>): string[] {
+  return commits.filter((commit) => checked.has(commit.id)).map((commit) => commit.id);
 }
 
 function CommitIdentity({ context, className }: { context: CommitContext; className?: string }) {

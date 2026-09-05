@@ -34,6 +34,7 @@
 .commitText code { color: var(--blue); }
 .secondary, .showOne, .expandMessage, .primary { padding: 6px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--fg); font-weight: 600; cursor: pointer; white-space: nowrap; }
 .secondary:hover, .showOne:hover, .expandMessage:hover { background: var(--canvas); }
+.activeAction { outline: 2px solid var(--blue); outline-offset: 1px; }
 .expandMessage { grid-column: 2; height: 28px; display: flex; align-items: center; gap: 3px; padding: 0 7px; font-size: 11px; }
 .messageChevron { display: inline-flex; transform: rotate(-90deg); transition: transform 100ms ease; }
 .messageChevron.expanded { transform: rotate(0); }

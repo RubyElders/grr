@@ -8,6 +8,7 @@
 - Show the shared keyboard shortcut reference with `?` or the top-bar help button.
 - Navigate commits and files with Vim-style `h`, `j`, `k`, and `l` bindings.
 - Open and browse the commit selector from the keyboard with `c`, directional keys, Enter, and Space.
+- Cycle through `Show all`, commit rows, and `Show (N)` when browsing commits from the keyboard.
 
 ### Changed
 

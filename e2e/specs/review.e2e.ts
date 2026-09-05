@@ -145,6 +145,15 @@ describe("grr review window", () => {
     });
     expect(picker).toEqual({ rows: 5, active: "0", insideViewport: true });
     await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true }));
+    });
+    expect(await browser.execute(() => (
+      document.querySelector<HTMLButtonElement>("button[data-commit-position='0'][data-active='true']")?.textContent
+    ))).toBe("Show all");
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
+    });
+    await browser.execute(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "j", bubbles: true, cancelable: true }));
     });
     expect(await browser.execute(() => (
