@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { matchesShortcut, SHORTCUTS, shortcutTitle } from "./shortcuts";
+import { matchesShortcut, SHORTCUTS, shortcutModifiersActive, shortcutTitle } from "./shortcuts";
 
 function key(keyValue: string, modifiers: Partial<KeyboardEvent> = {}): KeyboardEvent {
   return { key: keyValue, code: keyValue === " " ? "Space" : keyValue, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...modifiers } as KeyboardEvent;
@@ -22,6 +22,9 @@ describe("shortcut registry", () => {
     expect(matchesShortcut(key("Enter", { ctrlKey: true }), "primaryAction")).toBe(true);
     expect(matchesShortcut(key("Enter", { ctrlKey: true, altKey: true }), "primaryAction")).toBe(false);
     expect(matchesShortcut(key("Enter", { ctrlKey: true, altKey: true }), "copyPrimaryAction")).toBe(true);
+    expect(shortcutModifiersActive(key("Alt", { ctrlKey: true, altKey: true }), "copyPrimaryAction")).toBe(true);
+    expect(shortcutModifiersActive(key("Alt", { metaKey: true, altKey: true }), "copyPrimaryAction")).toBe(true);
+    expect(shortcutModifiersActive(key("Alt", { ctrlKey: true }), "copyPrimaryAction")).toBe(false);
   });
 
   it("distinguishes navigation and shifted paging", () => {

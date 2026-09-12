@@ -515,6 +515,30 @@ describe("ReviewApp", () => {
     await waitFor(() => expect(submissions[0]).toEqual({ outcome: "approve", comments: [] }));
   });
 
+  it("reflects clipboard mode in the action labels and mouse action", async () => {
+    const { backend, user } = setup();
+    await screen.findByText("5 commits against origin/main");
+
+    await user.keyboard("{Control>}{Alt>}");
+    const approve = await screen.findByRole("button", { name: "Approve and copy" });
+    expect(approve).toHaveAttribute("title", "Ctrl/Cmd + Alt + Enter");
+    expect(screen.getByRole("button", { name: "Share and copy (0)" })).toBeDisabled();
+
+    await user.keyboard("{/Alt}{/Control}");
+    expect(await screen.findByRole("button", { name: "Approve" })).toHaveAttribute("title", "Ctrl/Cmd + Enter");
+
+    await user.keyboard("{Control>}{Alt>}");
+    fireEvent.blur(window);
+    expect(await screen.findByRole("button", { name: "Approve" })).toBeEnabled();
+
+    await user.keyboard("{/Alt}{/Control}{Control>}{Alt>}");
+    await user.click(await screen.findByRole("button", { name: "Approve and copy" }));
+    await waitFor(() => expect(backend.finishReview).toHaveBeenCalledWith({
+      outcome: "approve",
+      comments: [],
+    }, true));
+  });
+
   it("runs the context-sensitive primary action with Control+Enter", async () => {
     const first = setup();
     await screen.findByText("5 commits against origin/main");

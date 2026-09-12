@@ -105,6 +105,13 @@ export function matchesShortcut(event: ShortcutEvent, id: ShortcutId, chordId?: 
   ));
 }
 
+export function shortcutModifiersActive(event: ShortcutEvent, id: ShortcutId, chordId?: string): boolean {
+  return shortcutDefinition(id).chords.some((item) => (
+    (chordId === undefined || item.id === chordId)
+    && matchesModifiers(event, item)
+  ));
+}
+
 interface ShortcutEvent {
   key: string;
   code?: string;
@@ -119,6 +126,10 @@ function matchesChord(event: ShortcutEvent, item: ShortcutChord): boolean {
     ? event.key.toLowerCase() === item.key.toLowerCase()
     : event.key === item.key;
   if (!keyMatches || (item.code && event.code !== item.code)) return false;
+  return matchesModifiers(event, item);
+}
+
+function matchesModifiers(event: ShortcutEvent, item: ShortcutChord): boolean {
   if ((event.ctrlKey || event.metaKey) !== Boolean(item.nativeModifier)) return false;
   if (event.altKey !== Boolean(item.alt)) return false;
   return item.shift === "any" || event.shiftKey === Boolean(item.shift);

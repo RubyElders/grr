@@ -307,8 +307,8 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         draftCount={comments.length}
         submitting={state.phase === "submitting" || state.phase === "selecting"}
         error={state.error}
-        onApprove={() => void submit("approve")}
-        onShare={() => void submit("share")}
+        onApprove={(copyToClipboard) => void submit("approve", copyToClipboard)}
+        onShare={(copyToClipboard) => void submit("share", copyToClipboard)}
       />
       {shortcutHelpOpen ? <ShortcutHelp onClose={() => setShortcutHelpOpen(false)} /> : null}
     </div>

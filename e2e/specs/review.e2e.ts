@@ -68,6 +68,33 @@ describe("grr review window", () => {
     writeFileSync("e2e-results/window.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 
     await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", {
+        key: "Alt",
+        ctrlKey: true,
+        altKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.body.textContent?.includes("Approve and copy")
+        && document.body.textContent?.includes("Share and copy (0)"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "clipboard modifiers did not update review actions" });
+    writeFileSync("e2e-results/copy-actions.png", Buffer.from(await browser.takeScreenshot(), "base64"));
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keyup", {
+        key: "Alt",
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.body.textContent?.includes("Approve")
+        && document.body.textContent?.includes("Share comments (0)"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "review actions did not leave clipboard mode" });
+
+    await browser.execute(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "?", shiftKey: true, bubbles: true, cancelable: true }));
     });
     await browser.waitUntil(async () => await browser.execute(
