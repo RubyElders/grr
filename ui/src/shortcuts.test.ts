@@ -19,6 +19,9 @@ describe("shortcut registry", () => {
     expect(matchesShortcut(key("F", { metaKey: true }), "find", "native")).toBe(true);
     expect(matchesShortcut(key("f", { ctrlKey: true, shiftKey: true }), "find", "native")).toBe(false);
     expect(matchesShortcut(key("f"), "find", "native")).toBe(false);
+    expect(matchesShortcut(key("Enter", { ctrlKey: true }), "primaryAction")).toBe(true);
+    expect(matchesShortcut(key("Enter", { ctrlKey: true, altKey: true }), "primaryAction")).toBe(false);
+    expect(matchesShortcut(key("Enter", { ctrlKey: true, altKey: true }), "copyPrimaryAction")).toBe(true);
   });
 
   it("distinguishes navigation and shifted paging", () => {
@@ -37,6 +40,7 @@ describe("shortcut registry", () => {
   it("formats every chord from the registry", () => {
     expect(shortcutTitle("find")).toBe("Ctrl/Cmd + F or F3");
     expect(shortcutTitle("nextFile")).toBe("Down or j");
+    expect(shortcutTitle("copyPrimaryAction")).toBe("Ctrl/Cmd + Alt + Enter");
     expect(shortcutTitle("closeWindow")).toBe("Ctrl/Cmd + W or Alt + F4");
   });
 });

@@ -534,6 +534,31 @@ describe("ReviewApp", () => {
     }));
   });
 
+  it("runs the primary action and requests clipboard copying with Control+Alt+Enter", async () => {
+    const first = setup();
+    await screen.findByText("5 commits against origin/main");
+
+    fireEvent.keyDown(document, { key: "Enter", ctrlKey: true, altKey: true });
+
+    await waitFor(() => expect(first.backend.finishReview).toHaveBeenCalledWith({
+      outcome: "approve",
+      comments: [],
+    }, true));
+
+    cleanup();
+    const second = setup();
+    await screen.findByText("5 commits against origin/main");
+    await second.user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R26/ }));
+    await second.user.type(screen.getByRole("textbox", { name: "Review comment" }), "Copy this review.");
+    await second.user.click(screen.getByRole("button", { name: "Save comment" }));
+    fireEvent.keyDown(document, { key: "Enter", ctrlKey: true, altKey: true });
+
+    await waitFor(() => expect(second.backend.finishReview).toHaveBeenCalledWith({
+      outcome: "share",
+      comments: [{ fileId: "f0", lineId: "f0:h0:l2", body: "Copy this review." }],
+    }, true));
+  });
+
   it("uses Control+Enter to save an open editor without submitting the review", async () => {
     const { submissions, user } = setup();
     await screen.findByText("5 commits against origin/main");

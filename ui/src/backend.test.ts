@@ -18,7 +18,9 @@ describe("tauri backend adapter", () => {
     invoke.mockResolvedValue(undefined);
     const review = { outcome: "approve" as const, comments: [] };
     await tauriBackend.finishReview(review);
-    expect(invoke).toHaveBeenCalledWith("finish_review", { review });
+    expect(invoke).toHaveBeenCalledWith("finish_review", { review, copyToClipboard: false });
+    await tauriBackend.finishReview(review, true);
+    expect(invoke).toHaveBeenLastCalledWith("finish_review", { review, copyToClipboard: true });
   });
 
   it("loads a validated commit selection", async () => {

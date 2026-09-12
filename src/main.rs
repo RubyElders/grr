@@ -9,6 +9,8 @@ use grr::{
 use tauri::Manager;
 use tauri::{State, Window};
 
+mod clipboard;
+
 struct AppState {
     repository: PathBuf,
     requested_base: Option<String>,
@@ -46,6 +48,7 @@ fn select_commits(
 #[tauri::command]
 fn finish_review(
     review: SubmittedReview,
+    copy_to_clipboard: bool,
     state: State<'_, AppState>,
     window: Window,
 ) -> Result<(), String> {
@@ -54,6 +57,10 @@ fn finish_review(
         .lock()
         .map_err(|_| "review data lock was poisoned".to_owned())?;
     validate_submission(&data, &review)?;
+    if copy_to_clipboard {
+        let output = format_review_result(&data, &review)?;
+        clipboard::copy(&output)?;
+    }
     drop(data);
     *state
         .submitted

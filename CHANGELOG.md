@@ -4,6 +4,7 @@
 
 ### Added
 
+- Finish a review and copy its exact terminal output with `Ctrl+Alt+Enter`.
 - Read full commit messages below the header and step through newer or older commits.
 - Show the shared keyboard shortcut reference with `?` or the top-bar help button.
 - Navigate commits and files with Vim-style `h`, `j`, `k`, and `l` bindings.

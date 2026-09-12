@@ -13,6 +13,7 @@ export type ShortcutId =
   | "pageUp"
   | "pageDown"
   | "primaryAction"
+  | "copyPrimaryAction"
   | "saveComment"
   | "dismiss"
   | "closeWindow";
@@ -74,6 +75,9 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
   shortcut("pageUp", "Navigation", "Page the diff up", [chord("space", "Shift + Space", " ", { code: "Space", shift: true })]),
   shortcut("pageDown", "Navigation", "Page the diff down", [chord("space", "Space", " ", { code: "Space" })]),
   shortcut("primaryAction", "Review", "Approve or share queued comments", [chord("native", "Ctrl/Cmd + Enter", "Enter", { nativeModifier: true })]),
+  shortcut("copyPrimaryAction", "Review", "Approve or share and copy the result", [
+    chord("native", "Ctrl/Cmd + Alt + Enter", "Enter", { nativeModifier: true, alt: true }),
+  ]),
   shortcut("saveComment", "Review", "Save the open inline comment", [chord("native", "Ctrl/Cmd + Enter", "Enter", { nativeModifier: true })]),
   shortcut("dismiss", "Window", "Close the open panel or cancel the review", [chord("escape", "Escape", "Escape")]),
   shortcut("closeWindow", "Window", "Cancel the review and close the window", [

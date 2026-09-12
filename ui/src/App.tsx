@@ -56,10 +56,10 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
   const moveFind = useCallback((direction: 1 | -1) => {
     setActiveFindIndex((current) => adjacentMatch(current, findMatches.length, direction));
   }, [findMatches.length]);
-  const submit = useCallback(async (outcome: "approve" | "share") => {
+  const submit = useCallback(async (outcome: "approve" | "share", copyToClipboard = false) => {
     dispatch({ type: "submitting" });
     try {
-      await backend.finishReview(submissionFor(state, outcome));
+      await backend.finishReview(submissionFor(state, outcome), copyToClipboard);
     } catch (error) {
       dispatch({ type: "submit-failed", error: errorMessage(error) });
     }
@@ -144,6 +144,10 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && state.openLineId === null
         && !findOpen
         && state.phase === "ready";
+      const runCopyPrimaryAction = matchesShortcut(event, "copyPrimaryAction")
+        && state.openLineId === null
+        && !findOpen
+        && state.phase === "ready";
       const pageDown = matchesShortcut(event, "pageDown");
       const pageUp = matchesShortcut(event, "pageUp");
       const pageDiff = (pageDown || pageUp)
@@ -169,7 +173,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && state.openLineId === null
         && state.phase === "ready"
         && !isTextEntryTarget(event.target);
-      if (!openHelp && !browseCommits && !openFind && !nextMatch && !previousMatch && !dismissFind && !dismissSelector && !closeWithEscape && !closeWindow && !runPrimaryAction && !pageDiff && !stepCommit && !stepFile) return;
+      if (!openHelp && !browseCommits && !openFind && !nextMatch && !previousMatch && !dismissFind && !dismissSelector && !closeWithEscape && !closeWindow && !runPrimaryAction && !runCopyPrimaryAction && !pageDiff && !stepCommit && !stepFile) return;
 
       event.preventDefault();
       if (openHelp) {
@@ -221,8 +225,8 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         setCommitSelectorOpen(false);
         return;
       }
-      if (runPrimaryAction) {
-        void submit(comments.length === 0 ? "approve" : "share");
+      if (runPrimaryAction || runCopyPrimaryAction) {
+        void submit(comments.length === 0 ? "approve" : "share", runCopyPrimaryAction);
         return;
       }
       void backend.cancelReview().catch((error: unknown) => {
