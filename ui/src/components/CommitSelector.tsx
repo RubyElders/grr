@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { commitContext, commitNavigationTarget, commitSummaryContext, fullMessageBody, hasGroupedCommitView, type CommitContext } from "../commitPresentation";
 import { WORKTREE_COMMIT_ID, type CommitSummary, type ReviewData } from "../types";
 import { matchesShortcut } from "../shortcuts";
@@ -34,7 +34,7 @@ export function CommitSelector(props: CommitSelectorProps) {
     dialog.current?.focus();
   }, [props.open, props.data.selectedCommitIds, rowOffset]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!props.open) return;
     const onKeyDown = (event: KeyboardEvent) => {
       const previous = matchesShortcut(event, "previousFile");

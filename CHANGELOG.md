@@ -26,6 +26,7 @@
 
 ### Fixed
 
+- Keep rapid commit-picker navigation to one step per key press.
 - Prevent clipboard helper processes from freezing the review window.
 - Keep file selection from scrolling the whole application horizontally.
 - Keep equal spacing around the diff pane, commit text, header controls, and review actions.
