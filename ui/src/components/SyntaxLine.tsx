@@ -1,3 +1,4 @@
+import { Component } from "preact";
 import { highlightLine, type SyntaxKind } from "../syntax";
 import styles from "./SyntaxLine.module.css";
 
@@ -18,22 +19,33 @@ interface SyntaxMatch {
   index: number;
 }
 
-export function SyntaxLine({ path, text, matches = [], activeMatchIndex = -1 }: {
+interface SyntaxLineProps {
   path: string;
   text: string;
   matches?: ReadonlyArray<SyntaxMatch>;
   activeMatchIndex?: number;
-}) {
-  let offset = 0;
-  return <>{highlightLine(text, path).map((token, index) => {
-    const start = offset;
-    offset += token.text.length;
-    return (
-      <span key={index} class={tokenClass[token.kind]}>
-        {splitToken(token.text, start, matches, activeMatchIndex)}
-      </span>
-    );
-  })}</>;
+}
+
+export class SyntaxLine extends Component<SyntaxLineProps> {
+  shouldComponentUpdate(next: SyntaxLineProps) {
+    return next.path !== this.props.path
+      || next.text !== this.props.text
+      || next.matches !== this.props.matches
+      || next.activeMatchIndex !== this.props.activeMatchIndex;
+  }
+
+  render({ path, text, matches = [], activeMatchIndex = -1 }: SyntaxLineProps) {
+    let offset = 0;
+    return <>{highlightLine(text, path).map((token, index) => {
+      const start = offset;
+      offset += token.text.length;
+      return (
+        <span key={index} class={tokenClass[token.kind]}>
+          {splitToken(token.text, start, matches, activeMatchIndex)}
+        </span>
+      );
+    })}</>;
+  }
 }
 
 function splitToken(text: string, tokenStart: number, matches: ReadonlyArray<SyntaxMatch>, activeMatchIndex: number) {

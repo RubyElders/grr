@@ -14,16 +14,16 @@ mod clipboard;
 struct AppState {
     repository: PathBuf,
     requested_base: Option<String>,
-    data: Arc<Mutex<ReviewData>>,
+    data: Arc<Mutex<Arc<ReviewData>>>,
     submitted: Arc<Mutex<Option<SubmittedReview>>>,
 }
 
 #[tauri::command]
-fn get_review(state: State<'_, AppState>) -> Result<ReviewData, String> {
+fn get_review(state: State<'_, AppState>) -> Result<Arc<ReviewData>, String> {
     state
         .data
         .lock()
-        .map(|data| data.clone())
+        .map(|data| Arc::clone(&data))
         .map_err(|_| "review data lock was poisoned".to_owned())
 }
 
@@ -31,17 +31,19 @@ fn get_review(state: State<'_, AppState>) -> Result<ReviewData, String> {
 fn select_commits(
     commit_ids: Vec<String>,
     state: State<'_, AppState>,
-) -> Result<ReviewData, String> {
-    let review = load_review_selection(
-        &state.repository,
-        state.requested_base.as_deref(),
-        &commit_ids,
-    )
-    .map_err(|error| error.to_string())?;
+) -> Result<Arc<ReviewData>, String> {
+    let review = Arc::new(
+        load_review_selection(
+            &state.repository,
+            state.requested_base.as_deref(),
+            &commit_ids,
+        )
+        .map_err(|error| error.to_string())?,
+    );
     *state
         .data
         .lock()
-        .map_err(|_| "review data lock was poisoned".to_owned())? = review.clone();
+        .map_err(|_| "review data lock was poisoned".to_owned())? = Arc::clone(&review);
     Ok(review)
 }
 
@@ -98,7 +100,7 @@ fn main() {
         };
 
     let submitted = Arc::new(Mutex::new(None));
-    let review_data = Arc::new(Mutex::new(review));
+    let review_data = Arc::new(Mutex::new(Arc::new(review)));
     let app = tauri::Builder::default()
         .setup(|_app| {
             #[cfg(target_os = "linux")]
@@ -128,7 +130,7 @@ fn main() {
         .lock()
         .ok()
         .and_then(|submitted| submitted.clone());
-    let output_data = review_data.lock().ok().map(|data| data.clone());
+    let output_data = review_data.lock().ok().map(|data| Arc::clone(&data));
     match submitted {
         Some(review) => match output_data
             .ok_or_else(|| "review data lock was poisoned".to_owned())
