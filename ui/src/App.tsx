@@ -33,7 +33,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     return () => { mounted = false; };
   }, [backend]);
 
-  const comments = useMemo(() => orderedComments(state), [state]);
+  const comments = useMemo(() => orderedComments(state), [state.data, state.drafts]);
   const findMatches = useMemo(
     () => findCodeMatches(state.data?.files ?? [], findQuery),
     [findQuery, state.data?.files],

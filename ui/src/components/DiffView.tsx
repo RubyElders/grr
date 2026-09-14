@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { CodeMatch } from "../codeSearch";
-import { fileAtViewportTop } from "../scrollSpy";
+import { fileIndexAtViewportTop } from "../scrollSpy";
 import type { DraftComment } from "../state";
 import type { DiffHunk as DiffHunkType, DiffLine as DiffLineType, FileDiff } from "../types";
 import { CommentEditor } from "./CommentEditor";
@@ -109,11 +109,15 @@ export function DiffView(props: DiffViewProps) {
       animationFrame.current = null;
       const currentPane = pane.current;
       if (!currentPane) return;
-      const positions = Array.from(currentPane.querySelectorAll<HTMLElement>("article[data-file-id]"))
-        .map((file) => ({ id: file.dataset.fileId ?? "", top: file.getBoundingClientRect().top }))
-        .filter((file) => file.id.length > 0);
+      const files = currentPane.querySelectorAll<HTMLElement>("article[data-file-id]");
       const atScrollEnd = currentPane.scrollTop + currentPane.clientHeight >= currentPane.scrollHeight - 1;
-      const fileId = fileAtViewportTop(positions, currentPane.getBoundingClientRect().top, atScrollEnd);
+      const fileIndex = fileIndexAtViewportTop(
+        files.length,
+        (index) => files[index]!.getBoundingClientRect().top,
+        currentPane.getBoundingClientRect().top,
+        atScrollEnd,
+      );
+      const fileId = fileIndex === null ? null : files[fileIndex]?.dataset.fileId;
       if (fileId) props.onVisibleFile(fileId);
     });
   };
