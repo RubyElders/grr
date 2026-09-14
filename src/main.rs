@@ -46,22 +46,27 @@ fn select_commits(
 }
 
 #[tauri::command]
-fn finish_review(
+async fn finish_review(
     review: SubmittedReview,
     copy_to_clipboard: bool,
     state: State<'_, AppState>,
     window: Window,
 ) -> Result<(), String> {
-    let data = state
-        .data
-        .lock()
-        .map_err(|_| "review data lock was poisoned".to_owned())?;
-    validate_submission(&data, &review)?;
-    if copy_to_clipboard {
-        let output = format_review_result(&data, &review)?;
-        clipboard::copy(&output)?;
+    let output = {
+        let data = state
+            .data
+            .lock()
+            .map_err(|_| "review data lock was poisoned".to_owned())?;
+        validate_submission(&data, &review)?;
+        copy_to_clipboard
+            .then(|| format_review_result(&data, &review))
+            .transpose()?
+    };
+    if let Some(output) = output {
+        tauri::async_runtime::spawn_blocking(move || clipboard::copy(&output))
+            .await
+            .map_err(|error| format!("clipboard task failed: {error}"))??;
     }
-    drop(data);
     *state
         .submitted
         .lock()

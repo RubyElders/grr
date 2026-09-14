@@ -17,7 +17,7 @@ fn copy_with_command(program: &str, arguments: &[&str], text: &str) -> Result<()
         .args(arguments)
         .stdin(Stdio::piped())
         .stdout(Stdio::null())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::null())
         .spawn()
         .map_err(|error| format!("could not start {program}: {error}"))?;
     let write_result = child
@@ -29,25 +29,20 @@ fn copy_with_command(program: &str, arguments: &[&str], text: &str) -> Result<()
                 .write_all(text.as_bytes())
                 .map_err(|error| format!("could not write to {program}: {error}"))
         });
-    let output = child
-        .wait_with_output()
+    let status = child
+        .wait()
         .map_err(|error| format!("could not wait for {program}: {error}"))?;
     write_result?;
-    if output.status.success() {
+    if status.success() {
         return Ok(());
     }
-    let detail = String::from_utf8_lossy(&output.stderr);
-    let detail = detail.trim();
-    Err(if detail.is_empty() {
-        format!("{program} failed with {}", output.status)
-    } else {
-        format!("{program} failed: {detail}")
-    })
+    Err(format!("{program} failed with {status}"))
 }
 
 #[cfg(all(test, unix))]
 mod tests {
     use std::fs;
+    use std::time::{Duration, Instant};
 
     use tempfile::NamedTempFile;
 
@@ -64,5 +59,17 @@ mod tests {
     #[test]
     fn reports_clipboard_command_failures() {
         assert!(copy_with_command("false", &[], "review result\n").is_err());
+    }
+
+    #[test]
+    fn does_not_wait_for_background_processes_that_inherit_standard_error() {
+        let started = Instant::now();
+        copy_with_command(
+            "sh",
+            &["-c", "cat >/dev/null; (sleep 3) &"],
+            "review result\n",
+        )
+        .unwrap();
+        assert!(started.elapsed() < Duration::from_secs(2));
     }
 }
