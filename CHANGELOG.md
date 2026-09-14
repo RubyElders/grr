@@ -14,6 +14,7 @@
 ### Changed
 
 - Render only nearby diff files while preserving the full scroll range.
+- Avoid duplicate worktree diff copies and repeated commit metadata in large selections.
 - Reflect the prepared clipboard shortcut in the review action button labels.
 - Open dirty repositories on their uncommitted changes, navigate grouped or individual commits with Left and Right, and switch files with Up and Down.
 - Present commits and virtual commits through the same title, reference, author, and message context.

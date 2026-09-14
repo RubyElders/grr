@@ -298,14 +298,10 @@ mod tests {
     #[test]
     fn formats_safe_markdown_for_shared_comments() {
         let mut data = fixture();
-        data.files[0].source_commit = Some(CommitSummary {
+        data.files[0].source_commit = Some(FileSourceCommit {
             id: "1234567890abcdef".to_owned(),
             short_id: "12345678".to_owned(),
-            parent_id: None,
             summary: "selected change".to_owned(),
-            message: "selected change".to_owned(),
-            author: "User".to_owned(),
-            authored_at: 0,
         });
         let review = SubmittedReview {
             outcome: ReviewOutcome::Share,

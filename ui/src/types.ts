@@ -53,8 +53,14 @@ export interface FileDiff {
   binary: boolean;
   additions: number;
   deletions: number;
-  sourceCommit: CommitSummary | null;
+  sourceCommit: FileSourceCommit | null;
   hunks: DiffHunk[];
+}
+
+export interface FileSourceCommit {
+  id: string;
+  shortId: string;
+  summary: string;
 }
 
 export interface ComparisonSummary {

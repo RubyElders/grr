@@ -320,6 +320,46 @@ fn omits_the_virtual_commit_for_a_clean_worktree() {
 }
 
 #[test]
+fn loads_and_selects_one_hundred_commits_with_compact_file_attribution() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let root = commit_file(&repository, "base.txt", b"base\n", "base");
+    let base = root.id().to_string();
+    let mut commit_ids = Vec::new();
+    for index in 0..100 {
+        let path = format!("changes/file-{index:03}.txt");
+        let message = format!(
+            "Add file {index:03}\n\n{}",
+            "Detailed commit body. ".repeat(50)
+        );
+        commit_ids.push(
+            commit_file(&repository, &path, b"changed\n", &message)
+                .id()
+                .to_string(),
+        );
+    }
+
+    let cumulative = load_review_selection(directory.path(), Some(&base), &[]).unwrap();
+    assert_eq!(cumulative.commits.len(), 100);
+    assert_eq!(cumulative.files.len(), 100);
+
+    let selected = load_review_selection(directory.path(), Some(&base), &commit_ids).unwrap();
+    assert_eq!(selected.files.len(), 100);
+    assert!(
+        selected
+            .files
+            .iter()
+            .all(|file| file.source_commit.is_some())
+    );
+    let encoded = serde_json::to_value(selected).unwrap();
+    let attribution = encoded["files"][0]["sourceCommit"].as_object().unwrap();
+    assert_eq!(attribution.len(), 3);
+    assert!(attribution.contains_key("id"));
+    assert!(attribution.contains_key("shortId"));
+    assert!(attribution.contains_key("summary"));
+}
+
+#[test]
 fn canonical_frontend_fixture_matches_rust_contract() {
     let fixture = include_str!("../ui/src/__fixtures__/review.json");
     let review: ReviewData = serde_json::from_str(fixture).unwrap();

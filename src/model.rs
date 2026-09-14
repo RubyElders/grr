@@ -59,8 +59,16 @@ pub struct FileDiff {
     pub binary: bool,
     pub additions: u32,
     pub deletions: u32,
-    pub source_commit: Option<CommitSummary>,
+    pub source_commit: Option<FileSourceCommit>,
     pub hunks: Vec<DiffHunk>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileSourceCommit {
+    pub id: String,
+    pub short_id: String,
+    pub summary: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]

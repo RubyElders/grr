@@ -9,8 +9,8 @@ use git2::{
 };
 
 use crate::model::{
-    CommitSummary, ComparisonSummary, DiffHunk, DiffLine, FileDiff, FileStatus, LineKind,
-    ReviewData,
+    CommitSummary, ComparisonSummary, DiffHunk, DiffLine, FileDiff, FileSourceCommit, FileStatus,
+    LineKind, ReviewData,
 };
 
 pub const WORKTREE_COMMIT_ID: &str = "WORKTREE";
@@ -75,7 +75,7 @@ fn load_review_impl(
     let mut commits = commits_since(&repository, &head, base.merge_base_id)?;
     let head_tree = head.tree()?;
     let worktree_summary = worktree_summary(&head);
-    let worktree_files = diff_worktree_files(
+    let mut worktree_files = diff_worktree_files(
         &repository,
         Some(&head_tree),
         "worktree",
@@ -127,7 +127,7 @@ fn load_review_impl(
             .enumerate()
         {
             if summary.id == WORKTREE_COMMIT_ID {
-                files.extend(worktree_files.clone());
+                files.append(&mut worktree_files);
                 continue;
             }
             let commit = repository.find_commit(git2::Oid::from_str(&summary.id)?)?;
@@ -358,9 +358,22 @@ fn parse_diff(
     id_prefix: &str,
     source_commit: Option<CommitSummary>,
 ) -> Result<Vec<FileDiff>, ReviewLoadError> {
-    let mut find = DiffFindOptions::new();
-    find.renames(true);
-    diff.find_similar(Some(&mut find))?;
+    if diff.deltas().any(|delta| {
+        matches!(
+            delta.status(),
+            Delta::Added | Delta::Deleted | Delta::Untracked
+        )
+    }) {
+        let mut find = DiffFindOptions::new();
+        find.renames(true);
+        diff.find_similar(Some(&mut find))?;
+    }
+
+    let source_commit = source_commit.map(|commit| FileSourceCommit {
+        id: commit.id,
+        short_id: commit.short_id,
+        summary: commit.summary,
+    });
 
     let mut files = Vec::with_capacity(diff.deltas().len());
     for (file_index, delta) in diff.deltas().enumerate() {
