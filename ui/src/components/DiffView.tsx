@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { CodeMatch } from "../codeSearch";
 import { fileAtViewportTop } from "../scrollSpy";
 import type { DraftComment } from "../state";
@@ -11,6 +11,7 @@ import styles from "./DiffView.module.css";
 interface DiffViewProps {
   viewKey: string;
   files: FileDiff[];
+  activeFileId: string | null;
   showSourceCommits: boolean;
   collapsedFiles: ReadonlySet<string>;
   openLineId: string | null;
@@ -29,6 +30,13 @@ export function DiffView(props: DiffViewProps) {
   const pane = useRef<HTMLElement>(null);
   const animationFrame = useRef<number | null>(null);
   const scrollPositions = useRef<Map<string, number>>(new Map());
+  const contentHeights = useRef<Map<string, number>>(new Map());
+  const [nearbyFileIds, setNearbyFileIds] = useState<ReadonlySet<string>>(
+    () => new Set(props.files.slice(0, 2).map((file) => file.id)),
+  );
+  const rememberContentHeight = useCallback((fileId: string, height: number) => {
+    contentHeights.current.set(fileId, height);
+  }, []);
   const searchMatchesByLine = useMemo(() => {
     const byLine = new Map<string, Array<CodeMatch & { index: number }>>();
     props.searchMatches.forEach((match, index) => {
@@ -51,6 +59,44 @@ export function DiffView(props: DiffViewProps) {
     pane.current?.querySelector<HTMLElement>(`[data-search-match="${props.activeSearchMatchIndex}"]`)
       ?.scrollIntoView?.({ block: "center", inline: "center" });
   }, [props.activeSearchMatchIndex, props.searchMatches]);
+  useLayoutEffect(() => {
+    const root = pane.current;
+    if (!root) return;
+    if (!("IntersectionObserver" in window)) {
+      setNearbyFileIds(new Set(props.files.map((file) => file.id)));
+      return;
+    }
+    setNearbyFileIds(new Set(props.files.slice(0, 2).map((file) => file.id)));
+    const observer = new IntersectionObserver((entries) => {
+      setNearbyFileIds((current) => {
+        const next = new Set(current);
+        for (const entry of entries) {
+          const fileId = (entry.target as HTMLElement).dataset.fileId;
+          if (!fileId) continue;
+          if (entry.isIntersecting) next.add(fileId);
+          else next.delete(fileId);
+        }
+        return next;
+      });
+    }, { root, rootMargin: "1000px 0px" });
+    root.querySelectorAll("article[data-file-id]").forEach((file) => observer.observe(file));
+    return () => observer.disconnect();
+  }, [props.files, props.viewKey]);
+
+  const forcedFileIds = useMemo(() => {
+    const forced = new Set<string>();
+    if (props.activeFileId) forced.add(props.activeFileId);
+    for (const draft of Object.values(props.drafts)) forced.add(draft.fileId);
+    const activeMatch = props.searchMatches[props.activeSearchMatchIndex];
+    if (activeMatch) forced.add(activeMatch.fileId);
+    if (props.openLineId) {
+      const openFile = props.files.find((file) => file.hunks.some(
+        (hunk) => hunk.lines.some((line) => line.id === props.openLineId),
+      ));
+      if (openFile) forced.add(openFile.id);
+    }
+    return forced;
+  }, [props.activeFileId, props.activeSearchMatchIndex, props.drafts, props.files, props.openLineId, props.searchMatches]);
 
   if (props.files.length === 0) {
     return <main class={styles.empty}><h2>No changed files</h2><p>This commit has no reviewable tree changes.</p></main>;
@@ -73,7 +119,17 @@ export function DiffView(props: DiffViewProps) {
   };
   return (
     <main ref={pane} class={styles.pane} aria-label="Commit diff" onScroll={updateVisibleFile}>
-      {props.files.map((file) => <DiffFileCard key={file.id} file={file} searchMatchesByLine={searchMatchesByLine} {...props} />)}
+      {props.files.map((file) => (
+        <DiffFileCard
+          key={file.id}
+          file={file}
+          rendered={nearbyFileIds.has(file.id) || forcedFileIds.has(file.id)}
+          contentHeight={contentHeights.current.get(file.id) ?? estimatedContentHeight(file)}
+          onContentHeight={rememberContentHeight}
+          searchMatchesByLine={searchMatchesByLine}
+          {...props}
+        />
+      ))}
     </main>
   );
 }
@@ -82,11 +138,16 @@ interface DiffContentProps extends DiffViewProps {
   searchMatchesByLine: ReadonlyMap<string, ReadonlyArray<CodeMatch & { index: number }>>;
 }
 
-function DiffFileCard({ file, ...props }: DiffContentProps & { file: FileDiff }) {
+function DiffFileCard({ file, rendered, contentHeight, onContentHeight, ...props }: DiffContentProps & {
+  file: FileDiff;
+  rendered: boolean;
+  contentHeight: number;
+  onContentHeight(fileId: string, height: number): void;
+}) {
   const collapsed = props.collapsedFiles.has(file.id);
   const sourceCommit = props.showSourceCommits ? file.sourceCommit : null;
   return (
-    <article class={styles.file} id={`file-${file.id}`} data-file-id={file.id}>
+    <article class={styles.file} id={`file-${file.id}`} data-file-id={file.id} data-diff-rendered={rendered ? "true" : "false"}>
       <header class={styles.fileHeader}>
         <button class={styles.collapseButton} aria-expanded={!collapsed} onClick={() => props.onToggleFile(file.id)}>
           <span class={`${styles.chevron} ${collapsed ? styles.collapsed : ""}`}><Icon name="chevron" /></span>
@@ -104,17 +165,46 @@ function DiffFileCard({ file, ...props }: DiffContentProps & { file: FileDiff })
           <strong class={styles.deletions}>−{file.deletions}</strong>
         </div>
       </header>
-      {!collapsed ? (
-        <div class={styles.fileScroller} aria-label={`Scrollable diff for ${file.displayPath}`}>
-          <div class={styles.fileContent}>
-            {file.binary ? <Placeholder title="Binary file changed" detail="Binary contents cannot be reviewed line by line." /> : null}
-            {!file.binary && file.hunks.length === 0 ? <Placeholder title="File metadata changed" detail={`${file.oldMode} → ${file.newMode}`} /> : null}
-            {!file.binary && file.hunks.map((hunk) => <DiffHunk key={hunk.id} file={file} hunk={hunk} {...props} />)}
-          </div>
-        </div>
+      {!collapsed && rendered ? (
+        <FileContent file={file} onContentHeight={onContentHeight} {...props} />
       ) : null}
+      {!collapsed && !rendered ? <div class={styles.virtualContent} style={{ height: contentHeight }} aria-hidden="true" /> : null}
     </article>
   );
+}
+
+function FileContent({ file, onContentHeight, ...props }: DiffContentProps & {
+  file: FileDiff;
+  onContentHeight(fileId: string, height: number): void;
+}) {
+  const content = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const element = content.current;
+    if (!element) return;
+    const measure = () => {
+      const height = element.getBoundingClientRect().height;
+      if (height > 0) onContentHeight(file.id, height);
+    };
+    measure();
+    if (!("ResizeObserver" in window)) return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [file.id, onContentHeight]);
+  return (
+    <div ref={content} class={styles.fileScroller} aria-label={`Scrollable diff for ${file.displayPath}`}>
+      <div class={styles.fileContent}>
+        {file.binary ? <Placeholder title="Binary file changed" detail="Binary contents cannot be reviewed line by line." /> : null}
+        {!file.binary && file.hunks.length === 0 ? <Placeholder title="File metadata changed" detail={`${file.oldMode} → ${file.newMode}`} /> : null}
+        {!file.binary && file.hunks.map((hunk) => <DiffHunk key={hunk.id} file={file} hunk={hunk} {...props} />)}
+      </div>
+    </div>
+  );
+}
+
+function estimatedContentHeight(file: FileDiff): number {
+  if (file.binary || file.hunks.length === 0) return 120;
+  return file.hunks.reduce((height, hunk) => height + 32 + hunk.lines.length * 26, 0);
 }
 
 function Placeholder({ title, detail }: { title: string; detail: string }) {

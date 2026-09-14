@@ -64,6 +64,12 @@ describe("grr review window", () => {
     expect(shellWidths).not.toBeNull();
     for (const width of shellWidths?.widths ?? []) expect(width).toBeLessThanOrEqual((shellWidths?.viewport ?? 0) + 1);
     for (const right of shellWidths?.rightEdges ?? []) expect(right).toBeLessThanOrEqual((shellWidths?.viewport ?? 0) + 1);
+    const renderedDiffs = await browser.execute(() => ({
+      total: document.querySelectorAll("article[data-file-id]").length,
+      rendered: document.querySelectorAll("article[data-diff-rendered='true']").length,
+    }));
+    expect(renderedDiffs.rendered).toBeGreaterThan(0);
+    expect(renderedDiffs.rendered).toBeLessThan(renderedDiffs.total);
     writeFileSync("e2e-results/window.html", await browser.getPageSource());
     writeFileSync("e2e-results/window.png", Buffer.from(await browser.takeScreenshot(), "base64"));
 

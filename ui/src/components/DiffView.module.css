@@ -6,6 +6,7 @@
 .fileHeader { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 12px; background: var(--canvas); border-bottom: 1px solid var(--border); }
 .fileScroller { width: 100%; max-width: 100%; overflow-x: auto; }
 .fileContent { min-width: 100%; width: max-content; }
+.virtualContent { width: 100%; contain: strict; }
 .collapseButton { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px 0; border: 0; background: transparent; cursor: pointer; text-align: left; }
 .chevron { display: inline-flex; transition: transform 100ms ease; }
 .chevron.collapsed { transform: rotate(-90deg); }

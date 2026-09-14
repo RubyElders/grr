@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/preact";
+import { act, fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import fixture from "../__fixtures__/review.json";
 import type { ReviewData } from "../types";
@@ -48,6 +48,57 @@ describe("DiffView scroll positions", () => {
       expect(scrollers).toContain(code.closest("[aria-label^='Scrollable diff for ']") as HTMLElement);
     }
   });
+
+  it("mounts diff contents only near the viewport when observation is available", () => {
+    let notify: IntersectionObserverCallback = () => undefined;
+    class TestIntersectionObserver implements IntersectionObserver {
+      readonly root = null;
+      readonly rootMargin = "";
+      readonly thresholds = [];
+      constructor(callback: IntersectionObserverCallback) {
+        notify = callback;
+      }
+      disconnect() {}
+      observe() {}
+      takeRecords() { return []; }
+      unobserve() {}
+    }
+    vi.stubGlobal("IntersectionObserver", TestIntersectionObserver);
+    const manyFiles = Array.from({ length: 20 }, (_, index) => ({
+      ...files[0]!,
+      id: `large:f${index}`,
+      displayPath: `src/file-${index}.rs`,
+      hunks: files[0]!.hunks.map((hunk, hunkIndex) => ({
+        ...hunk,
+        id: `large:f${index}:h${hunkIndex}`,
+        lines: hunk.lines.map((line, lineIndex) => ({ ...line, id: `large:f${index}:h${hunkIndex}:l${lineIndex}` })),
+      })),
+    }));
+    render(
+      <DiffView
+        viewKey="large"
+        files={manyFiles}
+        activeFileId={manyFiles[0]!.id}
+        showSourceCommits={false}
+        collapsedFiles={new Set()}
+        openLineId={null}
+        drafts={{}}
+        searchMatches={[]}
+        activeSearchMatchIndex={-1}
+        {...callbacks}
+      />,
+    );
+
+    expect(document.querySelectorAll("article[data-file-id]")).toHaveLength(20);
+    expect(document.querySelectorAll("article[data-diff-rendered='true']")).toHaveLength(2);
+    expect(screen.getAllByLabelText(/^Scrollable diff for/)).toHaveLength(2);
+
+    const distant = document.querySelector<HTMLElement>("article[data-file-id='large:f12']")!;
+    act(() => notify([{ target: distant, isIntersecting: true } as unknown as IntersectionObserverEntry], {} as IntersectionObserver));
+    expect(distant).toHaveAttribute("data-diff-rendered", "true");
+    expect(screen.getAllByLabelText(/^Scrollable diff for/)).toHaveLength(3);
+    vi.unstubAllGlobals();
+  });
 });
 
 function renderDiff(viewKey: string) {
@@ -59,6 +110,7 @@ function diff(viewKey: string) {
     <DiffView
       viewKey={viewKey}
       files={files}
+      activeFileId={files[0]?.id ?? null}
       showSourceCommits={false}
       collapsedFiles={new Set()}
       openLineId={null}

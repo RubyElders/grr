@@ -278,6 +278,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         <DiffView
           viewKey={reviewViewKey(state.data)}
           files={state.data.files}
+          activeFileId={state.activeFileId}
           showSourceCommits={state.data.selectedCommitIds.length > 1}
           collapsedFiles={state.collapsedFiles}
           openLineId={state.openLineId}
