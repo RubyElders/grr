@@ -26,6 +26,7 @@
 
 ### Fixed
 
+- Show unchanged file renames as path movements instead of equal permission metadata.
 - Open a dirty repository on its standalone virtual commit instead of the grouped comparison.
 - Keep rapid commit-picker navigation to one step per key press.
 - Prevent clipboard helper processes from freezing the review window.

@@ -134,6 +134,8 @@ fn detects_renames_and_binary_files() {
         .unwrap();
     assert_eq!(renamed.old_path.as_deref(), Some("old.txt"));
     assert_eq!(renamed.new_path.as_deref(), Some("new.txt"));
+    assert_eq!(renamed.old_mode, renamed.new_mode);
+    assert_eq!(renamed.old_oid, renamed.new_oid);
     let binary = review
         .files
         .iter()
@@ -141,6 +143,29 @@ fn detects_renames_and_binary_files() {
         .unwrap();
     assert!(binary.binary);
     assert!(binary.hunks.is_empty());
+}
+
+#[test]
+fn detects_an_unstaged_file_move() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    commit_file(&repository, "old.txt", b"same content\n", "base");
+
+    fs::rename(
+        directory.path().join("old.txt"),
+        directory.path().join("new.txt"),
+    )
+    .unwrap();
+
+    let review = load_review(directory.path()).unwrap();
+    assert_eq!(review.selected_commit_ids, [WORKTREE_COMMIT_ID]);
+    assert_eq!(review.files.len(), 1);
+    let moved = &review.files[0];
+    assert_eq!(moved.status, FileStatus::Renamed);
+    assert_eq!(moved.old_path.as_deref(), Some("old.txt"));
+    assert_eq!(moved.new_path.as_deref(), Some("new.txt"));
+    assert_eq!(moved.old_mode, moved.new_mode);
+    assert_eq!(moved.old_oid, moved.new_oid);
 }
 
 #[test]

@@ -13,6 +13,13 @@ describe("grr review window", () => {
         && !document.body.textContent?.includes("5 commits against main"),
     }));
     expect(ready).toEqual({ filter: true, commit: true });
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.body.textContent?.includes("File moved")
+        && document.body.textContent?.includes("README.md -> GUIDE.md"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "file move did not render" });
+    expect(await browser.execute(
+      () => document.body.textContent?.includes("100644 -> 100644"),
+    )).toBe(false);
     await browser.execute(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true }));
     });

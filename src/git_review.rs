@@ -372,7 +372,7 @@ fn parse_diff(
         )
     }) {
         let mut find = DiffFindOptions::new();
-        find.renames(true);
+        find.renames(true).for_untracked(true);
         diff.find_similar(Some(&mut find))?;
     }
 

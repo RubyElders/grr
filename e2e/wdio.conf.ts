@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { WdioTauriConfig } from "@wdio/native-types";
@@ -40,6 +40,7 @@ for (const args of [["add", "README.md"], ["commit", "-qm", "Document the fixtur
   execFileSync("git", args, { cwd: repository });
 }
 writeFileSync(join(repository, "worktree-note.txt"), "This change has not been committed.\n");
+renameSync(join(repository, "README.md"), join(repository, "GUIDE.md"));
 
 export const config: WdioTauriConfig = {
   runner: "local",

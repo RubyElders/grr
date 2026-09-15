@@ -195,11 +195,14 @@ function FileContent({ file, onContentHeight, ...props }: DiffContentProps & {
     observer.observe(element);
     return () => observer.disconnect();
   }, [file.id, onContentHeight]);
+  const pathChanged = file.oldPath && file.newPath && file.oldPath !== file.newPath;
+  const purePathChange = pathChanged && file.oldOid === file.newOid;
   return (
     <div ref={content} class={styles.fileScroller} aria-label={`Scrollable diff for ${file.displayPath}`}>
       <div class={styles.fileContent}>
-        {file.binary ? <Placeholder title="Binary file changed" detail="Binary contents cannot be reviewed line by line." /> : null}
-        {!file.binary && file.hunks.length === 0 ? <Placeholder title="File metadata changed" detail={`${file.oldMode} → ${file.newMode}`} /> : null}
+        {purePathChange ? <Placeholder title={file.status === "copied" ? "File copied" : "File moved"} detail={`${file.oldPath} -> ${file.newPath}`} /> : null}
+        {!purePathChange && file.binary ? <Placeholder title="Binary file changed" detail="Binary contents cannot be reviewed line by line." /> : null}
+        {!purePathChange && !file.binary && file.hunks.length === 0 ? <Placeholder title="File metadata changed" detail={file.oldMode === file.newMode ? "No line changes to display." : `${file.oldMode} -> ${file.newMode}`} /> : null}
         {!file.binary && file.hunks.map((hunk) => <DiffHunk key={hunk.id} file={file} hunk={hunk} {...props} />)}
       </div>
     </div>

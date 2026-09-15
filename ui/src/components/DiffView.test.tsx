@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/preact";
 import { describe, expect, it, vi } from "vitest";
 import fixture from "../__fixtures__/review.json";
-import type { ReviewData } from "../types";
+import type { FileDiff, ReviewData } from "../types";
 import { DiffView } from "./DiffView";
 
 const files = (fixture as ReviewData).files;
@@ -47,6 +47,44 @@ describe("DiffView scroll positions", () => {
     for (const code of document.querySelectorAll("[data-line-id] code")) {
       expect(scrollers).toContain(code.closest("[aria-label^='Scrollable diff for ']") as HTMLElement);
     }
+  });
+
+  it("shows a pure rename as a file movement instead of a metadata change", () => {
+    const movedFile: FileDiff = {
+      ...files[0]!,
+      id: "moved-file",
+      oldPath: "src/old-name.rs",
+      newPath: "src/new-name.rs",
+      displayPath: "src/new-name.rs",
+      status: "renamed",
+      oldMode: "100644",
+      newMode: "100644",
+      oldOid: "1111111111111111111111111111111111111111",
+      newOid: "1111111111111111111111111111111111111111",
+      binary: false,
+      additions: 0,
+      deletions: 0,
+      hunks: [],
+    };
+    render(
+      <DiffView
+        viewKey="move"
+        files={[movedFile]}
+        activeFileId={movedFile.id}
+        showSourceCommits={false}
+        collapsedFiles={new Set()}
+        openLineId={null}
+        drafts={{}}
+        searchMatches={[]}
+        activeSearchMatchIndex={-1}
+        {...callbacks}
+      />,
+    );
+
+    expect(screen.getByText("File moved")).toBeInTheDocument();
+    expect(screen.getByText("src/old-name.rs -> src/new-name.rs")).toBeInTheDocument();
+    expect(screen.queryByText("File metadata changed")).not.toBeInTheDocument();
+    expect(screen.queryByText("100644 -> 100644")).not.toBeInTheDocument();
   });
 
   it("mounts diff contents only near the viewport when observation is available", () => {
