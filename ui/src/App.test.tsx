@@ -34,6 +34,22 @@ describe("ReviewApp", () => {
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
   });
 
+  it("presents a selected virtual commit independently from the comparison", async () => {
+    const data = { ...(fixture as ReviewData), selectedCommitIds: ["WORKTREE"] };
+    const backend: ReviewBackend = {
+      getReview: vi.fn().mockResolvedValue(data),
+      selectCommits: vi.fn(),
+      finishReview: vi.fn(),
+      cancelReview: vi.fn(),
+    };
+    render(<ReviewApp backend={backend} />);
+
+    const trigger = await screen.findByTitle("Choose commits to review");
+    expect(trigger).toHaveTextContent("Uncommitted changes");
+    expect(trigger).toHaveTextContent("worktree by Local working tree");
+    expect(trigger).not.toHaveTextContent("5 commits against origin/main");
+  });
+
   it("renders diff files in the same order as the file tree", async () => {
     const data = { ...(fixture as ReviewData), files: [...(fixture as ReviewData).files].reverse() };
     const backend: ReviewBackend = {

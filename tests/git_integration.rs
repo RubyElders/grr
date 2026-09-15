@@ -3,7 +3,8 @@ use std::path::Path;
 
 use git2::{Commit, Repository, Signature};
 use grr::{
-    FileStatus, ReviewData, ReviewLoadError, WORKTREE_COMMIT_ID, load_review, load_review_selection,
+    FileStatus, ReviewData, ReviewLoadError, WORKTREE_COMMIT_ID, load_initial_review, load_review,
+    load_review_selection,
 };
 
 fn commit_file<'repo>(
@@ -257,7 +258,7 @@ fn exposes_staged_unstaged_deleted_and_untracked_changes_as_a_virtual_commit() {
     .unwrap();
     fs::write(directory.path().join("ignored.txt"), b"ignored content\n").unwrap();
 
-    let initial = load_review(directory.path()).unwrap();
+    let initial = load_initial_review(directory.path(), Some("HEAD~2")).unwrap();
     let worktree = initial
         .commits
         .iter()
@@ -273,6 +274,7 @@ fn exposes_staged_unstaged_deleted_and_untracked_changes_as_a_virtual_commit() {
         worktree.parent_id.as_deref().unwrap()
     );
     assert_eq!(initial.selected_commit_ids, [WORKTREE_COMMIT_ID]);
+    assert_eq!(initial.comparison.base_ref, "HEAD~2");
     assert!(initial.files.iter().all(|file| {
         file.source_commit.as_ref().map(|commit| commit.id.as_str()) == Some(WORKTREE_COMMIT_ID)
     }));

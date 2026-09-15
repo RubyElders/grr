@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use grr::{
-    ReviewData, SubmittedReview, format_review_result, load_review_selection, validate_submission,
+    ReviewData, SubmittedReview, format_review_result, load_initial_review, load_review_selection,
+    validate_submission,
 };
 #[cfg(target_os = "linux")]
 use tauri::Manager;
@@ -90,14 +91,13 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let review =
-        match load_review_selection(&options.repository, options.requested_base.as_deref(), &[]) {
-            Ok(review) => review,
-            Err(error) => {
-                eprintln!("grr: {error}");
-                std::process::exit(1);
-            }
-        };
+    let review = match load_initial_review(&options.repository, options.requested_base.as_deref()) {
+        Ok(review) => review,
+        Err(error) => {
+            eprintln!("grr: {error}");
+            std::process::exit(1);
+        }
+    };
 
     let submitted = Arc::new(Mutex::new(None));
     let review_data = Arc::new(Mutex::new(Arc::new(review)));

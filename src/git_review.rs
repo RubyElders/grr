@@ -41,7 +41,14 @@ impl From<git2::Error> for ReviewLoadError {
 }
 
 pub fn load_review(path: impl AsRef<Path>) -> Result<ReviewData, ReviewLoadError> {
-    load_review_impl(path, None, &[], true)
+    load_initial_review(path, None)
+}
+
+pub fn load_initial_review(
+    path: impl AsRef<Path>,
+    requested_base: Option<&str>,
+) -> Result<ReviewData, ReviewLoadError> {
+    load_review_impl(path, requested_base, &[], true)
 }
 
 pub fn load_review_selection(

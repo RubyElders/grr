@@ -8,10 +8,18 @@ describe("grr review window", () => {
     ), { timeout: 10_000, interval: 100, timeoutMsg: "review UI did not finish loading" });
     const ready = await browser.execute(() => ({
       filter: Boolean(document.querySelector("input[aria-label='Filter files']")),
-      commit: document.body.textContent?.includes("5 commits against main")
-        && document.body.textContent?.includes("virtual by Local working tree (1), E2E User (4)"),
+      commit: document.body.textContent?.includes("Uncommitted changes")
+        && document.body.textContent?.includes("worktree by Local working tree")
+        && !document.body.textContent?.includes("5 commits against main"),
     }));
     expect(ready).toEqual({ filter: true, commit: true });
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.body.textContent?.includes("5 commits against main")
+        && document.body.textContent?.includes("virtual by Local working tree (1), E2E User (4)"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "grouped comparison did not open from the virtual commit" });
     const diffInsets = await browser.execute(() => {
       const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
       const first = pane?.querySelector<HTMLElement>("article[data-file-id]");
