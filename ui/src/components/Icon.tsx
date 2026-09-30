@@ -1,5 +1,5 @@
 interface IconProps {
-  name: "chevron" | "file" | "folder" | "comment" | "search" | "close" | "arrow-left" | "arrow-right";
+  name: "chevron" | "file" | "folder" | "comment" | "search" | "close" | "arrow-left" | "arrow-right" | "sidebar" | "minimize" | "maximize";
   size?: number;
 }
 
@@ -13,6 +13,9 @@ export function Icon({ name, size = 16 }: IconProps) {
     close: <path d="m6 6 12 12M18 6 6 18" />,
     "arrow-left": <path d="m15 18-6-6 6-6" />,
     "arrow-right": <path d="m9 6 6 6-6 6" />,
+    sidebar: <><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M9 4v16" /></>,
+    minimize: <path d="M6 17h12" />,
+    maximize: <rect x="5" y="5" width="14" height="14" rx="1" />,
   };
   return (
     <svg aria-hidden="true" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">

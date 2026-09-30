@@ -42,6 +42,7 @@ describe("shortcut registry", () => {
 
   it("formats every chord from the registry", () => {
     expect(shortcutTitle("find")).toBe("Ctrl/Cmd + F or F3");
+    expect(shortcutTitle("toggleSidebar")).toBe("Ctrl/Cmd + B");
     expect(shortcutTitle("nextFile")).toBe("Down or j");
     expect(shortcutTitle("copyPrimaryAction")).toBe("Ctrl/Cmd + Alt + Enter");
     expect(shortcutTitle("closeWindow")).toBe("Ctrl/Cmd + W or Alt + F4");

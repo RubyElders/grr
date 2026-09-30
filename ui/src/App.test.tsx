@@ -22,7 +22,7 @@ describe("ReviewApp", () => {
   it("renders the commit, tree, text diff, and binary placeholder", async () => {
     setup();
     expect(await screen.findByText("5 commits against origin/main")).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: "grr" })).toBeInTheDocument();
+    expect(screen.queryByRole("img", { name: "grr" })).not.toBeInTheDocument();
     const commitSelector = screen.getByTitle("Choose commits to review");
     expect(within(commitSelector).getByText("5 commits against origin/main")).toBeInTheDocument();
     expect(commitSelector).toHaveTextContent("virtual by Local working tree (1), Local User (4)");
@@ -33,6 +33,22 @@ describe("ReviewApp", () => {
     expect(screen.getByRole("navigation", { name: "File tree" })).toBeInTheDocument();
     expect(screen.getByLabelText(/const char\* labelEn;/)).toBeInTheDocument();
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
+    expect(screen.getByTitle("/tmp/example")).toBeInTheDocument();
+  });
+
+  it("toggles the file sidebar without losing its filter", async () => {
+    const { user } = setup();
+    await screen.findByText("5 commits against origin/main");
+    const filter = screen.getByRole("searchbox", { name: "Filter files" });
+    await user.type(filter, "Graphics");
+
+    await user.click(screen.getByRole("button", { name: "Hide file sidebar" }));
+    expect(screen.queryByRole("navigation", { name: "File tree" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Show file sidebar" }));
+    expect(screen.getByRole("searchbox", { name: "Filter files" })).toHaveValue("Graphics");
+
+    fireEvent.keyDown(document, { key: "b", ctrlKey: true });
+    expect(screen.queryByRole("navigation", { name: "File tree" })).not.toBeInTheDocument();
   });
 
   it("presents a selected virtual commit independently from the comparison", async () => {
@@ -347,6 +363,7 @@ describe("ReviewApp", () => {
 
     fireEvent.keyDown(document, { key: "?", shiftKey: true });
     const dialog = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
+    expect(within(dialog).getByRole("img", { name: "grr" })).toBeInTheDocument();
     expect(within(dialog).getByText("Jump to the next file or commit")).toBeInTheDocument();
     expect(within(dialog).getByText("Approve or share queued comments")).toBeInTheDocument();
 

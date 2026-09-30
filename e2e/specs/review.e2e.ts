@@ -7,16 +7,28 @@ describe("grr review window", () => {
       () => Boolean(document.querySelector("input[aria-label='Filter files']")),
     ), { timeout: 10_000, interval: 100, timeoutMsg: "review UI did not finish loading" });
     const ready = await browser.execute(() => {
-      const logo = document.querySelector<HTMLImageElement>("img[alt='grr']");
       return {
         filter: Boolean(document.querySelector("input[aria-label='Filter files']")),
-        logo: Boolean(logo?.complete && logo.naturalWidth > 0),
+        controls: ["Hide file sidebar", "Show keyboard shortcuts", "Minimize window", "Maximize window", "Close window"]
+          .every((label) => Boolean(document.querySelector(`button[aria-label='${label}']`))),
+        logoInHeader: Boolean(document.querySelector("header img[alt='grr']")),
         commit: document.body.textContent?.includes("Uncommitted changes")
           && document.body.textContent?.includes("worktree by Local working tree")
           && !document.body.textContent?.includes("5 commits against main"),
       };
     });
-    expect(ready).toEqual({ filter: true, logo: true, commit: true });
+    expect(ready).toEqual({ filter: true, controls: true, logoInHeader: false, commit: true });
+    const initialWindowSize = await browser.execute(() => ({ width: innerWidth, height: innerHeight }));
+    await browser.execute(() => document.querySelector<HTMLButtonElement>("button[aria-label='Maximize window']")?.click());
+    await browser.waitUntil(async () => await browser.execute(
+      (initial) => innerWidth !== initial.width || innerHeight !== initial.height,
+      initialWindowSize,
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "custom maximize control did not resize the window" });
+    await browser.execute(() => document.querySelector<HTMLButtonElement>("button[aria-label='Maximize window']")?.click());
+    await browser.waitUntil(async () => await browser.execute(
+      (initial) => Math.abs(innerWidth - initial.width) <= 1 && Math.abs(innerHeight - initial.height) <= 1,
+      initialWindowSize,
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "custom maximize control did not restore the window" });
     await browser.waitUntil(async () => await browser.execute(
       () => document.body.textContent?.includes("File moved")
         && document.body.textContent?.includes("README.md -> GUIDE.md"),
@@ -47,8 +59,9 @@ describe("grr review window", () => {
     for (const inset of Object.values(diffInsets ?? {})) expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
     const shellInsets = await browser.execute(() => {
       const topbar = document.querySelector<HTMLElement>("header");
-      const brand = topbar?.firstElementChild?.getBoundingClientRect();
-      const help = document.querySelector<HTMLElement>("button[aria-label='Show keyboard shortcuts']")?.getBoundingClientRect();
+      const sidebarToggle = document.querySelector<HTMLElement>("button[aria-label='Hide file sidebar']")?.getBoundingClientRect();
+      const close = document.querySelector<HTMLElement>("button[aria-label='Close window']")?.getBoundingClientRect();
+      const commitSelector = topbar?.children[1]?.getBoundingClientRect();
       const commit = document.querySelector<HTMLElement>("section[aria-label='Commit message']");
       const commitMessage = commit?.querySelector("button")?.getBoundingClientRect();
       const sidebar = document.querySelector<HTMLElement>("aside");
@@ -56,14 +69,15 @@ describe("grr review window", () => {
       const actions = document.querySelector<HTMLElement>("footer[aria-label='Review actions']");
       const actionText = actions?.firstElementChild?.getBoundingClientRect();
       const actionButtons = actions?.lastElementChild?.getBoundingClientRect();
-      if (!topbar || !brand || !help || !commit || !commitMessage || !sidebar || !filter || !actions || !actionText || !actionButtons) return null;
+      if (!topbar || !sidebarToggle || !close || !commitSelector || !commit || !commitMessage || !sidebar || !filter || !actions || !actionText || !actionButtons) return null;
       const topbarRect = topbar.getBoundingClientRect();
       const commitRect = commit.getBoundingClientRect();
       const sidebarRect = sidebar.getBoundingClientRect();
       const actionRect = actions.getBoundingClientRect();
       return {
-        topbarLeft: brand.left - topbarRect.left,
-        topbarRight: topbarRect.right - help.right,
+        topbarLeft: sidebarToggle.left - topbarRect.left,
+        topbarRight: topbarRect.right - close.right,
+        commitCenter: (commitSelector.left + commitSelector.right - topbarRect.left - topbarRect.right) / 2,
         commitLeft: commitMessage.left - commitRect.left,
         commitRight: commitRect.right - commitMessage.right,
         filterLeft: filter.left - sidebarRect.left,
@@ -77,11 +91,29 @@ describe("grr review window", () => {
     for (const inset of [shell.topbarLeft, shell.topbarRight, shell.commitLeft, shell.commitRight, shell.filterLeft]) {
       expect(Math.abs(inset - 12)).toBeLessThanOrEqual(1);
     }
+    expect(Math.abs(shell.commitCenter)).toBeLessThanOrEqual(1);
     for (const inset of [shell.actionsLeft, shell.actionsRight, shell.actionsBottom]) {
       expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
     }
     expect(Math.abs(shell.topbarLeft - shell.filterLeft)).toBeLessThanOrEqual(0.1);
     expect(Math.abs(shell.commitLeft - shell.filterLeft)).toBeLessThanOrEqual(0.1);
+    await clickElement("button[aria-label='Hide file sidebar']");
+    await browser.waitUntil(async () => await browser.execute(
+      () => !document.querySelector("aside[aria-label='Changed files']"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "sidebar toggle did not hide the file tree" });
+    const hiddenSidebarLayout = await browser.execute(() => {
+      const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.getBoundingClientRect();
+      const file = document.querySelector<HTMLElement>("article[data-file-id]")?.getBoundingClientRect();
+      return pane && file ? { paneLeft: pane.left, fileLeft: file.left - pane.left } : null;
+    });
+    expect(Math.abs(hiddenSidebarLayout?.paneLeft ?? 100)).toBeLessThanOrEqual(1);
+    expect(Math.abs((hiddenSidebarLayout?.fileLeft ?? 0) - 24)).toBeLessThanOrEqual(1);
+    await browser.execute(() => {
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "b", ctrlKey: true, bubbles: true, cancelable: true }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      () => Boolean(document.querySelector("input[aria-label='Filter files']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "Ctrl+B did not restore the file sidebar" });
     const shellWidths = await browser.execute(() => {
       const app = document.querySelector<HTMLElement>("#app > div");
       if (!app) return null;
@@ -141,6 +173,7 @@ describe("grr review window", () => {
       document.body.textContent?.includes("Jump to the next file or commit")
       && document.body.textContent?.includes("Browse commits")
       && document.body.textContent?.includes("Approve or share queued comments")
+      && Boolean(document.querySelector<HTMLImageElement>("section[aria-label='Keyboard shortcuts'] img[alt='grr']")?.complete)
     ))).toBe(true);
     writeFileSync("e2e-results/keyboard-shortcuts.png", Buffer.from(await browser.takeScreenshot(), "base64"));
     await browser.execute(() => {

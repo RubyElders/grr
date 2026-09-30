@@ -1,5 +1,6 @@
 export type ShortcutId =
   | "help"
+  | "toggleSidebar"
   | "find"
   | "nextMatch"
   | "previousMatch"
@@ -39,6 +40,7 @@ export interface ShortcutDefinition {
 
 export const SHORTCUTS: readonly ShortcutDefinition[] = [
   shortcut("help", "Window", "Show keyboard shortcuts", [chord("question", "?", "?", { shift: "any" })]),
+  shortcut("toggleSidebar", "Window", "Toggle the file sidebar", [chord("native", "Ctrl/Cmd + B", "b", { nativeModifier: true })]),
   shortcut("find", "Search", "Open find in changed code", [
     chord("native", "Ctrl/Cmd + F", "f", { nativeModifier: true }),
     chord("function", "F3", "F3"),

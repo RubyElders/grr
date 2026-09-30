@@ -1,0 +1,8 @@
+.titlebar { min-height: 54px; display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; border-bottom: 1px solid var(--border); background: var(--bg); user-select: none; }
+.side { min-width: 0; height: 100%; display: flex; align-items: center; padding: 0 var(--shell-inset); }
+.right { justify-content: flex-end; gap: 2px; }
+.center { min-width: 0; }
+.tool, .windowButton { width: 32px; height: 32px; display: grid; flex: none; place-items: center; padding: 0; border: 1px solid transparent; border-radius: 6px; color: var(--muted); background: transparent; font-weight: 700; cursor: pointer; }
+.tool:hover, .windowButton:hover { border-color: var(--border); color: var(--fg); background: var(--canvas); }
+.tool[aria-pressed="false"] { color: var(--blue); }
+.close:hover { border-color: #cf222e; color: white; background: #cf222e; }

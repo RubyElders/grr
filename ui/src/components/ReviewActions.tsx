@@ -3,6 +3,7 @@ import { shortcutModifiersActive, shortcutTitle } from "../shortcuts";
 import styles from "./ReviewActions.module.css";
 
 interface ReviewActionsProps {
+  repositoryRoot: string;
   draftCount: number;
   submitting: boolean;
   error: string | null;
@@ -10,7 +11,7 @@ interface ReviewActionsProps {
   onShare(copyToClipboard: boolean): void;
 }
 
-export function ReviewActions({ draftCount, submitting, error, onApprove, onShare }: ReviewActionsProps) {
+export function ReviewActions({ repositoryRoot, draftCount, submitting, error, onApprove, onShare }: ReviewActionsProps) {
   const [copyMode, setCopyMode] = useState(false);
   useLayoutEffect(() => {
     const update = (event: KeyboardEvent) => setCopyMode(shortcutModifiersActive(event, "copyPrimaryAction"));
@@ -29,7 +30,12 @@ export function ReviewActions({ draftCount, submitting, error, onApprove, onShar
     <footer class={styles.actions} aria-label="Review actions">
       <div>
         <strong>{draftCount === 0 ? "No draft comments" : `${draftCount} draft comment${draftCount === 1 ? "" : "s"}`}</strong>
-        {error ? <span class={styles.error} role="alert">{error}</span> : <span>Results will be printed in the invoking terminal.</span>}
+        {error ? <span class={styles.error} role="alert">{error}</span> : (
+          <span class={styles.details}>
+            <code title={repositoryRoot}>{repositoryRoot}</code>
+            <span>Results will be printed in the invoking terminal.</span>
+          </span>
+        )}
       </div>
       <div class={styles.buttons}>
         <button title={actionShortcut} class={styles.approve} disabled={submitting || draftCount > 0} onClick={() => onApprove(copyMode)}>{copyMode ? "Approve and copy" : "Approve"}</button>

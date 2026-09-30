@@ -9,13 +9,13 @@ import { CommitSelector } from "./components/CommitSelector";
 import { CommitMessagePanel } from "./components/CommitMessagePanel";
 import { FindPopover } from "./components/FindPopover";
 import { ShortcutHelp } from "./components/ShortcutHelp";
+import { WindowTitlebar } from "./components/WindowTitlebar";
 import { adjacentMatch, findCodeMatches } from "./codeSearch";
 import { commitNavigationTarget } from "./commitPresentation";
 import { reviewViewKey } from "./scrollPosition";
-import { matchesShortcut, shortcutTitle } from "./shortcuts";
+import { matchesShortcut } from "./shortcuts";
 import { filesInTreeOrder } from "./tree";
 import type { ReviewData } from "./types";
-import logoUrl from "../../icons/icon.png";
 import styles from "./App.module.css";
 
 export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend }) {
@@ -23,6 +23,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
   const [commitSelectorOpen, setCommitSelectorOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [findQuery, setFindQuery] = useState("");
   const [activeFindIndex, setActiveFindIndex] = useState(-1);
   useEffect(() => {
@@ -65,6 +66,11 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
       dispatch({ type: "submit-failed", error: errorMessage(error) });
     }
   }, [backend, state]);
+  const cancelReview = useCallback(() => {
+    void backend.cancelReview().catch((error: unknown) => {
+      dispatch({ type: "submit-failed", error: errorMessage(error) });
+    });
+  }, [backend]);
 
   const selectCommits = useCallback(async (commitIds: string[]) => {
     dispatch({ type: "selection-started" });
@@ -112,9 +118,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
           setShortcutHelpOpen(false);
           return;
         }
-        void backend.cancelReview().catch((error: unknown) => {
-          dispatch({ type: "submit-failed", error: errorMessage(error) });
-        });
+        cancelReview();
         return;
       }
 
@@ -122,6 +126,8 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && state.openLineId === null
         && state.phase === "ready"
         && !isTextEntryTarget(event.target);
+      const toggleSidebar = matchesShortcut(event, "toggleSidebar")
+        && state.phase === "ready";
       const browseCommits = matchesShortcut(event, "browseCommits")
         && state.openLineId === null
         && state.phase === "ready"
@@ -174,9 +180,13 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         && state.openLineId === null
         && state.phase === "ready"
         && !isTextEntryTarget(event.target);
-      if (!openHelp && !browseCommits && !openFind && !nextMatch && !previousMatch && !dismissFind && !dismissSelector && !closeWithEscape && !closeWindow && !runPrimaryAction && !runCopyPrimaryAction && !pageDiff && !stepCommit && !stepFile) return;
+      if (!openHelp && !toggleSidebar && !browseCommits && !openFind && !nextMatch && !previousMatch && !dismissFind && !dismissSelector && !closeWithEscape && !closeWindow && !runPrimaryAction && !runCopyPrimaryAction && !pageDiff && !stepCommit && !stepFile) return;
 
       event.preventDefault();
+      if (toggleSidebar) {
+        setSidebarOpen((open) => !open);
+        return;
+      }
       if (openHelp) {
         setCommitSelectorOpen(false);
         setFindOpen(false);
@@ -230,24 +240,34 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         void submit(comments.length === 0 ? "approve" : "share", runCopyPrimaryAction);
         return;
       }
-      void backend.cancelReview().catch((error: unknown) => {
-        dispatch({ type: "submit-failed", error: errorMessage(error) });
-      });
+      cancelReview();
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [backend, comments.length, commitSelectorOpen, findOpen, moveFind, navigateCommits, navigateFiles, shortcutHelpOpen, state.openLineId, state.phase, submit]);
+  }, [cancelReview, comments.length, commitSelectorOpen, findOpen, moveFind, navigateCommits, navigateFiles, shortcutHelpOpen, state.openLineId, state.phase, submit]);
 
-  if (state.phase === "loading") return <div class={styles.center} role="status">Loading commit diff…</div>;
-  if (state.phase === "error" || !state.data) return <div class={styles.center}><div class={styles.fatal} role="alert"><h1>Could not load review</h1><p>{state.error}</p></div></div>;
+  if (state.phase === "loading") return (
+    <div class={styles.app}>
+      <div class={styles.headerArea}><WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar></div>
+      <div class={styles.center} role="status">Loading commit diff…</div>
+    </div>
+  );
+  if (state.phase === "error" || !state.data) return (
+    <div class={styles.app}>
+      <div class={styles.headerArea}><WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar></div>
+      <div class={styles.center}><div class={styles.fatal} role="alert"><h1>Could not load review</h1><p>{state.error}</p></div></div>
+    </div>
+  );
 
   return (
     <div class={styles.app}>
       <div class={styles.headerArea}>
-        <header class={styles.topbar}>
-          <div class={styles.brand}>
-            <img src={logoUrl} alt="grr" />
-          </div>
+        <WindowTitlebar
+          sidebarOpen={sidebarOpen}
+          onToggleSidebar={() => setSidebarOpen((open) => !open)}
+          onHelp={() => setShortcutHelpOpen(true)}
+          onClose={cancelReview}
+        >
           <CommitSelector
             data={state.data}
             open={commitSelectorOpen}
@@ -256,28 +276,22 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
             onOpenChange={setCommitSelectorOpen}
             onSelect={(commitIds) => void selectCommits(commitIds)}
           />
-          <div class={styles.repository} title={state.data.repositoryRoot}>{state.data.repositoryRoot}</div>
-          <button
-            type="button"
-            class={styles.shortcutHelp}
-            aria-label="Show keyboard shortcuts"
-            title={`Keyboard shortcuts (${shortcutTitle("help")})`}
-            onClick={() => setShortcutHelpOpen(true)}
-          >?</button>
-        </header>
+        </WindowTitlebar>
         <CommitMessagePanel data={state.data} />
       </div>
-      <div class={styles.content}>
-        <FileTree
-          files={state.data.files}
-          showSourceCommits={state.data.selectedCommitIds.length > 1}
-          filter={state.filter}
-          activeFileId={state.activeFileId}
-          collapsedDirectories={state.collapsedDirectories}
-          onFilter={(value) => dispatch({ type: "filter", value })}
-          onToggleDirectory={(path) => dispatch({ type: "toggle-directory", path })}
-          onSelectFile={selectFile}
-        />
+      <div class={`${styles.content} ${sidebarOpen ? "" : styles.sidebarHidden}`}>
+        {sidebarOpen ? (
+          <FileTree
+            files={state.data.files}
+            showSourceCommits={state.data.selectedCommitIds.length > 1}
+            filter={state.filter}
+            activeFileId={state.activeFileId}
+            collapsedDirectories={state.collapsedDirectories}
+            onFilter={(value) => dispatch({ type: "filter", value })}
+            onToggleDirectory={(path) => dispatch({ type: "toggle-directory", path })}
+            onSelectFile={selectFile}
+          />
+        ) : null}
         <DiffView
           viewKey={reviewViewKey(state.data)}
           files={state.data.files}
@@ -308,6 +322,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
         ) : null}
       </div>
       <ReviewActions
+        repositoryRoot={state.data.repositoryRoot}
         draftCount={comments.length}
         submitting={state.phase === "submitting" || state.phase === "selecting"}
         error={state.error}

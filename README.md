@@ -54,6 +54,8 @@ The strip below the top bar shows the focused commit's message on one line; clic
 
 Use Up and Down to jump to the previous or next changed file. Space and Shift+Space continue to page the diff down or up.
 
+Use the top-left sidebar button or `Ctrl+B` (`Cmd+B` on macOS) to hide or restore the file tree.
+
 Press `?` or use the help button in the top bar to see every keyboard shortcut.
 
 When the repository is dirty, the review opens on an `Uncommitted changes` virtual commit. It combines staged, unstaged, deleted, and untracked changes relative to `HEAD`; ignored files remain excluded. Select it alone to review only the working tree, or combine it with real commits. In this state, `Show all` compares the merge base to the final working tree so committed and uncommitted changes are reviewed together.

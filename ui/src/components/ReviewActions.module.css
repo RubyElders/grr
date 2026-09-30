@@ -1,6 +1,9 @@
 .actions { z-index: 4; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: var(--content-inset); border-top: 1px solid var(--border); background: var(--bg); box-shadow: 0 -4px 14px rgba(31, 35, 40, .06); }
 .actions > div:first-child { display: flex; flex-direction: column; gap: 3px; }
 .actions span { color: var(--muted); font-size: 12px; }
+.details { min-width: 0; display: flex; align-items: center; gap: 8px; }
+.details code { max-width: min(42vw, 520px); overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.details code + span::before { content: "|"; margin-right: 8px; }
 .actions .error { color: var(--red); }
 .buttons { display: flex; gap: 9px; }
 .buttons button { min-width: 104px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 7px; font-weight: 600; cursor: pointer; }
