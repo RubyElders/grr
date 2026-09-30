@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=grr
+Comment=Review local Git changes
+Exec=grr
+Icon=com.rubyelders.grr
+Terminal=false
+Categories=Development;
+Keywords=git;diff;review;
+StartupNotify=true
+StartupWMClass=com.rubyelders.grr

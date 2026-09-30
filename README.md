@@ -22,6 +22,8 @@ make check
 make install
 ```
 
+The install target also registers the application ID and icon with Linux desktop environments so the `grr` logo is used in launchers and window switchers.
+
 The repository forces `LIBGIT2_NO_VENDOR=1`: compilation fails unless a compatible system libgit2 1.9.x development package is available.
 
 ## Use

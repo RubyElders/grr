@@ -1,4 +1,4 @@
-.PHONY: check coverage e2e build install
+.PHONY: check coverage e2e build install install-desktop
 
 check:
 	npm ci
@@ -25,3 +25,9 @@ build:
 install:
 	npm run build
 	cargo install --path .
+	$(MAKE) install-desktop
+
+install-desktop:
+	data_home="$${XDG_DATA_HOME:-$${HOME}/.local/share}"; \
+	install -Dm644 packaging/com.rubyelders.grr.desktop "$$data_home/applications/com.rubyelders.grr.desktop"; \
+	install -Dm644 icons/icon.png "$$data_home/icons/hicolor/512x512/apps/com.rubyelders.grr.png"
