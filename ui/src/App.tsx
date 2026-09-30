@@ -15,6 +15,7 @@ import { reviewViewKey } from "./scrollPosition";
 import { matchesShortcut, shortcutTitle } from "./shortcuts";
 import { filesInTreeOrder } from "./tree";
 import type { ReviewData } from "./types";
+import logoUrl from "../../icons/icon.png";
 import styles from "./App.module.css";
 
 export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend }) {
@@ -244,7 +245,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     <div class={styles.app}>
       <div class={styles.headerArea}>
         <header class={styles.topbar}>
-          <div class={styles.brand}>grr</div>
+          <img class={styles.brand} src={logoUrl} alt="grr" />
           <CommitSelector
             data={state.data}
             open={commitSelectorOpen}

@@ -13,6 +13,7 @@
 
 ### Changed
 
+- Use the new `grr` logo for the application and review header.
 - Render only nearby diff files while preserving the full scroll range.
 - Avoid duplicate worktree diff copies and repeated commit metadata in large selections.
 - Share immutable diff snapshots across Tauri commands and reuse unchanged syntax highlighting.

@@ -22,6 +22,7 @@ describe("ReviewApp", () => {
   it("renders the commit, tree, text diff, and binary placeholder", async () => {
     setup();
     expect(await screen.findByText("5 commits against origin/main")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "grr" })).toBeInTheDocument();
     const commitSelector = screen.getByTitle("Choose commits to review");
     expect(within(commitSelector).getByText("5 commits against origin/main")).toBeInTheDocument();
     expect(commitSelector).toHaveTextContent("virtual by Local working tree (1), Local User (4)");

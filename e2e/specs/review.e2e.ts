@@ -6,13 +6,17 @@ describe("grr review window", () => {
     await browser.waitUntil(async () => await browser.execute(
       () => Boolean(document.querySelector("input[aria-label='Filter files']")),
     ), { timeout: 10_000, interval: 100, timeoutMsg: "review UI did not finish loading" });
-    const ready = await browser.execute(() => ({
-      filter: Boolean(document.querySelector("input[aria-label='Filter files']")),
-      commit: document.body.textContent?.includes("Uncommitted changes")
-        && document.body.textContent?.includes("worktree by Local working tree")
-        && !document.body.textContent?.includes("5 commits against main"),
-    }));
-    expect(ready).toEqual({ filter: true, commit: true });
+    const ready = await browser.execute(() => {
+      const logo = document.querySelector<HTMLImageElement>("img[alt='grr']");
+      return {
+        filter: Boolean(document.querySelector("input[aria-label='Filter files']")),
+        logo: Boolean(logo?.complete && logo.naturalWidth > 0),
+        commit: document.body.textContent?.includes("Uncommitted changes")
+          && document.body.textContent?.includes("worktree by Local working tree")
+          && !document.body.textContent?.includes("5 commits against main"),
+      };
+    });
+    expect(ready).toEqual({ filter: true, logo: true, commit: true });
     await browser.waitUntil(async () => await browser.execute(
       () => document.body.textContent?.includes("File moved")
         && document.body.textContent?.includes("README.md -> GUIDE.md"),
