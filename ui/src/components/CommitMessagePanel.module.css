@@ -1,4 +1,4 @@
-.panel { min-height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 var(--content-inset); border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--canvas) 72%, var(--bg)); color: var(--muted); }
+.panel { min-height: 34px; display: flex; align-items: center; gap: 10px; padding: 0 var(--shell-inset); border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--canvas) 72%, var(--bg)); color: var(--muted); }
 .message { min-width: 0; flex: 1; display: flex; align-items: center; gap: 6px; padding: 6px 0; border: 0; background: transparent; color: inherit; text-align: left; }
 .message:not(:disabled) { cursor: pointer; }
 .message:disabled { opacity: 1; }

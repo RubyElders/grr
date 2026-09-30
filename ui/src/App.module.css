@@ -13,7 +13,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 0 var(--content-inset);
+  padding: 0 var(--shell-inset);
   border-bottom: 1px solid var(--border);
   background: var(--bg);
 }
@@ -21,8 +21,14 @@
 .brand {
   width: 40px;
   height: 40px;
-  display: block;
   flex: none;
+}
+
+.brand img {
+  width: 44px;
+  height: 44px;
+  display: block;
+  margin: -2px;
   object-fit: contain;
 }
 

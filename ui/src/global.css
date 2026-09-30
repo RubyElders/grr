@@ -27,6 +27,7 @@
   --syntax-type: #953800;
   --syntax-meta: #116329;
   --shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+  --shell-inset: 12px;
   --content-inset: 24px;
 }
 

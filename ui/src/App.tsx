@@ -245,7 +245,9 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     <div class={styles.app}>
       <div class={styles.headerArea}>
         <header class={styles.topbar}>
-          <img class={styles.brand} src={logoUrl} alt="grr" />
+          <div class={styles.brand}>
+            <img src={logoUrl} alt="grr" />
+          </div>
           <CommitSelector
             data={state.data}
             open={commitSelectorOpen}

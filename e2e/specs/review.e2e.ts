@@ -51,25 +51,37 @@ describe("grr review window", () => {
       const help = document.querySelector<HTMLElement>("button[aria-label='Show keyboard shortcuts']")?.getBoundingClientRect();
       const commit = document.querySelector<HTMLElement>("section[aria-label='Commit message']");
       const commitMessage = commit?.querySelector("button")?.getBoundingClientRect();
+      const sidebar = document.querySelector<HTMLElement>("aside");
+      const filter = document.querySelector<HTMLInputElement>("input[aria-label='Filter files']")?.parentElement?.getBoundingClientRect();
       const actions = document.querySelector<HTMLElement>("footer[aria-label='Review actions']");
       const actionText = actions?.firstElementChild?.getBoundingClientRect();
       const actionButtons = actions?.lastElementChild?.getBoundingClientRect();
-      if (!topbar || !brand || !help || !commit || !commitMessage || !actions || !actionText || !actionButtons) return null;
+      if (!topbar || !brand || !help || !commit || !commitMessage || !sidebar || !filter || !actions || !actionText || !actionButtons) return null;
       const topbarRect = topbar.getBoundingClientRect();
       const commitRect = commit.getBoundingClientRect();
+      const sidebarRect = sidebar.getBoundingClientRect();
       const actionRect = actions.getBoundingClientRect();
       return {
         topbarLeft: brand.left - topbarRect.left,
         topbarRight: topbarRect.right - help.right,
         commitLeft: commitMessage.left - commitRect.left,
         commitRight: commitRect.right - commitMessage.right,
+        filterLeft: filter.left - sidebarRect.left,
         actionsLeft: actionText.left - actionRect.left,
         actionsRight: actionRect.right - actionButtons.right,
         actionsBottom: actionRect.bottom - actionButtons.bottom,
       };
     });
     expect(shellInsets).not.toBeNull();
-    for (const inset of Object.values(shellInsets ?? {})) expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
+    const shell = shellInsets!;
+    for (const inset of [shell.topbarLeft, shell.topbarRight, shell.commitLeft, shell.commitRight, shell.filterLeft]) {
+      expect(Math.abs(inset - 12)).toBeLessThanOrEqual(1);
+    }
+    for (const inset of [shell.actionsLeft, shell.actionsRight, shell.actionsBottom]) {
+      expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
+    }
+    expect(Math.abs(shell.topbarLeft - shell.filterLeft)).toBeLessThanOrEqual(0.1);
+    expect(Math.abs(shell.commitLeft - shell.filterLeft)).toBeLessThanOrEqual(0.1);
     const shellWidths = await browser.execute(() => {
       const app = document.querySelector<HTMLElement>("#app > div");
       if (!app) return null;

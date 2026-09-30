@@ -1,5 +1,5 @@
 .sidebar { min-width: 0; overflow: auto; border-right: 1px solid var(--border); background: var(--bg); }
-.searchBox { margin: 16px 12px 8px; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.searchBox { margin: 16px var(--shell-inset) 8px; height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
 .searchBox:focus-within { border-color: var(--blue); box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 25%, transparent); }
 .searchBox input { width: 100%; border: 0; outline: 0; color: var(--fg); background: transparent; }
 .count { padding: 0 14px 10px; color: var(--muted); font-size: 12px; }
