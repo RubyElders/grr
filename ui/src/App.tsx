@@ -15,10 +15,12 @@ import { commitNavigationTarget } from "./commitPresentation";
 import { reviewViewKey } from "./scrollPosition";
 import { matchesShortcut } from "./shortcuts";
 import { filesInTreeOrder } from "./tree";
+import { listenNativeHeaderActions, nativeHeaderUpdate, updateNativeHeader, usesNativeHeader } from "./nativeHeader";
 import type { ReviewData } from "./types";
 import styles from "./App.module.css";
 
 export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend }) {
+  const nativeHeader = usesNativeHeader();
   const [state, dispatch] = useReducer(reviewReducer, initialState);
   const [commitSelectorOpen, setCommitSelectorOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
@@ -106,6 +108,43 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     const target = state.data.files[targetIndex];
     if (target) selectFile(target.id);
   }, [selectFile, state.activeFileId, state.data]);
+
+  useEffect(() => {
+    if (!nativeHeader || !state.data) return;
+    const disabled = comments.length > 0 || state.phase === "selecting" || state.phase === "submitting";
+    void updateNativeHeader(nativeHeaderUpdate(state.data, disabled)).catch((error: unknown) => {
+      dispatch({ type: "submit-failed", error: errorMessage(error) });
+    });
+  }, [comments.length, nativeHeader, state.data, state.phase]);
+
+  useEffect(() => {
+    if (!nativeHeader) return;
+    let unlisten: (() => void) | undefined;
+    let disposed = false;
+    void listenNativeHeaderActions((action) => {
+      if (action === "sidebar" && state.phase === "ready") setSidebarOpen((open) => !open);
+      if (action === "help" && state.phase === "ready") {
+        setCommitSelectorOpen(false);
+        setFindOpen(false);
+        setShortcutHelpOpen(true);
+      }
+      if (action === "picker" && state.phase === "ready" && comments.length === 0) {
+        setCommitSelectorOpen((open) => !open);
+      }
+      if ((action === "newer" || action === "older") && state.phase === "ready" && comments.length === 0) {
+        navigateCommits(action);
+      }
+    }).then((stop) => {
+      if (disposed) stop();
+      else unlisten = stop;
+    }).catch((error: unknown) => {
+      dispatch({ type: "submit-failed", error: errorMessage(error) });
+    });
+    return () => {
+      disposed = true;
+      unlisten?.();
+    };
+  }, [comments.length, nativeHeader, navigateCommits, state.phase]);
 
   useLayoutEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -248,13 +287,13 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
 
   if (state.phase === "loading") return (
     <div class={styles.app}>
-      <div class={styles.headerArea}><WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar></div>
+      <div class={styles.headerArea}>{nativeHeader ? null : <WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
       <div class={styles.center} role="status">Loading commit diff…</div>
     </div>
   );
   if (state.phase === "error" || !state.data) return (
     <div class={styles.app}>
-      <div class={styles.headerArea}><WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar></div>
+      <div class={styles.headerArea}>{nativeHeader ? null : <WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
       <div class={styles.center}><div class={styles.fatal} role="alert"><h1>Could not load review</h1><p>{state.error}</p></div></div>
     </div>
   );
@@ -262,7 +301,7 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
   return (
     <div class={styles.app}>
       <div class={styles.headerArea}>
-        <WindowTitlebar
+        {nativeHeader ? null : <WindowTitlebar
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((open) => !open)}
           onHelp={() => setShortcutHelpOpen(true)}
@@ -276,7 +315,16 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
             onOpenChange={setCommitSelectorOpen}
             onSelect={(commitIds) => void selectCommits(commitIds)}
           />
-        </WindowTitlebar>
+        </WindowTitlebar>}
+        {nativeHeader ? <CommitSelector
+          data={state.data}
+          open={commitSelectorOpen}
+          loading={state.phase === "selecting"}
+          disabled={comments.length > 0 || state.phase === "submitting"}
+          nativeHeader
+          onOpenChange={setCommitSelectorOpen}
+          onSelect={(commitIds) => void selectCommits(commitIds)}
+        /> : null}
         <CommitMessagePanel data={state.data} />
       </div>
       <div class={`${styles.content} ${sidebarOpen ? "" : styles.sidebarHidden}`}>

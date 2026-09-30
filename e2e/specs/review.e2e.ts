@@ -9,26 +9,13 @@ describe("grr review window", () => {
     const ready = await browser.execute(() => {
       return {
         filter: Boolean(document.querySelector("input[aria-label='Filter files']")),
-        controls: ["Hide file sidebar", "Show keyboard shortcuts", "Minimize window", "Maximize window", "Close window"]
-          .every((label) => Boolean(document.querySelector(`button[aria-label='${label}']`))),
+        customControls: ["Hide file sidebar", "Show keyboard shortcuts", "Minimize window", "Maximize window", "Close window"]
+          .some((label) => Boolean(document.querySelector(`button[aria-label='${label}']`))),
         logoInHeader: Boolean(document.querySelector("header img[alt='grr']")),
-        commit: document.body.textContent?.includes("Uncommitted changes")
-          && document.body.textContent?.includes("worktree by Local working tree")
-          && !document.body.textContent?.includes("5 commits against main"),
+        commit: document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle,
       };
     });
-    expect(ready).toEqual({ filter: true, controls: true, logoInHeader: false, commit: true });
-    const initialWindowSize = await browser.execute(() => ({ width: innerWidth, height: innerHeight }));
-    await browser.execute(() => document.querySelector<HTMLButtonElement>("button[aria-label='Maximize window']")?.click());
-    await browser.waitUntil(async () => await browser.execute(
-      (initial) => innerWidth !== initial.width || innerHeight !== initial.height,
-      initialWindowSize,
-    ), { timeout: 5_000, interval: 50, timeoutMsg: "custom maximize control did not resize the window" });
-    await browser.execute(() => document.querySelector<HTMLButtonElement>("button[aria-label='Maximize window']")?.click());
-    await browser.waitUntil(async () => await browser.execute(
-      (initial) => Math.abs(innerWidth - initial.width) <= 1 && Math.abs(innerHeight - initial.height) <= 1,
-      initialWindowSize,
-    ), { timeout: 5_000, interval: 50, timeoutMsg: "custom maximize control did not restore the window" });
+    expect(ready).toEqual({ filter: true, customControls: false, logoInHeader: false, commit: "Uncommitted changes" });
     await browser.waitUntil(async () => await browser.execute(
       () => document.body.textContent?.includes("File moved")
         && document.body.textContent?.includes("README.md -> GUIDE.md"),
@@ -40,8 +27,7 @@ describe("grr review window", () => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true }));
     });
     await browser.waitUntil(async () => await browser.execute(
-      () => document.body.textContent?.includes("5 commits against main")
-        && document.body.textContent?.includes("virtual by Local working tree (1), E2E User (4)"),
+      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "5 commits against main",
     ), { timeout: 5_000, interval: 50, timeoutMsg: "grouped comparison did not open from the virtual commit" });
     const diffInsets = await browser.execute(() => {
       const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
@@ -58,10 +44,6 @@ describe("grr review window", () => {
     expect(diffInsets).not.toBeNull();
     for (const inset of Object.values(diffInsets ?? {})) expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
     const shellInsets = await browser.execute(() => {
-      const topbar = document.querySelector<HTMLElement>("header");
-      const sidebarToggle = document.querySelector<HTMLElement>("button[aria-label='Hide file sidebar']")?.getBoundingClientRect();
-      const close = document.querySelector<HTMLElement>("button[aria-label='Close window']")?.getBoundingClientRect();
-      const commitSelector = topbar?.children[1]?.getBoundingClientRect();
       const commit = document.querySelector<HTMLElement>("section[aria-label='Commit message']");
       const commitMessage = commit?.querySelector("button")?.getBoundingClientRect();
       const sidebar = document.querySelector<HTMLElement>("aside");
@@ -69,15 +51,11 @@ describe("grr review window", () => {
       const actions = document.querySelector<HTMLElement>("footer[aria-label='Review actions']");
       const actionText = actions?.firstElementChild?.getBoundingClientRect();
       const actionButtons = actions?.lastElementChild?.getBoundingClientRect();
-      if (!topbar || !sidebarToggle || !close || !commitSelector || !commit || !commitMessage || !sidebar || !filter || !actions || !actionText || !actionButtons) return null;
-      const topbarRect = topbar.getBoundingClientRect();
+      if (!commit || !commitMessage || !sidebar || !filter || !actions || !actionText || !actionButtons) return null;
       const commitRect = commit.getBoundingClientRect();
       const sidebarRect = sidebar.getBoundingClientRect();
       const actionRect = actions.getBoundingClientRect();
       return {
-        topbarLeft: sidebarToggle.left - topbarRect.left,
-        topbarRight: topbarRect.right - close.right,
-        commitCenter: (commitSelector.left + commitSelector.right - topbarRect.left - topbarRect.right) / 2,
         commitLeft: commitMessage.left - commitRect.left,
         commitRight: commitRect.right - commitMessage.right,
         filterLeft: filter.left - sidebarRect.left,
@@ -88,16 +66,14 @@ describe("grr review window", () => {
     });
     expect(shellInsets).not.toBeNull();
     const shell = shellInsets!;
-    for (const inset of [shell.topbarLeft, shell.topbarRight, shell.commitLeft, shell.commitRight, shell.filterLeft]) {
+    for (const inset of [shell.commitLeft, shell.commitRight, shell.filterLeft]) {
       expect(Math.abs(inset - 12)).toBeLessThanOrEqual(1);
     }
-    expect(Math.abs(shell.commitCenter)).toBeLessThanOrEqual(1);
     for (const inset of [shell.actionsLeft, shell.actionsRight, shell.actionsBottom]) {
       expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
     }
-    expect(Math.abs(shell.topbarLeft - shell.filterLeft)).toBeLessThanOrEqual(0.1);
     expect(Math.abs(shell.commitLeft - shell.filterLeft)).toBeLessThanOrEqual(0.1);
-    await clickElement("button[aria-label='Hide file sidebar']");
+    await pressShortcut("b", { ctrlKey: true });
     await browser.waitUntil(async () => await browser.execute(
       () => !document.querySelector("aside[aria-label='Changed files']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "sidebar toggle did not hide the file tree" });
@@ -108,9 +84,7 @@ describe("grr review window", () => {
     });
     expect(Math.abs(hiddenSidebarLayout?.paneLeft ?? 100)).toBeLessThanOrEqual(1);
     expect(Math.abs((hiddenSidebarLayout?.fileLeft ?? 0) - 24)).toBeLessThanOrEqual(1);
-    await browser.execute(() => {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "b", ctrlKey: true, bubbles: true, cancelable: true }));
-    });
+    await pressShortcut("b", { ctrlKey: true });
     await browser.waitUntil(async () => await browser.execute(
       () => Boolean(document.querySelector("input[aria-label='Filter files']")),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "Ctrl+B did not restore the file sidebar" });
@@ -276,7 +250,7 @@ describe("grr review window", () => {
     expect(allScrollPosition).toBeGreaterThan(0);
     await clickElement("button[aria-label='Show only Return the correct answer']");
     await browser.waitUntil(async () => await browser.execute(
-      () => document.body.textContent?.includes("Return the correct answer")
+      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "Return the correct answer"
         && !document.querySelector("article [title*='Return the correct answer']")
         && document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop === 0,
     ), { timeout: 5_000, interval: 50, timeoutMsg: "single-commit diff did not load" });
@@ -286,57 +260,54 @@ describe("grr review window", () => {
       return panel && expand ? {
         height: panel.getBoundingClientRect().height,
         body: panel.textContent?.includes("Explain why the fixture answer changes."),
-        newer: Boolean(document.querySelector("button[aria-label='Show newer commit Update AI subgroup answer']")),
-        olderDisabled: document.querySelector<HTMLButtonElement>("button[aria-label='No older commit']")?.disabled,
+        title: panel.dataset.commitTitle,
       } : null;
     });
     expect(collapsedMessageHeight?.height).toBeLessThanOrEqual(36);
-    expect(collapsedMessageHeight).toMatchObject({ body: true, newer: true, olderDisabled: true });
+    expect(collapsedMessageHeight).toMatchObject({ body: true, title: "Return the correct answer" });
     await clickElement("button[aria-label='Expand commit message']");
     const expandedMessageHeight = await browser.execute(() => (
       document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.getBoundingClientRect().height ?? 0
     ));
     expect(expandedMessageHeight).toBeGreaterThan(collapsedMessageHeight?.height ?? 0);
     writeFileSync("e2e-results/commit-message.png", Buffer.from(await browser.takeScreenshot(), "base64"));
-    await clickElement("button[aria-label='Show newer commit Update AI subgroup answer']");
+    await pressShortcut("ArrowLeft");
     await browser.waitUntil(async () => await browser.execute(
-      () => document.body.textContent?.includes("Update AI subgroup answer")
+      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "Update AI subgroup answer"
         && !document.querySelector("article [title*='Update AI subgroup answer']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "newer commit arrow did not load its neighbor" });
-    await clickElement("button[title='Choose commits to review']");
+    await pressShortcut("c");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
-      (expectedScrollTop) => document.body.textContent?.includes("5 commits against main")
+      (expectedScrollTop) => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "5 commits against main"
         && !document.querySelector("article [title*='Return the correct answer']")
         && Math.abs((document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop ?? -1) - expectedScrollTop) <= 1,
       allScrollPosition,
     ), { timeout: 5_000, interval: 50, timeoutMsg: "full branch diff did not restore its scroll position" });
 
-    await clickElement("button[title='Choose commits to review']");
+    await pressShortcut("c");
     await clickElement("button[aria-label='Show only Uncommitted changes']");
     await browser.waitUntil(async () => await browser.execute(
-      () => document.body.textContent?.includes("worktree by Local working tree")
+      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "Uncommitted changes"
         && !document.querySelector("article [title='worktree · Uncommitted changes']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "virtual worktree commit did not load" });
-    await clickElement("button[title='Choose commits to review']");
+    await pressShortcut("c");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
-      () => document.body.textContent?.includes("5 commits against main"),
+      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "5 commits against main",
     ), { timeout: 5_000, interval: 50, timeoutMsg: "full diff did not return after worktree review" });
 
     for (const step of [
-      { key: "ArrowRight", text: "worktree by Local working tree" },
-      { key: "ArrowRight", text: "by E2E User" },
-      { key: "ArrowLeft", text: "worktree by Local working tree" },
-      { key: "ArrowLeft", text: "5 commits against main" },
+      { key: "ArrowRight", title: "Uncommitted changes" },
+      { key: "ArrowRight", title: "Document the fixture" },
+      { key: "ArrowLeft", title: "Uncommitted changes" },
+      { key: "ArrowLeft", title: "5 commits against main" },
     ]) {
-      await browser.execute((key) => {
-        document.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }));
-      }, step.key);
+      await pressShortcut(step.key);
       await browser.waitUntil(async () => await browser.execute(
-        (text) => document.body.textContent?.includes(text),
-        step.text,
-      ), { timeout: 5_000, interval: 50, timeoutMsg: `${step.key} did not navigate to ${step.text}` });
+        (title) => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === title,
+        step.title,
+      ), { timeout: 5_000, interval: 50, timeoutMsg: `${step.key} did not navigate to ${step.title}` });
     }
 
     const longHeader = await browser.execute(() => {
@@ -501,4 +472,10 @@ async function clickButton(label: string): Promise<void> {
     if (!button) throw new Error(`No button matched ${targetLabel}`);
     button.click();
   }, label);
+}
+
+async function pressShortcut(key: string, modifiers: Pick<KeyboardEventInit, "ctrlKey" | "altKey" | "shiftKey" | "metaKey"> = {}): Promise<void> {
+  await browser.execute((shortcut, options) => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: shortcut, ...options, bubbles: true, cancelable: true }));
+  }, key, modifiers);
 }

@@ -6,9 +6,14 @@ use grr::{
     ReviewData, SubmittedReview, format_review_result, load_initial_review, load_review_selection,
     validate_submission,
 };
-use tauri::{State, Window};
+use tauri::{Manager, State, Window};
 
 mod clipboard;
+#[cfg(target_os = "linux")]
+mod native_header;
+
+#[cfg(target_os = "linux")]
+use native_header::{NativeHeaderState, NativeHeaderUpdate};
 
 struct AppState {
     repository: PathBuf,
@@ -80,6 +85,15 @@ fn cancel_review(window: Window) -> Result<(), String> {
     window.close().map_err(|error| error.to_string())
 }
 
+#[cfg(target_os = "linux")]
+#[tauri::command]
+fn update_native_header(
+    update: NativeHeaderUpdate,
+    state: State<'_, NativeHeaderState>,
+) -> Result<(), String> {
+    state.update(update)
+}
+
 fn main() {
     let options = match parse_args() {
         Ok(Some(options)) => options,
@@ -106,11 +120,21 @@ fn main() {
             data: Arc::clone(&review_data),
             submitted: Arc::clone(&submitted),
         })
+        .setup(|app| {
+            #[cfg(target_os = "linux")]
+            {
+                let window = tauri::Manager::get_webview_window(app, "main")
+                    .ok_or("main review window was not created")?;
+                app.manage(native_header::install(&window)?);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             get_review,
             select_commits,
             finish_review,
-            cancel_review
+            cancel_review,
+            update_native_header
         ])
         .build(tauri::generate_context!())
         .unwrap_or_else(|error| {

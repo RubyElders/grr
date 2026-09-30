@@ -10,6 +10,7 @@ interface CommitSelectorProps {
   open: boolean;
   loading: boolean;
   disabled: boolean;
+  nativeHeader?: boolean;
   onOpenChange(open: boolean): void;
   onSelect(commitIds: string[]): void;
 }
@@ -103,8 +104,8 @@ export function CommitSelector(props: CommitSelectorProps) {
   };
 
   return (
-    <div ref={root} class={styles.root}>
-      <div class={styles.navigation}>
+    <div ref={root} class={`${styles.root} ${props.nativeHeader ? styles.nativeRoot : ""}`}>
+      {props.nativeHeader ? null : <div class={styles.navigation}>
         <button
           type="button"
           class={styles.step}
@@ -143,7 +144,7 @@ export function CommitSelector(props: CommitSelectorProps) {
             : navigationTitle(older.commit, "older") : "No older commit"}
           onClick={() => older && apply(older.selectedCommitIds)}
         ><Icon name="arrow-right" /></button>
-      </div>
+      </div>}
       {props.open ? (
         <section ref={dialog} class={styles.popover} role="dialog" aria-label="Choose commits" tabIndex={-1}>
           <header class={styles.header}>

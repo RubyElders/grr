@@ -1146,6 +1146,7 @@ name = "grr"
 version = "0.3.3"
 dependencies = [
  "git2",
+ "gtk",
  "serde",
  "serde_json",
  "tauri",
