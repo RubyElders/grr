@@ -67,7 +67,7 @@ export const config: WdioTauriConfig = {
   }]],
   framework: "mocha",
   reporters: ["spec"],
-  mochaOpts: { timeout: 120_000 },
+  mochaOpts: { timeout: 120_000, parallel: false },
   logLevel: "warn",
   onComplete: () => rmSync(repository, { recursive: true, force: true }),
 };

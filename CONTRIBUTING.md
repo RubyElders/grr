@@ -1,6 +1,6 @@
 # Contributing
 
-Development and native validation currently target Fedora Linux 44. Install the system dependencies listed in the README, Rust 1.88 or later, and Node 22.12 or later within the Node 22 release line. Use the checked-in Cargo and npm lockfiles.
+Development and native validation currently target Fedora Linux 44. Install the system dependencies listed in the README, Rust 1.88 or later, and Node 22.20 or later within the Node 22 release line. Use the checked-in Cargo and npm lockfiles.
 
 ```sh
 npm ci
@@ -54,7 +54,7 @@ For native UI changes, also check GNOME window controls, dragging, maximize/rest
 ```sh
 cargo install cargo-deny --version 0.20.2 --locked
 cargo deny check advisories licenses sources
-npm audit
+npm run audit
 gitleaks git --redact --log-opts=--all .
 git diff --check
 ```

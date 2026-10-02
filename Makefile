@@ -7,6 +7,7 @@ check:
 	$(MAKE) check-linux
 
 check-ui:
+	npm run test:audit
 	npm run typecheck
 	npm run test:coverage
 	npm run build
@@ -56,5 +57,5 @@ uninstall-desktop:
 
 audit:
 	cargo deny check advisories licenses sources
-	npm audit
+	npm run audit
 	gitleaks git --redact --log-opts=--all .

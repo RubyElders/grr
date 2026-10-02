@@ -1,6 +1,20 @@
 use serde_json::Value;
 
 #[test]
+fn release_versions_match() {
+    let config: Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+    let package: Value = serde_json::from_str(include_str!("../package.json")).unwrap();
+    let lock: Value = serde_json::from_str(include_str!("../package-lock.json")).unwrap();
+    let version = env!("CARGO_PKG_VERSION");
+
+    assert_eq!(config["version"], version);
+    assert_eq!(package["version"], version);
+    assert_eq!(lock["version"], version);
+    assert_eq!(lock["packages"][""]["version"], version);
+    assert!(include_str!("../CHANGELOG.md").contains(&format!("## {version} - ")));
+}
+
+#[test]
 fn linux_desktop_identity_matches_the_tauri_application_id() {
     let config: Value = serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
     let identifier = config["identifier"].as_str().unwrap();

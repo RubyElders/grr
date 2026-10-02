@@ -21,3 +21,7 @@ The application does not use `VariantStrIter` or `Variant::array_iter_str`. A so
 The dependency graph also includes unmaintained `proc-macro-error` through GTK macros and unmaintained `unic-char-property`, `unic-char-range`, `unic-common`, `unic-ucd-ident`, and `unic-ucd-version` through Tauri's URL-pattern dependency. Their maintenance advisories are recorded individually in `deny.toml`; new advisories still fail the dependency check.
 
 System WebKitGTK and libgit2 are dynamically linked and must receive updates from the operating system. Rust and npm dependency checks do not audit those installed system libraries.
+
+The native test toolchain retains three development-only dependencies without compatible patched releases: `extract-zip 2.0.1` (GHSA-jmr9-qjv8-65gv and GHSA-7pqw-9j4j-h8q3), `basic-ftp 5.3.1` (GHSA-c475-qrg2-pj4r), and `serialize-javascript 6.0.2` (GHSA-5c6j-r48x-rmvq and GHSA-qj8w-gfj5-8c6v). The external Tauri driver configuration does not download Chrome/Firefox archives or process FTP listings, and Mocha parallel serialization is disabled. These dependencies are not included in the application frontend or executable. Do not use this test configuration to download or unpack untrusted browsers or serialize untrusted values.
+
+`npm run audit` checks the live npm advisory report and permits only those exact advisory IDs, versions, and development-only lockfile entries. Other advisories and audit failures fail CI. Plain `npm audit` still reports the retained findings. Revisit these exceptions when the native test dependencies change.

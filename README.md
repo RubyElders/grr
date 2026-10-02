@@ -14,7 +14,7 @@ sudo dnf install webkit2gtk4.1-devel libgit2-devel openssl-devel \
 sudo dnf group install "c-development"
 ```
 
-Building requires Rust 1.88 or later, Node.js 22.12 or later within the Node 22 release line, and npm. The installed executable does not require Node.js, npm, or the `git` command.
+Building requires Rust 1.88 or later, Node.js 22.20 or later within the Node 22 release line, and npm. The installed executable does not require Node.js, npm, or the `git` command.
 
 ## Build and install
 
