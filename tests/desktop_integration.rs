@@ -7,7 +7,7 @@ fn linux_desktop_identity_matches_the_tauri_application_id() {
     let desktop = include_str!("../packaging/com.rubyelders.grr.desktop");
 
     assert_eq!(identifier, "com.rubyelders.grr");
-    assert_eq!(config["app"]["enableGTKAppId"], true);
+    assert_eq!(config["app"]["enableGTKAppId"], false);
     assert_eq!(desktop_value(desktop, "Icon"), Some(identifier));
     assert_eq!(desktop_value(desktop, "StartupWMClass"), Some(identifier));
     assert_eq!(config["bundle"]["icon"][0], "icons/icon.png");

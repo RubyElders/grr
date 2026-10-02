@@ -99,6 +99,8 @@ fn main() {
         }
     };
 
+    let context = tauri::generate_context!();
+    window_chrome::prepare(&context.config().identifier);
     let submitted = Arc::new(Mutex::new(None));
     let review_data = Arc::new(Mutex::new(Arc::new(review)));
     let app = tauri::Builder::default()
@@ -123,7 +125,7 @@ fn main() {
             get_window_chrome,
             update_window_chrome
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .unwrap_or_else(|error| {
             eprintln!("grr: could not start the review window: {error}");
             std::process::exit(1);

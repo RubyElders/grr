@@ -37,6 +37,13 @@ pub struct WindowChromeState {
     header: linux::Header,
 }
 
+pub fn prepare(identifier: &str) {
+    #[cfg(target_os = "linux")]
+    gtk::glib::set_prgname(Some(identifier));
+    #[cfg(not(target_os = "linux"))]
+    let _ = identifier;
+}
+
 #[tauri::command]
 pub fn get_window_chrome() -> WindowChromeKind {
     if cfg!(target_os = "linux") {
@@ -89,6 +96,13 @@ pub fn install(window: &WebviewWindow) -> Result<WindowChromeState, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn uses_the_desktop_identifier_as_the_gtk_program_name() {
+        prepare("com.rubyelders.grr");
+        assert_eq!(gtk::glib::prgname().as_deref(), Some("com.rubyelders.grr"));
+    }
 
     #[test]
     fn serializes_platform_and_actions_for_the_frontend() {
