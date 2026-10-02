@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.22.2
+          cache: npm
+      - run: npm ci
+      - run: make check-ui
+      - run: npm audit
+
+  linux:
+    runs-on: ubuntu-24.04
+    container: registry.fedoraproject.org/fedora:44
+    timeout-minutes: 45
+    env:
+      CARGO_BUILD_JOBS: 2
+    steps:
+      - name: Install system dependencies
+        run: >-
+          dnf install -y git make gcc gcc-c++ pkgconf-pkg-config curl
+          webkit2gtk4.1-devel libgit2-devel openssl-devel
+          libappindicator-gtk3-devel librsvg2-devel libxdo-devel
+          xorg-x11-server-Xvfb dbus-daemon xdotool
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22.22.2
+          cache: npm
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.98.1 --component clippy,rustfmt,llvm-tools-preview
+          printf '%s\n' "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: npm ci
+      - run: npm run build
+      - run: make check-rust
+      - name: Install validation tools
+        run: |
+          cargo install cargo-llvm-cov --version 0.8.7 --locked
+          cargo install cargo-deny --version 0.20.2 --locked
+          cargo install tauri-driver --version 2.0.6 --locked
+      - run: make coverage
+      - run: make check-linux
+      - run: make e2e
+      - run: make e2e-multi-instance
+      - run: cargo deny check advisories licenses sources
+
+  secrets:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: stable
+          cache: false
+      - name: Scan Git history
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@v8.24.3
+          gitleaks git --redact --log-opts=--all .
