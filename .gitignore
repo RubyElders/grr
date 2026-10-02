@@ -5,4 +5,6 @@
 /ui/coverage/
 /gen/schemas/
 /e2e-results/
+/ai-refs/
+/tmp/
 *.log
