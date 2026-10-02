@@ -2,25 +2,16 @@ use std::sync::Mutex;
 
 use gtk::glib::{self, ControlFlow};
 use gtk::prelude::*;
-use serde::Deserialize;
 use tauri::{Emitter, WebviewWindow};
 
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NativeHeaderUpdate {
-    title: String,
-    subtitle: String,
-    can_navigate_newer: bool,
-    can_navigate_older: bool,
-    commit_selection_enabled: bool,
+use super::{WindowChromeAction, WindowChromeUpdate};
+
+pub struct Header {
+    sender: Mutex<glib::Sender<WindowChromeUpdate>>,
 }
 
-pub struct NativeHeaderState {
-    sender: Mutex<glib::Sender<NativeHeaderUpdate>>,
-}
-
-impl NativeHeaderState {
-    pub fn update(&self, update: NativeHeaderUpdate) -> Result<(), String> {
+impl Header {
+    pub fn update(&self, update: WindowChromeUpdate) -> Result<(), String> {
         self.sender
             .lock()
             .map_err(|_| "native header lock was poisoned".to_owned())?
@@ -29,7 +20,7 @@ impl NativeHeaderState {
     }
 }
 
-pub fn install(window: &WebviewWindow) -> Result<NativeHeaderState, String> {
+pub fn install(window: &WebviewWindow) -> Result<Header, String> {
     let gtk_window = window.gtk_window().map_err(|error| error.to_string())?;
     let header = gtk::HeaderBar::builder()
         .show_close_button(true)
@@ -37,16 +28,16 @@ pub fn install(window: &WebviewWindow) -> Result<NativeHeaderState, String> {
         .build();
 
     let sidebar = icon_button("sidebar-show-symbolic", "Toggle file sidebar (Ctrl+B)");
-    emit_action(&sidebar, window, "sidebar");
+    emit_action(&sidebar, window, WindowChromeAction::Sidebar);
     header.pack_start(&sidebar);
 
     let help = icon_button("help-about-symbolic", "Keyboard shortcuts (?)");
-    emit_action(&help, window, "help");
+    emit_action(&help, window, WindowChromeAction::Help);
     header.pack_end(&help);
 
     let navigation = gtk::Box::new(gtk::Orientation::Horizontal, 4);
     let newer = icon_button("go-previous-symbolic", "Show newer commit");
-    emit_action(&newer, window, "newer");
+    emit_action(&newer, window, WindowChromeAction::Newer);
     navigation.pack_start(&newer, false, false, 0);
 
     let title = gtk::Label::new(Some("grr"));
@@ -65,17 +56,17 @@ pub fn install(window: &WebviewWindow) -> Result<NativeHeaderState, String> {
     selector.set_relief(gtk::ReliefStyle::None);
     selector.set_tooltip_text(Some("Choose commits to review (C)"));
     selector.add(&labels);
-    emit_action(&selector, window, "picker");
+    emit_action(&selector, window, WindowChromeAction::Picker);
     navigation.pack_start(&selector, true, true, 0);
 
     let older = icon_button("go-next-symbolic", "Show older commit");
-    emit_action(&older, window, "older");
+    emit_action(&older, window, WindowChromeAction::Older);
     navigation.pack_start(&older, false, false, 0);
     header.set_custom_title(Some(&navigation));
 
     #[allow(deprecated)]
     let (sender, receiver) =
-        glib::MainContext::channel::<NativeHeaderUpdate>(glib::Priority::DEFAULT);
+        glib::MainContext::channel::<WindowChromeUpdate>(glib::Priority::DEFAULT);
     receiver.attach(None, move |update| {
         title.set_text(&update.title);
         subtitle.set_text(&update.subtitle);
@@ -87,7 +78,7 @@ pub fn install(window: &WebviewWindow) -> Result<NativeHeaderState, String> {
 
     gtk_window.set_titlebar(Some(&header));
     header.show_all();
-    Ok(NativeHeaderState {
+    Ok(Header {
         sender: Mutex::new(sender),
     })
 }
@@ -99,9 +90,9 @@ fn icon_button(icon: &str, tooltip: &str) -> gtk::Button {
     button
 }
 
-fn emit_action(button: &gtk::Button, window: &WebviewWindow, action: &'static str) {
+fn emit_action(button: &gtk::Button, window: &WebviewWindow, action: WindowChromeAction) {
     let window = window.clone();
     button.connect_clicked(move |_| {
-        let _ = window.emit("native-header-action", action);
+        let _ = window.emit("window-chrome-action", action);
     });
 }

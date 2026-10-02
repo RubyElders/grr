@@ -15,12 +15,13 @@ import { commitNavigationTarget } from "./commitPresentation";
 import { reviewViewKey } from "./scrollPosition";
 import { matchesShortcut } from "./shortcuts";
 import { filesInTreeOrder } from "./tree";
-import { listenNativeHeaderActions, nativeHeaderUpdate, updateNativeHeader, usesNativeHeader } from "./nativeHeader";
+import { useWindowChrome } from "./windowChrome/useWindowChrome";
+import type { WindowChromeKind } from "./windowChrome/model";
 import type { ReviewData } from "./types";
 import styles from "./App.module.css";
 
-export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend }) {
-  const nativeHeader = usesNativeHeader();
+export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { backend?: ReviewBackend; chromeMode?: WindowChromeKind }) {
+  const nativeChrome = chromeMode !== "html";
   const [state, dispatch] = useReducer(reviewReducer, initialState);
   const [commitSelectorOpen, setCommitSelectorOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
@@ -109,19 +110,11 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
     if (target) selectFile(target.id);
   }, [selectFile, state.activeFileId, state.data]);
 
-  useEffect(() => {
-    if (!nativeHeader || !state.data) return;
-    const disabled = comments.length > 0 || state.phase === "selecting" || state.phase === "submitting";
-    void updateNativeHeader(nativeHeaderUpdate(state.data, disabled)).catch((error: unknown) => {
-      dispatch({ type: "submit-failed", error: errorMessage(error) });
-    });
-  }, [comments.length, nativeHeader, state.data, state.phase]);
-
-  useEffect(() => {
-    if (!nativeHeader) return;
-    let unlisten: (() => void) | undefined;
-    let disposed = false;
-    void listenNativeHeaderActions((action) => {
+  useWindowChrome(
+    chromeMode,
+    state.data,
+    comments.length > 0 || state.phase !== "ready",
+    (action) => {
       if (action === "sidebar" && state.phase === "ready") setSidebarOpen((open) => !open);
       if (action === "help" && state.phase === "ready") {
         setCommitSelectorOpen(false);
@@ -134,17 +127,11 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
       if ((action === "newer" || action === "older") && state.phase === "ready" && comments.length === 0) {
         navigateCommits(action);
       }
-    }).then((stop) => {
-      if (disposed) stop();
-      else unlisten = stop;
-    }).catch((error: unknown) => {
+    },
+    (error) => {
       dispatch({ type: "submit-failed", error: errorMessage(error) });
-    });
-    return () => {
-      disposed = true;
-      unlisten?.();
-    };
-  }, [comments.length, nativeHeader, navigateCommits, state.phase]);
+    },
+  );
 
   useLayoutEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -286,45 +273,39 @@ export function ReviewApp({ backend = tauriBackend }: { backend?: ReviewBackend 
   }, [cancelReview, comments.length, commitSelectorOpen, findOpen, moveFind, navigateCommits, navigateFiles, shortcutHelpOpen, state.openLineId, state.phase, submit]);
 
   if (state.phase === "loading") return (
-    <div class={styles.app}>
-      <div class={styles.headerArea}>{nativeHeader ? null : <WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
+    <div class={styles.app} data-window-chrome={chromeMode}>
+      <div class={styles.headerArea}>{nativeChrome ? null : <WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
       <div class={styles.center} role="status">Loading commit diff…</div>
     </div>
   );
   if (state.phase === "error" || !state.data) return (
-    <div class={styles.app}>
-      <div class={styles.headerArea}>{nativeHeader ? null : <WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
+    <div class={styles.app} data-window-chrome={chromeMode}>
+      <div class={styles.headerArea}>{nativeChrome ? null : <WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
       <div class={styles.center}><div class={styles.fatal} role="alert"><h1>Could not load review</h1><p>{state.error}</p></div></div>
     </div>
   );
 
+  const commitSelector = <CommitSelector
+    data={state.data}
+    open={commitSelectorOpen}
+    loading={state.phase === "selecting"}
+    disabled={comments.length > 0 || state.phase === "submitting"}
+    placement={nativeChrome ? "native" : "inline"}
+    onOpenChange={setCommitSelectorOpen}
+    onSelect={(commitIds) => void selectCommits(commitIds)}
+  />;
+
   return (
-    <div class={styles.app}>
+    <div class={styles.app} data-window-chrome={chromeMode}>
       <div class={styles.headerArea}>
-        {nativeHeader ? null : <WindowTitlebar
+        {nativeChrome ? commitSelector : <WindowTitlebar
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((open) => !open)}
           onHelp={() => setShortcutHelpOpen(true)}
           onClose={cancelReview}
         >
-          <CommitSelector
-            data={state.data}
-            open={commitSelectorOpen}
-            loading={state.phase === "selecting"}
-            disabled={comments.length > 0 || state.phase === "submitting"}
-            onOpenChange={setCommitSelectorOpen}
-            onSelect={(commitIds) => void selectCommits(commitIds)}
-          />
+          {commitSelector}
         </WindowTitlebar>}
-        {nativeHeader ? <CommitSelector
-          data={state.data}
-          open={commitSelectorOpen}
-          loading={state.phase === "selecting"}
-          disabled={comments.length > 0 || state.phase === "submitting"}
-          nativeHeader
-          onOpenChange={setCommitSelectorOpen}
-          onSelect={(commitIds) => void selectCommits(commitIds)}
-        /> : null}
         <CommitMessagePanel data={state.data} />
       </div>
       <div class={`${styles.content} ${sidebarOpen ? "" : styles.sidebarHidden}`}>

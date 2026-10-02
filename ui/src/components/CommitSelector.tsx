@@ -10,7 +10,7 @@ interface CommitSelectorProps {
   open: boolean;
   loading: boolean;
   disabled: boolean;
-  nativeHeader?: boolean;
+  placement?: "inline" | "native";
   onOpenChange(open: boolean): void;
   onSelect(commitIds: string[]): void;
 }
@@ -104,8 +104,8 @@ export function CommitSelector(props: CommitSelectorProps) {
   };
 
   return (
-    <div ref={root} class={`${styles.root} ${props.nativeHeader ? styles.nativeRoot : ""}`}>
-      {props.nativeHeader ? null : <div class={styles.navigation}>
+    <div ref={root} class={`${styles.root} ${props.placement === "native" ? styles.nativeRoot : ""}`}>
+      {props.placement === "native" ? null : <div class={styles.navigation}>
         <button
           type="button"
           class={styles.step}

@@ -9,13 +9,14 @@ describe("grr review window", () => {
     const ready = await browser.execute(() => {
       return {
         filter: Boolean(document.querySelector("input[aria-label='Filter files']")),
+        chrome: document.querySelector<HTMLElement>("[data-window-chrome]")?.dataset.windowChrome,
         customControls: ["Hide file sidebar", "Show keyboard shortcuts", "Minimize window", "Maximize window", "Close window"]
           .some((label) => Boolean(document.querySelector(`button[aria-label='${label}']`))),
         logoInHeader: Boolean(document.querySelector("header img[alt='grr']")),
         commit: document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle,
       };
     });
-    expect(ready).toEqual({ filter: true, customControls: false, logoInHeader: false, commit: "Uncommitted changes" });
+    expect(ready).toEqual({ filter: true, chrome: "gtk-native", customControls: false, logoInHeader: false, commit: "Uncommitted changes" });
     await browser.waitUntil(async () => await browser.execute(
       () => document.body.textContent?.includes("File moved")
         && document.body.textContent?.includes("README.md -> GUIDE.md"),

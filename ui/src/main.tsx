@@ -2,11 +2,14 @@ import { render } from "preact";
 import { isTauri } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { ReviewApp } from "./App";
-import { runAfterRender } from "./startup";
+import { startReviewWindow } from "./startup";
+import { resolveWindowChrome } from "./windowChrome/bridge";
 import "./global.css";
 
-render(<ReviewApp />, document.getElementById("app")!);
-
-if (isTauri()) {
-  runAfterRender(() => getCurrentWindow().show());
-}
+const root = document.getElementById("app")!;
+void startReviewWindow({
+  resolveChrome: resolveWindowChrome,
+  renderReview: (chromeMode) => render(<ReviewApp chromeMode={chromeMode} />, root),
+  renderError: (error) => render(<main role="alert"><h1>Could not start review</h1><p>{String(error)}</p></main>, root),
+  reveal: () => { if (isTauri()) return getCurrentWindow().show(); },
+});
