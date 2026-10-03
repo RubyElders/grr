@@ -14,23 +14,63 @@ concurrency:
 
 jobs:
   frontend:
+    name: Frontend
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22.22.2
           cache: npm
-      - run: npm ci
-      - run: npm run check:ui
-      - run: npm run audit
+      - name: Install dependencies
+        run: npm ci
+      - name: Test development scripts
+        run: npm run test:scripts
+      - name: Check TypeScript
+        run: npm run typecheck
+      - name: Test frontend with coverage
+        run: npm run test:coverage
+      - name: Build frontend
+        run: npm run build
+
+  rust:
+    name: Rust checks and coverage
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_BUILD_JOBS: 2
+      RUST_BACKTRACE: 1
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Set up Linux development environment
+        uses: ./.github/actions/setup-linux
+      - name: Build frontend
+        run: npm run build
+      - name: Check Rust formatting
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --all --check
+      - name: Lint Rust
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
+      - name: Test Rust
+        run: npm run test:rust
+      - name: Install coverage tool
+        run: cargo install cargo-llvm-cov --version 0.8.7 --locked
+      - name: Check Rust coverage
+        run: npm run coverage:rust
 
   linux:
-    runs-on: ubuntu-24.04
-    container: registry.fedoraproject.org/fedora:44
+    name: Native tests (Linux)
+    runs-on: ubuntu-26.04
     timeout-minutes: 45
     defaults:
       run:
@@ -39,47 +79,62 @@ jobs:
       CARGO_BUILD_JOBS: 2
       RUST_BACKTRACE: 1
     steps:
-      - name: Install system dependencies
-        run: >-
-          dnf install -y git gcc gcc-c++ pkgconf-pkg-config curl
-          webkit2gtk4.1-devel libgit2-devel openssl-devel
-          libappindicator-gtk3-devel librsvg2-devel libxdo-devel
-          xorg-x11-server-Xvfb dbus-daemon xdotool which webkitgtk6.0
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      - name: Set up Linux development environment
+        uses: ./.github/actions/setup-linux
+      - name: Install native test driver
+        run: cargo install tauri-driver --version 2.0.6 --locked
+      - name: Build release executable
+        run: npm run build:app
+      - name: Check system libgit2 linkage
+        run: npm run check:linux
+      - name: Test review window
+        run: npm run test:e2e:linux
+      - name: Test independent review windows
+        run: npm run test:multi-instance:linux
+
+  dependencies:
+    name: Dependency audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22.22.2
           cache: npm
+      - name: Install frontend dependencies
+        run: npm ci
+      - name: Audit npm dependencies
+        run: npm run audit
       - name: Install Rust
         run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.98.1 --component clippy,rustfmt,llvm-tools-preview
-          printf '%s\n' "$HOME/.cargo/bin" >> "$GITHUB_PATH"
-      - run: npm ci
-      - run: npm run build
-      - run: npm run check:rust
-      - name: Install validation tools
-        run: |
-          cargo install cargo-llvm-cov --version 0.8.7 --locked
-          cargo install cargo-deny --version 0.20.2 --locked
-          cargo install tauri-driver --version 2.0.6 --locked
-      - run: npm run coverage:rust
-      - run: npm run build:app
-      - run: npm run check:linux
-      - run: npm run test:e2e:linux
-      - run: npm run test:multi-instance:linux
-      - run: cargo deny --manifest-path src-tauri/Cargo.toml check advisories licenses sources
+          rustup toolchain install 1.98.1 --profile minimal
+          rustup default 1.98.1
+      - name: Install dependency audit tool
+        run: cargo install cargo-deny --version 0.20.2 --locked
+      - name: Audit Rust dependencies, licenses and sources
+        run: npm run audit:rust
 
   secrets:
+    name: Secret scan
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - name: Check out full history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
         with:
           go-version: stable
           cache: false
@@ -87,6 +142,21 @@ jobs:
         run: |
           go install github.com/zricethezav/gitleaks/v8@v8.24.3
           gitleaks git --redact --log-opts=--all .
+
+  workflows:
+    name: Workflow lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: stable
+          cache: false
       - name: Validate workflows
         run: |
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7

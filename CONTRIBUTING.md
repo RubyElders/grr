@@ -51,6 +51,6 @@ The native test stack overrides WebdriverIO's transitive Mocha, diff parser, Jav
 
 ## GitHub Actions
 
-CI runs frontend checks, Rust coverage, release and native tests, dependency audits, workflow validation and secret scanning. It runs on pushes, pull requests or manual dispatch with read-only permissions and no repository secrets.
+CI has independent jobs for frontend checks, Rust tests and coverage, native Linux tests, dependency audits, secret scanning and workflow validation. It runs on pushes, pull requests or manual dispatch with read-only permissions and no repository secrets. The Rust and native jobs run directly on Ubuntu 26.04 and share the setup action in `.github/actions/setup-linux`.
 
-Require `frontend`, `linux` and `secrets` checks for `main` after the first hosted run succeeds. CI does not publish releases or establish macOS support.
+Require `Frontend`, `Rust checks and coverage`, `Native tests (Linux)`, `Dependency audit`, `Secret scan` and `Workflow lint` checks for `main` after the first hosted run succeeds. CI does not publish releases or establish macOS support.
