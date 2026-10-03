@@ -37,7 +37,7 @@
   },
   "dependencies": {
     "@tauri-apps/api": "2.12.1",
-    "preact": "10.29.8"
+    "preact": "11.0.0"
   },
   "devDependencies": {
     "@preact/preset-vite": "2.10.6",

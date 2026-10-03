@@ -43,7 +43,7 @@ describe("useWindowChrome", () => {
     expect(listenWindowChromeActions).toHaveBeenCalledOnce();
     expect(updateWindowChrome).toHaveBeenLastCalledWith(expect.objectContaining({ commitSelectionEnabled: false }));
     view.unmount();
-    expect(stop).toHaveBeenCalledOnce();
+    await waitFor(() => expect(stop).toHaveBeenCalledOnce());
     receive("help");
     expect(next).toHaveBeenCalledOnce();
   });
