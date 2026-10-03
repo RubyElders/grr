@@ -58,7 +58,24 @@ mod tests {
 
     #[test]
     fn reports_clipboard_command_failures() {
-        assert!(copy_with_command("false", &[], "review result\n").is_err());
+        let error = copy_with_command("sh", &["-c", "cat >/dev/null; exit 1"], "review result\n")
+            .unwrap_err();
+        assert!(error.contains("failed with"));
+    }
+
+    #[test]
+    fn reports_clipboard_command_start_failures() {
+        let command = NamedTempFile::new().unwrap();
+        let error = copy_with_command(command.path().to_str().unwrap(), &[], "review result\n")
+            .unwrap_err();
+        assert!(error.contains("could not start"));
+    }
+
+    #[test]
+    fn reports_clipboard_command_write_failures() {
+        let text = "x".repeat(4 * 1024 * 1024);
+        let error = copy_with_command("sh", &["-c", "exec 0<&-; exit 0"], &text).unwrap_err();
+        assert!(error.contains("could not write"));
     }
 
     #[test]
