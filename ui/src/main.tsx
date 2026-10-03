@@ -10,6 +10,6 @@ const root = document.getElementById("app")!;
 void startReviewWindow({
   resolveChrome: resolveWindowChrome,
   renderReview: (chromeMode) => render(<ReviewApp chromeMode={chromeMode} />, root),
-  renderError: (error) => render(<main role="alert"><h1>Could not start review</h1><p>{String(error)}</p></main>, root),
+  renderError: (error) => render(<main><div role="alert"><h1>Could not start review</h1><p>{String(error)}</p></div></main>, root),
   reveal: () => { if (isTauri()) return getCurrentWindow().show(); },
 });

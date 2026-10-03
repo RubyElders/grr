@@ -56,7 +56,7 @@ function DirectoryNode({ node, depth, ...props }: NodeProps & { node: FileTreeNo
     <div>
       <button
         class={styles.node}
-        style={{ "--depth": depth } as preact.JSX.CSSProperties}
+        style={{ "--depth": depth }}
         aria-expanded={!collapsed}
         onClick={() => props.onToggleDirectory(node.path)}
       >
@@ -79,7 +79,7 @@ function FileNode({ file, depth, activeFileId, onSelectFile, showSourceCommits }
   return (
     <button
       class={`${styles.node} ${styles.fileNode}`}
-      style={{ "--depth": depth } as preact.JSX.CSSProperties}
+      style={{ "--depth": depth }}
       aria-current={activeFileId === file.id ? "true" : undefined}
       onClick={() => onSelectFile(file.id)}
       title={sourceCommit ? `${file.displayPath} · ${sourceCommit.shortId} ${sourceCommit.summary}` : file.displayPath}
