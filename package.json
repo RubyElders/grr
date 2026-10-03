@@ -29,7 +29,7 @@
     "audit:all": "npm run audit:rust && npm run audit && npm run audit:secrets",
     "test:e2e": "wdio run e2e/wdio.conf.ts",
     "test:e2e:linux": "xvfb-run -a npm run test:e2e",
-    "test:multi-instance:linux": "xvfb-run -a dbus-run-session -- node e2e/multi-instance.mjs",
+    "test:multi-instance:linux": "xvfb-run -a --server-args='-screen 0 1280x1024x24 -noreset' dbus-run-session -- node e2e/multi-instance.mjs",
     "install:local": "npm run build && cargo install --path src-tauri --locked --features custom-protocol && npm run install:desktop:linux",
     "install:desktop:linux": "node scripts/linux-desktop.mjs install",
     "uninstall:local": "npm run uninstall:desktop:linux && cargo uninstall grr",
@@ -42,7 +42,7 @@
   "devDependencies": {
     "@preact/preset-vite": "2.10.6",
     "@tauri-apps/cli": "2.12.1",
-    "@testing-library/jest-dom": "6.8.0",
+    "@testing-library/jest-dom": "7.0.1",
     "@testing-library/preact": "3.2.4",
     "@testing-library/user-event": "14.6.7",
     "@types/node": "24.3.0",
