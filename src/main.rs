@@ -9,6 +9,7 @@ use grr::{
 use tauri::{Manager, State, Window};
 
 mod clipboard;
+mod shutdown;
 mod window_chrome;
 use window_chrome::{get_window_chrome, update_window_chrome};
 
@@ -145,15 +146,15 @@ fn main() {
             Ok(output) => print!("{output}"),
             Err(error) => {
                 eprintln!("grr: could not format review: {error}");
-                std::process::exit(1);
+                shutdown::exit(1);
             }
         },
         None => {
             eprintln!("grr: review cancelled; draft comments were discarded");
-            std::process::exit(2);
+            shutdown::exit(2);
         }
     }
-    std::process::exit(exit_code);
+    shutdown::exit(exit_code);
 }
 
 struct CliOptions {

@@ -29,6 +29,7 @@
 - Keep rapid commit-picker navigation to one step per key press.
 - Prevent clipboard helper processes from freezing the review window.
 - Keep simultaneous reviews in independent windows without redirecting the second launch into the first.
+- Flush terminal output and avoid native exit-handler crashes when closing Linux reviews.
 
 ## 0.3.3 - 2026-09-05
 
