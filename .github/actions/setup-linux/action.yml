@@ -9,10 +9,23 @@ runs:
       run: |
         sudo apt-get update
         sudo apt-get install -y --no-install-recommends \
-          build-essential pkg-config curl libwebkit2gtk-4.1-dev \
+          build-essential cmake pkg-config curl libwebkit2gtk-4.1-dev \
           libgit2-dev libssl-dev libayatana-appindicator3-dev \
           librsvg2-dev libxdo-dev xvfb xauth dbus-daemon xdotool \
           webkitgtk-webdriver
+    - name: Install libgit2 1.9.7
+      shell: bash
+      run: |
+        git clone --depth 1 --branch v1.9.7 https://github.com/libgit2/libgit2.git "$RUNNER_TEMP/libgit2"
+        test "$(git -C "$RUNNER_TEMP/libgit2" rev-parse HEAD)" = 49e408b3208bc3093757a1c2db938d3590f3f412
+        cmake -S "$RUNNER_TEMP/libgit2" -B "$RUNNER_TEMP/libgit2-build" \
+          -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+          -DBUILD_SHARED_LIBS=ON -DBUILD_TESTS=OFF -DBUILD_CLI=OFF \
+          -DUSE_SSH=OFF -DUSE_HTTPS=OFF
+        cmake --build "$RUNNER_TEMP/libgit2-build" --parallel 2
+        sudo cmake --install "$RUNNER_TEMP/libgit2-build"
+        sudo ldconfig
+        pkg-config --atleast-version=1.9.7 libgit2
     - name: Set up Node
       uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:
