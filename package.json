@@ -7,6 +7,7 @@
     "node": ">=22.20.0 <23"
   },
   "scripts": {
+    "tauri": "tauri",
     "dev": "vite --port 1420 --strictPort",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
@@ -17,11 +18,12 @@
     "test:e2e": "wdio run e2e/wdio.conf.ts"
   },
   "dependencies": {
-    "@tauri-apps/api": "2.8.0",
+    "@tauri-apps/api": "2.11.1",
     "preact": "10.29.8"
   },
   "devDependencies": {
     "@preact/preset-vite": "2.10.2",
+    "@tauri-apps/cli": "2.11.5",
     "@testing-library/jest-dom": "6.8.0",
     "@testing-library/preact": "3.2.4",
     "@testing-library/user-event": "14.6.1",

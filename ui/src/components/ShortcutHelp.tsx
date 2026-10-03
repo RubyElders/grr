@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "preact/hooks";
 import { SHORTCUT_CATEGORIES, SHORTCUTS } from "../shortcuts";
 import { Icon } from "./Icon";
-import logoUrl from "../../../icons/icon.png";
+import logoUrl from "../../../src-tauri/icons/icon.png";
 import styles from "./ShortcutHelp.module.css";
 
 export function ShortcutHelp({ onClose }: { onClose(): void }) {

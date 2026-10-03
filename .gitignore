@@ -1,9 +1,11 @@
 /dist/
 /node_modules/
 /target/
+/src-tauri/target/
 /coverage/
 /ui/coverage/
 /gen/schemas/
+/src-tauri/gen/schemas/
 /e2e-results/
 /ai-refs/
 /tmp/

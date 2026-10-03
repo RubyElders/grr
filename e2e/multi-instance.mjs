@@ -4,8 +4,8 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-const binary = resolve("target/release/grr");
-const identifier = JSON.parse(readFileSync("tauri.conf.json", "utf8")).identifier;
+const binary = resolve("src-tauri/target/release/grr");
+const identifier = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8")).identifier;
 const repositories = [];
 const instances = [];
 

@@ -388,7 +388,7 @@ fn loads_and_selects_one_hundred_commits_with_compact_file_attribution() {
 
 #[test]
 fn canonical_frontend_fixture_matches_rust_contract() {
-    let fixture = include_str!("../ui/src/__fixtures__/review.json");
+    let fixture = include_str!("../../ui/src/__fixtures__/review.json");
     let review: ReviewData = serde_json::from_str(fixture).unwrap();
     assert_eq!(review.files.len(), 2);
     assert_eq!(review.files[0].hunks[0].lines[2].new_line, Some(26));

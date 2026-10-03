@@ -49,7 +49,7 @@ export const config: WdioTauriConfig = {
   capabilities: [{
     browserName: "tauri",
     "tauri:options": {
-      application: resolve("target/release/grr"),
+      application: resolve("src-tauri/target/release/grr"),
       args: [repository],
       webviewOptions: { width: 1280, height: 820 },
     },
@@ -61,13 +61,13 @@ export const config: WdioTauriConfig = {
   }],
   services: [["tauri", {
     driverProvider: "external",
-    appBinaryPath: resolve("target/release/grr"),
+    appBinaryPath: resolve("src-tauri/target/release/grr"),
     appArgs: [repository],
     autoInstallTauriDriver: false,
   }]],
   framework: "mocha",
   reporters: ["spec"],
-  mochaOpts: { timeout: 120_000, parallel: false },
+  mochaOpts: { timeout: 120_000, parallel: false, watch: false },
   logLevel: "warn",
   onComplete: () => rmSync(repository, { recursive: true, force: true }),
 };

@@ -13,6 +13,7 @@
 - Put review controls in a native GTK header bar.
 - Separate platform window chrome from the shared review interface for a future macOS wrapper.
 - Declare Rust and Node requirements and separate frontend, Rust, and Linux validation targets.
+- Use the standard `src-tauri/` layout and Tauri development commands.
 - Update development tools and check dependency advisories against documented, version-specific exceptions.
 - Render only nearby diff files while preserving the full scroll range.
 - Avoid duplicate worktree diff copies and repeated commit metadata in large selections.
