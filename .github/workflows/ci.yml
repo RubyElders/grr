@@ -3,6 +3,7 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -31,8 +32,12 @@ jobs:
     runs-on: ubuntu-24.04
     container: registry.fedoraproject.org/fedora:44
     timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
     env:
       CARGO_BUILD_JOBS: 2
+      RUST_BACKTRACE: 1
     steps:
       - name: Install system dependencies
         run: >-
@@ -81,3 +86,7 @@ jobs:
         run: |
           go install github.com/zricethezav/gitleaks/v8@v8.24.3
           gitleaks git --redact --log-opts=--all .
+      - name: Validate workflows
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.7
+          actionlint

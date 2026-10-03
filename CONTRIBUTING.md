@@ -60,3 +60,11 @@ git diff --check
 ```
 
 Install Gitleaks separately. `deny.toml` limits advisory exceptions to the reviewed dependencies documented in `SECURITY.md`. Revisit exceptions when upgrading Tauri or GTK. Inspect the full release diff and commit messages, and verify that archives exclude private scratch material and build output.
+
+## GitHub Actions
+
+The `CI` workflow runs on pushes, pull requests, and manual dispatch. Its `frontend` job checks types, tests, coverage, the frontend build and npm advisories. Its `linux` job runs in Fedora 44 and checks Rust tests, coverage, the release build, system linkage, native UI behavior, independent windows and Rust dependencies. Its `secrets` job scans Git history and validates workflow files with actionlint.
+
+Jobs use read-only repository permissions and do not publish packages, releases or commits. Pull-request checks do not need repository secrets. Native Linux coverage does not establish macOS support or GNOME/Wayland compositor behavior.
+
+After the first push, inspect all three job results before publishing a release. Once the baseline passes, require `frontend`, `linux` and `secrets` for changes to `main` using repository branch protection or a ruleset.
