@@ -44,8 +44,8 @@ try {
   }));
   assert.notEqual(instances[0].window, instances[1].window);
   for (const instance of instances) {
-    const windowClass = execFileSync("xdotool", ["getwindowclassname", instance.window], { encoding: "utf8" }).trim();
-    assert.equal(windowClass.toLowerCase(), identifier);
+    const windowClass = execFileSync("xprop", ["-id", instance.window, "WM_CLASS"], { encoding: "utf8" }).match(/"([^"]*)"\s*$/)?.[1];
+    assert.equal(windowClass?.toLowerCase(), identifier);
   }
   await new Promise((done) => setTimeout(done, 500));
   execFileSync("xdotool", ["windowfocus", "--sync", instances[0].window]);

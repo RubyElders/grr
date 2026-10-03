@@ -11,7 +11,7 @@ runs:
         sudo apt-get install -y --no-install-recommends \
           build-essential cmake pkg-config curl libwebkit2gtk-4.1-dev \
           libgit2-dev libssl-dev libayatana-appindicator3-dev \
-          librsvg2-dev libxdo-dev xvfb xauth dbus-daemon xdotool \
+          librsvg2-dev libxdo-dev xvfb xauth dbus-daemon xdotool x11-utils \
           webkitgtk-webdriver
     - name: Install libgit2 1.9.7
       shell: bash
