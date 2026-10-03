@@ -3,7 +3,6 @@ import { test } from "node:test";
 import { checkAudit } from "./npm-audit.mjs";
 
 const path = "node_modules/extract-zip";
-const lock = { packages: { [path]: { version: "2.0.1", dev: true } } };
 const report = {
   auditReportVersion: 2,
   metadata: { vulnerabilities: { total: 2 } },
@@ -13,31 +12,35 @@ const report = {
   },
 };
 
-test("accepts only the exact reviewed development advisory", () => {
-  assert.equal(checkAudit(report, lock).reviewed.length, 1);
-  assert.deepEqual(checkAudit(report, lock).rejected, []);
+test("rejects formerly excepted and new advisories", () => {
+  assert.equal(checkAudit(report).rejected.length, 1);
   const changed = structuredClone(report);
   changed.vulnerabilities["extract-zip"].via[0].url = "https://github.com/advisories/GHSA-new";
-  assert.equal(checkAudit(changed, lock).rejected.length, 1);
+  assert.equal(checkAudit(changed).rejected.length, 1);
 });
 
-test("rejects production dependencies and changed versions", () => {
-  for (const entry of [{ version: "2.0.1", dev: false }, { version: "2.0.2", dev: true }]) {
-    assert.equal(checkAudit(report, { packages: { [path]: entry } }).rejected.length, 1);
+test("rejects both direct and transitive findings", () => {
+  for (const isDirect of [true, false]) {
+    const changed = structuredClone(report);
+    changed.vulnerabilities["extract-zip"].isDirect = isDirect;
+    assert.equal(checkAudit(changed).rejected.length, 1);
   }
 });
 
 test("fails closed for incomplete or failed audit reports", () => {
   for (const invalid of [{}, { error: {} }, { ...report, vulnerabilities: {} }]) {
-    assert.throws(() => checkAudit(invalid, lock));
+    assert.throws(() => checkAudit(invalid));
   }
   const missing = structuredClone(report);
   missing.vulnerabilities.parent.via = ["missing"];
-  assert.throws(() => checkAudit(missing, lock));
+  assert.throws(() => checkAudit(missing));
+  const missingUrl = structuredClone(report);
+  delete missingUrl.vulnerabilities["extract-zip"].via[0].url;
+  assert.throws(() => checkAudit(missingUrl));
 });
 
 test("accepts a clean audit", () => {
-  assert.deepEqual(checkAudit({ ...report, metadata: { vulnerabilities: { total: 0 } }, vulnerabilities: {} }, lock), {
-    reviewed: [], rejected: [],
+  assert.deepEqual(checkAudit({ ...report, metadata: { vulnerabilities: { total: 0 } }, vulnerabilities: {} }), {
+    rejected: [],
   });
 });

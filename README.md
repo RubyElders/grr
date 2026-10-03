@@ -6,7 +6,7 @@ Currently tested on Fedora Linux 44. macOS support is planned.
 
 ## Install
 
-Requires Rust 1.88+, Node.js 22.20+ (Node 22), npm, and system libgit2 1.9.x.
+Requires Rust 1.90+, Node.js 22.20+ (Node 22), npm, and system libgit2 1.9.x.
 
 ```sh
 sudo dnf install webkit2gtk4.1-devel libgit2-devel openssl-devel \

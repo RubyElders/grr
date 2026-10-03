@@ -5,13 +5,8 @@ targets = ["x86_64-unknown-linux-gnu"]
 unsound = "all"
 unmaintained = "all"
 ignore = [
-    { id = "RUSTSEC-2024-0429", reason = "GTK3 requires glib 0.18; affected VariantStrIter calls are absent from resolved callers. See SECURITY.md." },
+    { id = "RUSTSEC-2024-0429", reason = "GTK3 requires glib 0.18; affected VariantStrIter calls are absent from resolved callers. See CONTRIBUTING.md." },
     { id = "RUSTSEC-2024-0370", reason = "GTK3 macros require proc-macro-error; upstream migration is required." },
-    { id = "RUSTSEC-2025-0081", reason = "Tauri URL-pattern dependencies require unic-char-property." },
-    { id = "RUSTSEC-2025-0075", reason = "Tauri URL-pattern dependencies require unic-char-range." },
-    { id = "RUSTSEC-2025-0080", reason = "Tauri URL-pattern dependencies require unic-common." },
-    { id = "RUSTSEC-2025-0100", reason = "Tauri URL-pattern dependencies require unic-ucd-ident." },
-    { id = "RUSTSEC-2025-0098", reason = "Tauri URL-pattern dependencies require unic-ucd-version." },
 ]
 
 [licenses]

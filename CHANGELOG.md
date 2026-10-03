@@ -15,6 +15,7 @@
 - Declare Rust and Node requirements and separate frontend, Rust, and Linux validation targets.
 - Use the standard `src-tauri/` layout and Tauri development commands.
 - Update development tools and check dependency advisories against documented, version-specific exceptions.
+- Upgrade Tauri to 2.12 and require Rust 1.90. Upgrade native test dependencies, reject all npm advisories, and remove five Rust advisory exceptions.
 - Render only nearby diff files while preserving the full scroll range.
 - Avoid duplicate worktree diff copies and repeated commit metadata in large selections.
 - Share immutable diff snapshots across Tauri commands and reuse unchanged syntax highlighting.

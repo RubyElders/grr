@@ -1,6 +1,6 @@
 # Contributing
 
-Use Rust 1.88+, Node 22.20+ within Node 22, and the checked-in lockfiles. Native development currently targets Fedora Linux 44; see the system dependencies in [README.md](README.md).
+Use Rust 1.90+, Node 22.20+ within Node 22, and the checked-in lockfiles. Native development currently targets Fedora Linux 44; see the system dependencies in [README.md](README.md).
 
 ## Development
 
@@ -41,13 +41,11 @@ make audit
 
 `make audit` also requires Gitleaks. System WebKitGTK and libgit2 receive updates through the operating system, not Cargo or npm audits.
 
-GTK3 requires `glib 0.18.5`, affected by [RUSTSEC-2024-0429](https://rustsec.org/advisories/RUSTSEC-2024-0429.html). The affected `VariantStrIter` API has no callers in the resolved application graph outside glib itself; this is a reachability assessment, not a fix. GTK3 prevents a compatible upgrade to glib 0.20. This and six unmaintained-package exceptions are individually recorded in [deny.toml](deny.toml).
+GTK3 requires `glib 0.18.5`, affected by [RUSTSEC-2024-0429](https://rustsec.org/advisories/RUSTSEC-2024-0429.html). The affected `VariantStrIter` API has no callers in the resolved application graph outside glib itself; this is a reachability assessment, not a fix. GTK3 prevents a compatible upgrade to glib 0.20. This and the unmaintained `proc-macro-error` exception are individually recorded in [deny.toml](deny.toml).
 
-The native test stack retains development-only `extract-zip 2.0.1`, `basic-ftp 5.3.1` and `serialize-javascript 6.0.2` advisories. The configured external Tauri driver does not download browser archives or process FTP listings; Mocha parallel serialization and watch mode are disabled. Do not use this configuration for untrusted browser downloads, serialization or watch patterns. These packages are not shipped in the app.
+The native test stack overrides WebdriverIO's transitive Mocha, diff parser, JavaScript serializer, Puppeteer browser installer and FTP client versions to avoid vulnerable dependencies. Keep these overrides covered by the native tests until upstream dependencies support the upgraded versions.
 
-The new [braces 3.0.3 advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) affects Mocha's unused watcher and has no published patch. It currently fails the npm audit gate; no exception has been accepted.
-
-`npm run audit` permits only the exact advisory IDs, versions and development-only entries listed in [scripts/npm-audit.mjs](scripts/npm-audit.mjs). Plain `npm audit` still reports them. New findings and audit failures fail CI. Revisit all exceptions when dependencies change.
+`npm run audit` rejects all npm advisories and incomplete audit reports. Revisit the Rust exceptions when dependencies change.
 
 ## GitHub Actions
 
