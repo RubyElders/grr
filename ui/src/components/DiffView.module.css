@@ -37,7 +37,7 @@
 .line:hover .addComment, .addComment:focus-visible { opacity: 1; transform: scale(1); }
 .addComment:disabled { display: none; }
 .commentRow { padding: 10px 12px 12px 122px; background: color-mix(in srgb, var(--blue-muted) 45%, var(--bg)); }
-.draft { max-width: 760px; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); box-shadow: var(--shadow); }
+.draft { max-width: 760px; overflow: hidden; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); box-shadow: var(--shadow); }
 .draftHeader { display: flex; justify-content: space-between; padding: 9px 12px; background: var(--canvas); border-bottom: 1px solid var(--border); font-size: 12px; }
 .draftHeader span { color: var(--muted); }
 .draft p { margin: 0; padding: 14px 12px; white-space: pre-wrap; }
