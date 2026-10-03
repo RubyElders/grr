@@ -206,7 +206,11 @@ fn reports_unborn_repository() {
 #[test]
 fn detects_base_branch_and_loads_cumulative_or_selected_commits() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = Repository::init_opts(
+        directory.path(),
+        git2::RepositoryInitOptions::new().initial_head("main"),
+    )
+    .unwrap();
     let root = commit_file(&repository, "a.txt", b"one\n", "base");
     repository.branch("feature", &root, true).unwrap();
     repository.set_head("refs/heads/feature").unwrap();
