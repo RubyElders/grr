@@ -20,7 +20,7 @@ The Preact frontend lives in `ui/`. The Rust app, Tauri configuration, capabilit
 cargo install cargo-llvm-cov --version 0.8.7 --locked
 rustup component add llvm-tools-preview
 cargo install tauri-driver --version 2.0.6 --locked
-sudo dnf install xorg-x11-server-Xvfb dbus-daemon xdotool
+sudo dnf install xorg-x11-server-Xvfb dbus-daemon xdotool which webkitgtk6.0
 
 make check
 make coverage

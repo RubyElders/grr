@@ -44,7 +44,7 @@ jobs:
           dnf install -y git make gcc gcc-c++ pkgconf-pkg-config curl
           webkit2gtk4.1-devel libgit2-devel openssl-devel
           libappindicator-gtk3-devel librsvg2-devel libxdo-devel
-          xorg-x11-server-Xvfb dbus-daemon xdotool
+          xorg-x11-server-Xvfb dbus-daemon xdotool which webkitgtk6.0
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
