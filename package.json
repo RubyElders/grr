@@ -29,7 +29,7 @@
     "audit:all": "npm run audit:rust && npm run audit && npm run audit:secrets",
     "test:e2e": "wdio run e2e/wdio.conf.ts",
     "test:e2e:linux": "xvfb-run -a npm run test:e2e",
-    "test:multi-instance:linux": "xvfb-run -a dbus-run-session -- node e2e/multi-instance.mjs",
+    "test:multi-instance:linux": "xvfb-run -a --server-args='-screen 0 1280x1024x24 -noreset' dbus-run-session -- node e2e/multi-instance.mjs",
     "install:local": "npm run build && cargo install --path src-tauri --locked --features custom-protocol && npm run install:desktop:linux",
     "install:desktop:linux": "node scripts/linux-desktop.mjs install",
     "uninstall:local": "npm run uninstall:desktop:linux && cargo uninstall grr",
