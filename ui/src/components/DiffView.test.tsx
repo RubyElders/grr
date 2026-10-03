@@ -132,6 +132,8 @@ describe("DiffView scroll positions", () => {
     expect(screen.getAllByLabelText(/^Scrollable diff for/)).toHaveLength(2);
 
     const distant = document.querySelector<HTMLElement>("article[data-file-id='large:f12']")!;
+    const estimatedHeight = manyFiles[12]!.hunks.reduce((height, hunk) => height + 32 + hunk.lines.length * 26, 0);
+    expect(distant.querySelector(":scope > [aria-hidden='true']")).toHaveStyle({ height: `${estimatedHeight}px` });
     act(() => notify([{ target: distant, isIntersecting: true } as unknown as IntersectionObserverEntry], {} as IntersectionObserver));
     expect(distant).toHaveAttribute("data-diff-rendered", "true");
     expect(screen.getAllByLabelText(/^Scrollable diff for/)).toHaveLength(3);

@@ -172,7 +172,7 @@ function DiffFileCard({ file, rendered, contentHeight, onContentHeight, ...props
       {!collapsed && rendered ? (
         <FileContent file={file} onContentHeight={onContentHeight} {...props} />
       ) : null}
-      {!collapsed && !rendered ? <div class={styles.virtualContent} style={{ height: contentHeight }} aria-hidden="true" /> : null}
+      {!collapsed && !rendered ? <div class={styles.virtualContent} style={{ height: `${contentHeight}px` }} aria-hidden="true" /> : null}
     </article>
   );
 }
