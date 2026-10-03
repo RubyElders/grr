@@ -25,7 +25,7 @@ jobs:
           node-version: 22.22.2
           cache: npm
       - run: npm ci
-      - run: make check-ui
+      - run: npm run check:ui
       - run: npm run audit
 
   linux:
@@ -41,7 +41,7 @@ jobs:
     steps:
       - name: Install system dependencies
         run: >-
-          dnf install -y git make gcc gcc-c++ pkgconf-pkg-config curl
+          dnf install -y git gcc gcc-c++ pkgconf-pkg-config curl
           webkit2gtk4.1-devel libgit2-devel openssl-devel
           libappindicator-gtk3-devel librsvg2-devel libxdo-devel
           xorg-x11-server-Xvfb dbus-daemon xdotool which webkitgtk6.0
@@ -58,16 +58,17 @@ jobs:
           printf '%s\n' "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - run: npm ci
       - run: npm run build
-      - run: make check-rust
+      - run: npm run check:rust
       - name: Install validation tools
         run: |
           cargo install cargo-llvm-cov --version 0.8.7 --locked
           cargo install cargo-deny --version 0.20.2 --locked
           cargo install tauri-driver --version 2.0.6 --locked
-      - run: make coverage
-      - run: make check-linux
-      - run: make e2e
-      - run: make e2e-multi-instance
+      - run: npm run coverage:rust
+      - run: npm run build:app
+      - run: npm run check:linux
+      - run: npm run test:e2e:linux
+      - run: npm run test:multi-instance:linux
       - run: cargo deny --manifest-path src-tauri/Cargo.toml check advisories licenses sources
 
   secrets:

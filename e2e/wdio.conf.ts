@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import type { WdioTauriConfig } from "@wdio/native-types";
 
+mkdirSync("e2e-results", { recursive: true });
 const repository = mkdtempSync(join(tmpdir(), "grr-e2e-"));
 mkdirSync(join(repository, "src"));
 const cppDirectory = join(repository, "engine", "Poseidon", "AI");

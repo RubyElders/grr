@@ -14,7 +14,7 @@ sudo dnf install webkit2gtk4.1-devel libgit2-devel openssl-devel \
 sudo dnf group install "c-development"
 
 npm ci
-make install
+npm run install:local
 ```
 
 Make sure Cargo's bin directory is on your `PATH`. Installation includes the Linux desktop icon. Clipboard copying requires `wl-copy` from `wl-clipboard`.
@@ -31,7 +31,7 @@ The app detects the base branch automatically. Uncommitted changes open as a sep
 
 Add comments with the line's `+` button. `Ctrl+Enter` approves or shares comments; `Ctrl+Alt+Enter` also copies the result. Press `?` for all shortcuts. Closing the window cancels the review.
 
-Reviews stay local and results are printed to stdout. Use `make uninstall` to remove the app.
+Reviews stay local and results are printed to stdout. Use `npm run uninstall:local` to remove the app.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development and tests.
 
