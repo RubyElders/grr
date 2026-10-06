@@ -20,6 +20,10 @@ use tauri::{Emitter, WebviewWindow};
 
 use super::{WindowChromeAction, WindowChromeUpdate};
 
+pub(super) use super::unsupported_window_menu as show_system_menu;
+
+pub fn prepare(_identifier: &str) {}
+
 const NAVIGATION_WIDTH: f64 = 440.0;
 
 pub struct Header {

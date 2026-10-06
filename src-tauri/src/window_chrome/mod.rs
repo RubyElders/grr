@@ -1,9 +1,15 @@
 #[cfg(target_os = "linux")]
-mod linux;
+#[path = "linux.rs"]
+mod platform;
 #[cfg(target_os = "macos")]
-mod macos;
+#[path = "macos.rs"]
+mod platform;
 #[cfg(target_os = "windows")]
-mod windows;
+#[path = "windows.rs"]
+mod platform;
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+#[path = "html.rs"]
+mod platform;
 
 use std::collections::HashMap;
 
@@ -19,7 +25,7 @@ pub enum WindowChromeKind {
     Html,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowChromeUpdate {
     title: String,
@@ -43,17 +49,11 @@ pub enum WindowChromeAction {
 }
 
 pub struct WindowChromeState {
-    #[cfg(target_os = "linux")]
-    header: linux::Header,
-    #[cfg(target_os = "macos")]
-    header: macos::Header,
+    header: platform::Header,
 }
 
 pub fn prepare(identifier: &str) {
-    #[cfg(target_os = "linux")]
-    gtk::glib::set_prgname(Some(identifier));
-    #[cfg(not(target_os = "linux"))]
-    let _ = identifier;
+    platform::prepare(identifier);
 }
 
 #[tauri::command]
@@ -75,63 +75,23 @@ pub fn update_window_chrome(
     update: WindowChromeUpdate,
     state: State<'_, WindowChromeState>,
 ) -> Result<(), String> {
-    #[cfg(target_os = "linux")]
-    return state.header.update(update);
-    #[cfg(target_os = "macos")]
-    return state.header.update(update);
-    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
-    {
-        let WindowChromeUpdate {
-            title,
-            subtitle,
-            can_navigate_newer,
-            can_navigate_older,
-            commit_selection_enabled,
-            tooltips,
-        } = update;
-        let _ = (
-            title,
-            subtitle,
-            can_navigate_newer,
-            can_navigate_older,
-            commit_selection_enabled,
-            tooltips,
-            state,
-        );
-        Ok(())
-    }
+    state.header.update(update)
 }
 
 #[tauri::command]
 pub fn show_window_menu(window: WebviewWindow) -> Result<(), String> {
-    #[cfg(target_os = "windows")]
-    return windows::show_system_menu(&window);
-    #[cfg(not(target_os = "windows"))]
-    {
-        let _ = window;
-        Err("the native window menu is only available on Windows".to_owned())
-    }
+    platform::show_system_menu(&window)
 }
 
 pub fn install(window: &WebviewWindow) -> Result<WindowChromeState, String> {
-    #[cfg(target_os = "linux")]
-    return Ok(WindowChromeState {
-        header: linux::install(window)?,
-    });
-    #[cfg(target_os = "macos")]
-    return Ok(WindowChromeState {
-        header: macos::install(window)?,
-    });
-    #[cfg(target_os = "windows")]
-    {
-        windows::install(window)?;
-        Ok(WindowChromeState {})
-    }
-    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-    {
-        let _ = window;
-        Ok(WindowChromeState {})
-    }
+    Ok(WindowChromeState {
+        header: platform::install(window)?,
+    })
+}
+
+#[cfg(not(target_os = "windows"))]
+pub(super) fn unsupported_window_menu(_window: &WebviewWindow) -> Result<(), String> {
+    Err("the native window menu is only available on Windows".to_owned())
 }
 
 #[cfg(test)]
@@ -216,6 +176,12 @@ mod tests {
         assert!(update.commit_selection_enabled);
         assert_eq!(
             update.tooltips["sidebar"],
+            "Toggle the file sidebar (Ctrl + B)"
+        );
+        let payload = serde_json::to_value(update).unwrap();
+        assert_eq!(payload["commitSelectionEnabled"], true);
+        assert_eq!(
+            payload["tooltips"]["sidebar"],
             "Toggle the file sidebar (Ctrl + B)"
         );
     }
