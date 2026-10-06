@@ -5,6 +5,8 @@ mod macos;
 #[cfg(target_os = "windows")]
 mod windows;
 
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
 
@@ -25,6 +27,8 @@ pub struct WindowChromeUpdate {
     can_navigate_newer: bool,
     can_navigate_older: bool,
     commit_selection_enabled: bool,
+    #[serde(default)]
+    tooltips: HashMap<String, String>,
 }
 
 #[derive(Clone, Copy, Serialize)]
@@ -83,6 +87,7 @@ pub fn update_window_chrome(
             can_navigate_newer,
             can_navigate_older,
             commit_selection_enabled,
+            tooltips,
         } = update;
         let _ = (
             title,
@@ -90,6 +95,7 @@ pub fn update_window_chrome(
             can_navigate_newer,
             can_navigate_older,
             commit_selection_enabled,
+            tooltips,
             state,
         );
         Ok(())
@@ -199,7 +205,8 @@ mod tests {
         let update: WindowChromeUpdate = serde_json::from_value(serde_json::json!({
             "title": "Review", "subtitle": "abc by Author",
             "canNavigateNewer": false, "canNavigateOlder": true,
-            "commitSelectionEnabled": true
+            "commitSelectionEnabled": true,
+            "tooltips": { "sidebar": "Toggle the file sidebar (Ctrl + B)" }
         }))
         .unwrap();
         assert_eq!(update.title, "Review");
@@ -207,5 +214,9 @@ mod tests {
         assert!(!update.can_navigate_newer);
         assert!(update.can_navigate_older);
         assert!(update.commit_selection_enabled);
+        assert_eq!(
+            update.tooltips["sidebar"],
+            "Toggle the file sidebar (Ctrl + B)"
+        );
     }
 }

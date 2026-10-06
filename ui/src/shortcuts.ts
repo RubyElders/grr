@@ -23,7 +23,6 @@ export type ShortcutCategory = "Review" | "Navigation" | "Search" | "Window";
 
 interface ShortcutChord {
   id: string;
-  display: string;
   key: string;
   code?: string;
   nativeModifier?: boolean;
@@ -39,52 +38,52 @@ export interface ShortcutDefinition {
 }
 
 export const SHORTCUTS: readonly ShortcutDefinition[] = [
-  shortcut("help", "Window", "Show keyboard shortcuts", [chord("question", "?", "?", { shift: "any" })]),
-  shortcut("toggleSidebar", "Window", "Toggle the file sidebar", [chord("native", "Ctrl/Cmd + B", "b", { nativeModifier: true })]),
+  shortcut("help", "Window", "Show keyboard shortcuts", [chord("question", "?", { shift: "any" })]),
+  shortcut("toggleSidebar", "Window", "Toggle the file sidebar", [chord("native", "b", { nativeModifier: true })]),
   shortcut("find", "Search", "Open find in changed code", [
-    chord("native", "Ctrl/Cmd + F", "f", { nativeModifier: true }),
-    chord("function", "F3", "F3"),
+    chord("native", "f", { nativeModifier: true }),
+    chord("function", "F3"),
   ]),
   shortcut("nextMatch", "Search", "Go to the next search match", [
-    chord("enter", "Enter", "Enter"),
-    chord("function", "F3", "F3"),
-    chord("native", "Ctrl/Cmd + G", "g", { nativeModifier: true }),
+    chord("enter", "Enter"),
+    chord("function", "F3"),
+    chord("native", "g", { nativeModifier: true }),
   ]),
   shortcut("previousMatch", "Search", "Go to the previous search match", [
-    chord("enter", "Shift + Enter", "Enter", { shift: true }),
-    chord("function", "Shift + F3", "F3", { shift: true }),
-    chord("native", "Ctrl/Cmd + Shift + G", "g", { nativeModifier: true, shift: true }),
+    chord("enter", "Enter", { shift: true }),
+    chord("function", "F3", { shift: true }),
+    chord("native", "g", { nativeModifier: true, shift: true }),
   ]),
-  shortcut("browseCommits", "Navigation", "Browse commits", [chord("letter", "c", "c")]),
-  shortcut("showHighlightedCommit", "Navigation", "Show the highlighted commit", [chord("enter", "Enter", "Enter")]),
-  shortcut("toggleHighlightedCommit", "Navigation", "Toggle the highlighted commit", [chord("space", "Space", " ", { code: "Space" })]),
+  shortcut("browseCommits", "Navigation", "Browse commits", [chord("letter", "c")]),
+  shortcut("showHighlightedCommit", "Navigation", "Show the highlighted commit", [chord("enter", "Enter")]),
+  shortcut("toggleHighlightedCommit", "Navigation", "Toggle the highlighted commit", [chord("space", " ", { code: "Space" })]),
   shortcut("newerCommit", "Navigation", "Show the newer commit or virtual commit", [
-    chord("arrow", "Left", "ArrowLeft"),
-    chord("vim", "h", "h"),
+    chord("arrow", "ArrowLeft"),
+    chord("vim", "h"),
   ]),
   shortcut("olderCommit", "Navigation", "Show the older commit or latest commit", [
-    chord("arrow", "Right", "ArrowRight"),
-    chord("vim", "l", "l"),
+    chord("arrow", "ArrowRight"),
+    chord("vim", "l"),
   ]),
   shortcut("previousFile", "Navigation", "Jump to the previous file or commit", [
-    chord("arrow", "Up", "ArrowUp"),
-    chord("vim", "k", "k"),
+    chord("arrow", "ArrowUp"),
+    chord("vim", "k"),
   ]),
   shortcut("nextFile", "Navigation", "Jump to the next file or commit", [
-    chord("arrow", "Down", "ArrowDown"),
-    chord("vim", "j", "j"),
+    chord("arrow", "ArrowDown"),
+    chord("vim", "j"),
   ]),
-  shortcut("pageUp", "Navigation", "Page the diff up", [chord("space", "Shift + Space", " ", { code: "Space", shift: true })]),
-  shortcut("pageDown", "Navigation", "Page the diff down", [chord("space", "Space", " ", { code: "Space" })]),
-  shortcut("primaryAction", "Review", "Approve or share queued comments", [chord("native", "Ctrl/Cmd + Enter", "Enter", { nativeModifier: true })]),
+  shortcut("pageUp", "Navigation", "Page the diff up", [chord("space", " ", { code: "Space", shift: true })]),
+  shortcut("pageDown", "Navigation", "Page the diff down", [chord("space", " ", { code: "Space" })]),
+  shortcut("primaryAction", "Review", "Approve or share queued comments", [chord("native", "Enter", { nativeModifier: true })]),
   shortcut("copyPrimaryAction", "Review", "Approve or share and copy the result", [
-    chord("native", "Ctrl/Cmd + Alt + Enter", "Enter", { nativeModifier: true, alt: true }),
+    chord("native", "Enter", { nativeModifier: true, alt: true }),
   ]),
-  shortcut("saveComment", "Review", "Save the open inline comment", [chord("native", "Ctrl/Cmd + Enter", "Enter", { nativeModifier: true })]),
-  shortcut("dismiss", "Window", "Close the open panel or cancel the review", [chord("escape", "Escape", "Escape")]),
+  shortcut("saveComment", "Review", "Save the open inline comment", [chord("native", "Enter", { nativeModifier: true })]),
+  shortcut("dismiss", "Window", "Close the open panel or cancel the review", [chord("escape", "Escape")]),
   shortcut("closeWindow", "Window", "Cancel the review and close the window", [
-    chord("native", "Ctrl/Cmd + W", "w", { nativeModifier: true }),
-    chord("alt", "Alt + F4", "F4", { alt: true }),
+    chord("native", "w", { nativeModifier: true }),
+    chord("alt", "F4", { alt: true }),
   ]),
 ];
 
@@ -97,14 +96,14 @@ export function shortcutDefinition(id: ShortcutId): ShortcutDefinition {
 }
 
 export function shortcutChords(id: ShortcutId, mac = /Mac/.test(navigator.platform)) {
-  return shortcutDefinition(id).chords
-    .filter((item) => !mac || !(id === "closeWindow" && item.id === "alt"))
+  return availableChords(id, mac)
     .map((item) => {
-      const label = item.display.replace("Ctrl/Cmd", mac ? "Command" : "Ctrl").replace("Alt", mac ? "Option" : "Alt");
+      const key = ({ " ": "Space", ArrowLeft: "Left", ArrowRight: "Right", ArrowUp: "Up", ArrowDown: "Down" } as Record<string, string>)[item.key]
+        ?? (item.nativeModifier && item.key.length === 1 ? item.key.toUpperCase() : item.key);
+      const label = [item.nativeModifier ? (mac ? "Command" : "Ctrl") : null, item.alt ? (mac ? "Option" : "Alt") : null, item.shift === true ? "Shift" : null, key].filter(Boolean).join(" + ");
       const symbols: Record<string, string> = {
         Enter: "↩", Escape: "⎋", Left: "←", Right: "→", Up: "↑", Down: "↓", Space: "␣",
       };
-      const key = item.display.split(" + ").at(-1)!;
       const display = mac
         ? `${item.alt ? "⌥" : ""}${item.shift === true ? "⇧" : ""}${item.nativeModifier ? "⌘" : ""}${symbols[key] ?? key}`
         : label;
@@ -117,14 +116,14 @@ export function shortcutTitle(id: ShortcutId, mac = /Mac/.test(navigator.platfor
 }
 
 export function matchesShortcut(event: ShortcutEvent, id: ShortcutId, chordId?: string): boolean {
-  return shortcutDefinition(id).chords.some((item) => (
+  return availableChords(id).some((item) => (
     (chordId === undefined || item.id === chordId)
     && matchesChord(event, item)
   ));
 }
 
 export function shortcutModifiersActive(event: ShortcutEvent, id: ShortcutId, chordId?: string): boolean {
-  return shortcutDefinition(id).chords.some((item) => (
+  return availableChords(id).some((item) => (
     (chordId === undefined || item.id === chordId)
     && matchesModifiers(event, item)
   ));
@@ -139,6 +138,10 @@ interface ShortcutEvent {
   shiftKey: boolean;
 }
 
+function availableChords(id: ShortcutId, mac = /Mac/.test(navigator.platform)) {
+  return shortcutDefinition(id).chords.filter((item) => !mac || !(id === "closeWindow" && item.id === "alt"));
+}
+
 function matchesChord(event: ShortcutEvent, item: ShortcutChord): boolean {
   const keyMatches = item.key.length === 1
     ? event.key.toLowerCase() === item.key.toLowerCase()
@@ -148,7 +151,9 @@ function matchesChord(event: ShortcutEvent, item: ShortcutChord): boolean {
 }
 
 function matchesModifiers(event: ShortcutEvent, item: ShortcutChord): boolean {
-  if ((event.ctrlKey || event.metaKey) !== Boolean(item.nativeModifier)) return false;
+  const mac = /Mac/.test(navigator.platform);
+  if ((mac ? event.metaKey : event.ctrlKey) !== Boolean(item.nativeModifier)) return false;
+  if (mac ? event.ctrlKey : event.metaKey) return false;
   if (event.altKey !== Boolean(item.alt)) return false;
   return item.shift === "any" || event.shiftKey === Boolean(item.shift);
 }
@@ -164,9 +169,8 @@ function shortcut(
 
 function chord(
   id: string,
-  display: string,
   key: string,
-  modifiers: Omit<ShortcutChord, "id" | "display" | "key"> = {},
+  modifiers: Omit<ShortcutChord, "id" | "key"> = {},
 ): ShortcutChord {
-  return { id, display, key, ...modifiers };
+  return { id, key, ...modifiers };
 }

@@ -521,10 +521,15 @@ describe("ReviewApp", () => {
     ["Command+W", { key: "w", metaKey: true }],
     ["Alt+F4", { key: "F4", altKey: true }],
   ])("closes the review with %s", async (_name, shortcut) => {
-    const { backend } = setup();
-    await screen.findByText("5 commits against origin/main");
-    fireEvent.keyDown(document, "key" in shortcut ? shortcut : { key: "Escape" });
-    await waitFor(() => expect(backend.cancelReview).toHaveBeenCalledOnce());
+    const platform = vi.spyOn(navigator, "platform", "get").mockReturnValue("metaKey" in shortcut ? "MacIntel" : "Linux");
+    try {
+      const { backend } = setup();
+      await screen.findByText("5 commits against origin/main");
+      fireEvent.keyDown(document, "key" in shortcut ? shortcut : { key: "Escape" });
+      await waitFor(() => expect(backend.cancelReview).toHaveBeenCalledOnce());
+    } finally {
+      platform.mockRestore();
+    }
   });
 
   it("creates, edits, and shares a line comment", async () => {
@@ -725,10 +730,15 @@ describe("ReviewApp", () => {
     ["Command+F", { key: "f", metaKey: true }],
     ["F3", { key: "F3" }],
   ])("opens find with %s", async (_name, shortcut) => {
-    setup();
-    await screen.findByText("5 commits against origin/main");
-    fireEvent.keyDown(document, shortcut);
-    expect(await screen.findByRole("searchbox", { name: "Find in code" })).toHaveFocus();
+    const platform = vi.spyOn(navigator, "platform", "get").mockReturnValue("metaKey" in shortcut ? "MacIntel" : "Linux");
+    try {
+      setup();
+      await screen.findByText("5 commits against origin/main");
+      fireEvent.keyDown(document, shortcut);
+      expect(await screen.findByRole("searchbox", { name: "Find in code" })).toHaveFocus();
+    } finally {
+      platform.mockRestore();
+    }
   });
 
   it("reports submission failures and restores the actions", async () => {

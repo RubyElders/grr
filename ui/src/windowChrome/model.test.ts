@@ -1,9 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import fixture from "../__fixtures__/review.json";
-import { windowChromeUpdate } from "./model";
+import { windowChromeTooltips, windowChromeUpdate } from "./model";
 import type { ReviewData } from "../types";
 
 describe("windowChromeUpdate", () => {
+  it("uses the shortcut registry for native header tooltips on each platform", () => {
+    expect(windowChromeTooltips().sidebar).toBe("Toggle the file sidebar (Ctrl + B)");
+    const platform = vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
+    try {
+      expect(windowChromeTooltips().sidebar).toBe("Toggle the file sidebar (⌘B)");
+      expect(windowChromeTooltips().picker).toBe("Browse commits (c)");
+    } finally {
+      platform.mockRestore();
+    }
+  });
+
   it("presents the grouped comparison and its available navigation", () => {
     expect(windowChromeUpdate(fixture as ReviewData, false)).toEqual({
       title: "5 commits against origin/main",
@@ -11,6 +22,7 @@ describe("windowChromeUpdate", () => {
       canNavigateNewer: false,
       canNavigateOlder: true,
       commitSelectionEnabled: true,
+      tooltips: windowChromeTooltips(),
     });
   });
 
@@ -22,6 +34,7 @@ describe("windowChromeUpdate", () => {
       canNavigateNewer: false,
       canNavigateOlder: false,
       commitSelectionEnabled: false,
+      tooltips: windowChromeTooltips(),
     });
   });
 });

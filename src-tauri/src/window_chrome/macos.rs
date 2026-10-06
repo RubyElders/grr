@@ -40,6 +40,7 @@ struct Navigation {
 struct ToolbarIvars {
     window: WebviewWindow,
     navigation: RefCell<Option<Navigation>>,
+    buttons: RefCell<Vec<(&'static str, Retained<NSButton>)>>,
 }
 
 define_class!(
@@ -98,16 +99,18 @@ impl ToolbarDelegate {
                 item.setLabel(ns_string!("File sidebar"));
                 item.setView(Some(&self.button(
                     "sidebar.left",
-                    "Toggle file sidebar (⌘B)",
+                    "Toggle file sidebar",
                     sel!(sidebar:),
+                    "sidebar",
                 )));
             }
             "help" => {
                 item.setLabel(ns_string!("Keyboard shortcuts"));
                 item.setView(Some(&self.button(
                     "questionmark.circle",
-                    "Keyboard shortcuts (?)",
+                    "Keyboard shortcuts",
                     sel!(help:),
+                    "help",
                 )));
             }
             "navigation" => {
@@ -116,9 +119,10 @@ impl ToolbarDelegate {
                     NSView::alloc(self.mtm()),
                     frame(0.0, NAVIGATION_WIDTH, 38.0),
                 );
-                let newer = self.button("chevron.left", "Show newer commit", sel!(newer:));
-                let older = self.button("chevron.right", "Show older commit", sel!(older:));
-                let picker = self.button("", "Choose commits to review (C)", sel!(picker:));
+                let newer = self.button("chevron.left", "Show newer commit", sel!(newer:), "newer");
+                let older =
+                    self.button("chevron.right", "Show older commit", sel!(older:), "older");
+                let picker = self.button("", "Choose commits to review", sel!(picker:), "picker");
                 newer.setFrame(frame(0.0, 32.0, 38.0));
                 picker.setFrame(frame(36.0, NAVIGATION_WIDTH - 72.0, 38.0));
                 older.setFrame(frame(NAVIGATION_WIDTH - 32.0, 32.0, 38.0));
@@ -147,6 +151,7 @@ impl ToolbarDelegate {
         let this = Self::alloc(mtm).set_ivars(ToolbarIvars {
             window,
             navigation: RefCell::new(None),
+            buttons: RefCell::new(Vec::new()),
         });
         unsafe { msg_send![super(this), init] }
     }
@@ -160,6 +165,7 @@ impl ToolbarDelegate {
         symbol: &str,
         tooltip: &str,
         action: objc2::runtime::Sel,
+        tooltip_key: &'static str,
     ) -> Retained<NSButton> {
         let button = NSButton::initWithFrame(NSButton::alloc(self.mtm()), frame(0.0, 32.0, 32.0));
         button.setBezelStyle(NSBezelStyle::Toolbar);
@@ -178,6 +184,10 @@ impl ToolbarDelegate {
             button.setTarget(Some(self));
             button.setAction(Some(action));
         }
+        self.ivars()
+            .buttons
+            .borrow_mut()
+            .push((tooltip_key, button.clone()));
         button
     }
 }
@@ -194,14 +204,27 @@ impl Header {
             navigation
                 .picker
                 .setToolTip(Some(&NSString::from_str(&format!(
-                    "{}\n{}\nChoose commits to review (C)",
-                    update.title, update.subtitle,
+                    "{}\n{}\n{}",
+                    update.title,
+                    update.subtitle,
+                    update
+                        .tooltips
+                        .get("picker")
+                        .map(String::as_str)
+                        .unwrap_or("Choose commits to review"),
                 ))));
             navigation.newer.setEnabled(update.can_navigate_newer);
             navigation.older.setEnabled(update.can_navigate_older);
             navigation
                 .picker
                 .setEnabled(update.commit_selection_enabled);
+            for (action, button) in native.delegate.ivars().buttons.borrow().iter() {
+                if *action != "picker"
+                    && let Some(tooltip) = update.tooltips.get(*action)
+                {
+                    button.setToolTip(Some(&NSString::from_str(tooltip)));
+                }
+            }
             Ok(())
         })
     }

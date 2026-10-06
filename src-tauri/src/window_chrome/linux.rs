@@ -27,11 +27,11 @@ pub fn install(window: &WebviewWindow) -> Result<Header, String> {
         .has_subtitle(false)
         .build();
 
-    let sidebar = icon_button("sidebar-show-symbolic", "Toggle file sidebar (Ctrl+B)");
+    let sidebar = icon_button("sidebar-show-symbolic", "Toggle file sidebar");
     emit_action(&sidebar, window, WindowChromeAction::Sidebar);
     header.pack_start(&sidebar);
 
-    let help = icon_button("help-about-symbolic", "Keyboard shortcuts (?)");
+    let help = icon_button("help-about-symbolic", "Keyboard shortcuts");
     emit_action(&help, window, WindowChromeAction::Help);
     header.pack_end(&help);
 
@@ -54,7 +54,7 @@ pub fn install(window: &WebviewWindow) -> Result<Header, String> {
 
     let selector = gtk::Button::new();
     selector.set_relief(gtk::ReliefStyle::None);
-    selector.set_tooltip_text(Some("Choose commits to review (C)"));
+    selector.set_tooltip_text(Some("Choose commits to review"));
     selector.add(&labels);
     emit_action(&selector, window, WindowChromeAction::Picker);
     navigation.pack_start(&selector, true, true, 0);
@@ -73,6 +73,11 @@ pub fn install(window: &WebviewWindow) -> Result<Header, String> {
         newer.set_sensitive(update.can_navigate_newer);
         older.set_sensitive(update.can_navigate_older);
         selector.set_sensitive(update.commit_selection_enabled);
+        sidebar.set_tooltip_text(update.tooltips.get("sidebar").map(String::as_str));
+        help.set_tooltip_text(update.tooltips.get("help").map(String::as_str));
+        selector.set_tooltip_text(update.tooltips.get("picker").map(String::as_str));
+        newer.set_tooltip_text(update.tooltips.get("newer").map(String::as_str));
+        older.set_tooltip_text(update.tooltips.get("older").map(String::as_str));
         ControlFlow::Continue
     });
 

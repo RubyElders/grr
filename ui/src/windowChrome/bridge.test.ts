@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { listenWindowChromeActions, resolveWindowChrome, showWindowMenu, updateWindowChrome } from "./bridge";
+import { windowChromeTooltips } from "./model";
 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn(), isTauri: vi.fn() }));
 vi.mock("@tauri-apps/api/event", () => ({ listen: vi.fn() }));
@@ -29,7 +30,7 @@ describe("window chrome bridge", () => {
   });
 
   it("passes the header state to the shared command", async () => {
-    const update = { title: "Review", subtitle: "abc", canNavigateNewer: false, canNavigateOlder: true, commitSelectionEnabled: true };
+    const update = { title: "Review", subtitle: "abc", canNavigateNewer: false, canNavigateOlder: true, commitSelectionEnabled: true, tooltips: windowChromeTooltips() };
     await updateWindowChrome(update);
     expect(invoke).toHaveBeenCalledWith("update_window_chrome", { update });
   });
