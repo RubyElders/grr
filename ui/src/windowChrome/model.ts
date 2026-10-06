@@ -1,5 +1,6 @@
 import { commitContext, commitNavigationTarget } from "../commitPresentation";
 import type { ReviewData } from "../types";
+import { shortcutDefinition, shortcutTitle, type ShortcutId } from "../shortcuts";
 
 export type WindowChromeKind = "gtk-native" | "mac-native" | "windows-native" | "html";
 export type WindowChromeAction = "sidebar" | "help" | "picker" | "newer" | "older";
@@ -10,6 +11,7 @@ export interface WindowChromeUpdate {
   canNavigateNewer: boolean;
   canNavigateOlder: boolean;
   commitSelectionEnabled: boolean;
+  tooltips: Record<WindowChromeAction, string>;
 }
 
 export function hasNativeHeader(kind: WindowChromeKind): boolean {
@@ -24,5 +26,17 @@ export function windowChromeUpdate(data: ReviewData, disabled: boolean): WindowC
     canNavigateNewer: !disabled && commitNavigationTarget(data, "newer") !== null,
     canNavigateOlder: !disabled && commitNavigationTarget(data, "older") !== null,
     commitSelectionEnabled: !disabled,
+    tooltips: windowChromeTooltips(),
+  };
+}
+
+export function windowChromeTooltips(): Record<WindowChromeAction, string> {
+  const tooltip = (id: ShortcutId) => `${shortcutDefinition(id).description} (${shortcutTitle(id)})`;
+  return {
+    sidebar: tooltip("toggleSidebar"),
+    help: tooltip("help"),
+    picker: tooltip("browseCommits"),
+    newer: tooltip("newerCommit"),
+    older: tooltip("olderCommit"),
   };
 }

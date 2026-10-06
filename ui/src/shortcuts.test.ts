@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { matchesShortcut, SHORTCUTS, shortcutModifiersActive, shortcutTitle } from "./shortcuts";
 
 function key(keyValue: string, modifiers: Partial<KeyboardEvent> = {}): KeyboardEvent {
@@ -25,17 +25,31 @@ describe("shortcut registry", () => {
     }
   });
 
-  it("matches native modifiers on either platform without accepting extras", () => {
+  it("matches Control outside Mac without accepting extra modifiers", () => {
     expect(matchesShortcut(key("f", { ctrlKey: true }), "find", "native")).toBe(true);
-    expect(matchesShortcut(key("F", { metaKey: true }), "find", "native")).toBe(true);
+    expect(matchesShortcut(key("F", { metaKey: true }), "find", "native")).toBe(false);
     expect(matchesShortcut(key("f", { ctrlKey: true, shiftKey: true }), "find", "native")).toBe(false);
     expect(matchesShortcut(key("f"), "find", "native")).toBe(false);
     expect(matchesShortcut(key("Enter", { ctrlKey: true }), "primaryAction")).toBe(true);
     expect(matchesShortcut(key("Enter", { ctrlKey: true, altKey: true }), "primaryAction")).toBe(false);
     expect(matchesShortcut(key("Enter", { ctrlKey: true, altKey: true }), "copyPrimaryAction")).toBe(true);
     expect(shortcutModifiersActive(key("Alt", { ctrlKey: true, altKey: true }), "copyPrimaryAction")).toBe(true);
-    expect(shortcutModifiersActive(key("Alt", { metaKey: true, altKey: true }), "copyPrimaryAction")).toBe(true);
+    expect(shortcutModifiersActive(key("Alt", { metaKey: true, altKey: true }), "copyPrimaryAction")).toBe(false);
     expect(shortcutModifiersActive(key("Alt", { ctrlKey: true }), "copyPrimaryAction")).toBe(false);
+  });
+
+  it("matches Command on Mac and rejects Control, mixed modifiers and Alt-F4", () => {
+    const platform = vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
+    try {
+      expect(matchesShortcut(key("f", { metaKey: true }), "find")).toBe(true);
+      expect(matchesShortcut(key("f", { ctrlKey: true }), "find")).toBe(false);
+      expect(matchesShortcut(key("f", { ctrlKey: true, metaKey: true }), "find")).toBe(false);
+      expect(matchesShortcut(key("F4", { altKey: true }), "closeWindow")).toBe(false);
+      expect(shortcutModifiersActive(key("Alt", { metaKey: true, altKey: true }), "copyPrimaryAction")).toBe(true);
+      expect(shortcutModifiersActive(key("Alt", { ctrlKey: true, altKey: true }), "copyPrimaryAction")).toBe(false);
+    } finally {
+      platform.mockRestore();
+    }
   });
 
   it("distinguishes navigation and shifted paging", () => {
