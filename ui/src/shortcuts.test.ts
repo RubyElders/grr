@@ -6,6 +6,17 @@ function key(keyValue: string, modifiers: Partial<KeyboardEvent> = {}): Keyboard
 }
 
 describe("shortcut registry", () => {
+  it("uses Mac symbols and omits the Windows close shortcut", () => {
+    expect(shortcutTitle("find", true)).toBe("⌘F or F3");
+    expect(shortcutTitle("primaryAction", true)).toBe("⌘↩");
+    expect(shortcutTitle("copyPrimaryAction", true)).toBe("⌥⌘↩");
+    expect(shortcutTitle("previousMatch", true)).toBe("⇧↩ or ⇧F3 or ⇧⌘G");
+    expect(shortcutTitle("nextFile", true)).toBe("↓ or j");
+    expect(shortcutTitle("dismiss", true)).toBe("⎋");
+    expect(shortcutTitle("pageUp", true)).toBe("⇧␣");
+    expect(shortcutTitle("closeWindow", true)).toBe("⌘W");
+  });
+
   it("has unique action and chord identifiers", () => {
     expect(new Set(SHORTCUTS.map((shortcut) => shortcut.id)).size).toBe(SHORTCUTS.length);
     for (const shortcut of SHORTCUTS) {
@@ -41,10 +52,10 @@ describe("shortcut registry", () => {
   });
 
   it("formats every chord from the registry", () => {
-    expect(shortcutTitle("find")).toBe("Ctrl/Cmd + F or F3");
-    expect(shortcutTitle("toggleSidebar")).toBe("Ctrl/Cmd + B");
+    expect(shortcutTitle("find")).toBe("Ctrl + F or F3");
+    expect(shortcutTitle("toggleSidebar")).toBe("Ctrl + B");
     expect(shortcutTitle("nextFile")).toBe("Down or j");
-    expect(shortcutTitle("copyPrimaryAction")).toBe("Ctrl/Cmd + Alt + Enter");
-    expect(shortcutTitle("closeWindow")).toBe("Ctrl/Cmd + W or Alt + F4");
+    expect(shortcutTitle("copyPrimaryAction")).toBe("Ctrl + Alt + Enter");
+    expect(shortcutTitle("closeWindow")).toBe("Ctrl + W or Alt + F4");
   });
 });

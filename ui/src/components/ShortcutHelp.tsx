@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "preact/hooks";
-import { SHORTCUT_CATEGORIES, SHORTCUTS } from "../shortcuts";
+import { SHORTCUT_CATEGORIES, SHORTCUTS, shortcutChords } from "../shortcuts";
 import { Icon } from "./Icon";
 import logoUrl from "../../../src-tauri/icons/icon.png";
 import styles from "./ShortcutHelp.module.css";
@@ -26,7 +26,7 @@ export function ShortcutHelp({ onClose }: { onClose(): void }) {
                 {SHORTCUTS.filter((shortcut) => shortcut.category === category).map((shortcut) => (
                   <div class={styles.row} key={shortcut.id}>
                     <dt>{shortcut.description}</dt>
-                    <dd>{shortcut.chords.map((item) => <kbd key={item.id}>{item.display}</kbd>)}</dd>
+                    <dd>{shortcutChords(shortcut.id).map((item) => <kbd key={item.id} aria-label={item.label}>{item.display}</kbd>)}</dd>
                   </div>
                 ))}
               </dl>

@@ -1,5 +1,7 @@
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "macos")]
+mod macos;
 #[cfg(target_os = "windows")]
 mod windows;
 
@@ -11,6 +13,7 @@ use tauri::{State, WebviewWindow};
 pub enum WindowChromeKind {
     GtkNative,
     WindowsNative,
+    MacNative,
     Html,
 }
 
@@ -26,7 +29,7 @@ pub struct WindowChromeUpdate {
 
 #[derive(Clone, Copy, Serialize)]
 #[serde(rename_all = "lowercase")]
-#[cfg(any(target_os = "linux", test))]
+#[cfg(any(target_os = "linux", target_os = "macos", test))]
 pub enum WindowChromeAction {
     Sidebar,
     Help,
@@ -38,6 +41,8 @@ pub enum WindowChromeAction {
 pub struct WindowChromeState {
     #[cfg(target_os = "linux")]
     header: linux::Header,
+    #[cfg(target_os = "macos")]
+    header: macos::Header,
 }
 
 pub fn prepare(identifier: &str) {
@@ -49,12 +54,15 @@ pub fn prepare(identifier: &str) {
 
 #[tauri::command]
 pub fn get_window_chrome() -> WindowChromeKind {
-    if cfg!(target_os = "linux") {
-        WindowChromeKind::GtkNative
-    } else if cfg!(target_os = "windows") {
-        WindowChromeKind::WindowsNative
-    } else {
-        WindowChromeKind::Html
+    window_chrome_kind(std::env::consts::OS)
+}
+
+fn window_chrome_kind(os: &str) -> WindowChromeKind {
+    match os {
+        "linux" => WindowChromeKind::GtkNative,
+        "windows" => WindowChromeKind::WindowsNative,
+        "macos" => WindowChromeKind::MacNative,
+        _ => WindowChromeKind::Html,
     }
 }
 
@@ -65,7 +73,9 @@ pub fn update_window_chrome(
 ) -> Result<(), String> {
     #[cfg(target_os = "linux")]
     return state.header.update(update);
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "macos")]
+    return state.header.update(update);
+    #[cfg(not(any(target_os = "linux", target_os = "macos")))]
     {
         let WindowChromeUpdate {
             title,
@@ -102,12 +112,16 @@ pub fn install(window: &WebviewWindow) -> Result<WindowChromeState, String> {
     return Ok(WindowChromeState {
         header: linux::install(window)?,
     });
+    #[cfg(target_os = "macos")]
+    return Ok(WindowChromeState {
+        header: macos::install(window)?,
+    });
     #[cfg(target_os = "windows")]
     {
         windows::install(window)?;
         Ok(WindowChromeState {})
     }
-    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
+    #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
     {
         let _ = window;
         Ok(WindowChromeState {})
@@ -117,6 +131,32 @@ pub fn install(window: &WebviewWindow) -> Result<WindowChromeState, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn maps_supported_platforms_and_falls_back_to_html() {
+        for (os, expected) in [
+            ("linux", WindowChromeKind::GtkNative),
+            ("windows", WindowChromeKind::WindowsNative),
+            ("macos", WindowChromeKind::MacNative),
+            ("freebsd", WindowChromeKind::Html),
+        ] {
+            assert_eq!(window_chrome_kind(os), expected);
+        }
+    }
+
+    #[test]
+    fn resolves_the_platform_header() {
+        let expected = if cfg!(target_os = "linux") {
+            WindowChromeKind::GtkNative
+        } else if cfg!(target_os = "macos") {
+            WindowChromeKind::MacNative
+        } else if cfg!(target_os = "windows") {
+            WindowChromeKind::WindowsNative
+        } else {
+            WindowChromeKind::Html
+        };
+        assert_eq!(get_window_chrome(), expected);
+    }
 
     #[cfg(target_os = "linux")]
     #[test]
@@ -134,6 +174,10 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&WindowChromeKind::WindowsNative).unwrap(),
             "\"windows-native\""
+        );
+        assert_eq!(
+            serde_json::to_string(&WindowChromeKind::MacNative).unwrap(),
+            "\"mac-native\""
         );
         assert_eq!(
             serde_json::to_string(&WindowChromeKind::Html).unwrap(),

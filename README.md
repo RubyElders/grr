@@ -2,7 +2,7 @@
 
 A small local Git review app. Browse a unified diff, add line comments, and send the review back to your terminal.
 
-Currently tested on Fedora Linux 44 and Windows 10. macOS support is planned.
+Currently tested on Fedora Linux 44 and Windows 10. Native macOS window chrome is available on macOS 11+, with broader platform validation still in progress.
 
 ## Install
 

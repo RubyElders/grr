@@ -96,8 +96,24 @@ export function shortcutDefinition(id: ShortcutId): ShortcutDefinition {
   return definition;
 }
 
-export function shortcutTitle(id: ShortcutId): string {
-  return shortcutDefinition(id).chords.map((item) => item.display).join(" or ");
+export function shortcutChords(id: ShortcutId, mac = /Mac/.test(navigator.platform)) {
+  return shortcutDefinition(id).chords
+    .filter((item) => !mac || !(id === "closeWindow" && item.id === "alt"))
+    .map((item) => {
+      const label = item.display.replace("Ctrl/Cmd", mac ? "Command" : "Ctrl").replace("Alt", mac ? "Option" : "Alt");
+      const symbols: Record<string, string> = {
+        Enter: "↩", Escape: "⎋", Left: "←", Right: "→", Up: "↑", Down: "↓", Space: "␣",
+      };
+      const key = item.display.split(" + ").at(-1)!;
+      const display = mac
+        ? `${item.alt ? "⌥" : ""}${item.shift === true ? "⇧" : ""}${item.nativeModifier ? "⌘" : ""}${symbols[key] ?? key}`
+        : label;
+      return { id: item.id, display, label };
+    });
+}
+
+export function shortcutTitle(id: ShortcutId, mac = /Mac/.test(navigator.platform)): string {
+  return shortcutChords(id, mac).map((item) => item.display).join(" or ");
 }
 
 export function matchesShortcut(event: ShortcutEvent, id: ShortcutId, chordId?: string): boolean {

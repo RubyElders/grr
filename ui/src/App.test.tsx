@@ -578,11 +578,11 @@ describe("ReviewApp", () => {
 
     await user.keyboard("{Control>}{Alt>}");
     const approve = await screen.findByRole("button", { name: "Approve and copy" });
-    expect(approve).toHaveAttribute("title", "Ctrl/Cmd + Alt + Enter");
+    expect(approve).toHaveAttribute("title", "Ctrl + Alt + Enter");
     expect(screen.getByRole("button", { name: "Share and copy (0)" })).toBeDisabled();
 
     await user.keyboard("{/Alt}{/Control}");
-    expect(await screen.findByRole("button", { name: "Approve" })).toHaveAttribute("title", "Ctrl/Cmd + Enter");
+    expect(await screen.findByRole("button", { name: "Approve" })).toHaveAttribute("title", "Ctrl + Enter");
 
     await user.keyboard("{Control>}{Alt>}");
     fireEvent.blur(window);

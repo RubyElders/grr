@@ -32,6 +32,9 @@
   },
   "bundle": {
     "active": false,
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
     "icon": ["icons/icon.png", "icons/icon.ico"]
   }
 }
