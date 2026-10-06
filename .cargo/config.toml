@@ -1,3 +1,0 @@
-[env]
-LIBGIT2_NO_VENDOR = { value = "1", force = true }
-

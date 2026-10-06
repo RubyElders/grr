@@ -27,6 +27,9 @@
   --syntax-type: #953800;
   --syntax-meta: #116329;
   --shadow: 0 1px 0 rgba(31, 35, 40, 0.04);
+  --fluent-icons: "Segoe Fluent Icons", "Segoe MDL2 Assets";
+  --caption-hover: rgba(0, 0, 0, 0.06);
+  --caption-pressed: rgba(0, 0, 0, 0.04);
   --shell-inset: 12px;
   --content-inset: 24px;
 }
@@ -62,6 +65,8 @@
     --syntax-type: #ffa657;
     --syntax-meta: #7ee787;
     --shadow: none;
+    --caption-hover: rgba(255, 255, 255, 0.06);
+    --caption-pressed: rgba(255, 255, 255, 0.04);
   }
 }
 

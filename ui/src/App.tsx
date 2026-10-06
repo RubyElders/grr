@@ -16,12 +16,13 @@ import { reviewViewKey } from "./scrollPosition";
 import { useReviewShortcuts } from "./useReviewShortcuts";
 import { filesInTreeOrder } from "./tree";
 import { useWindowChrome } from "./windowChrome/useWindowChrome";
-import type { WindowChromeKind } from "./windowChrome/model";
+import { hasNativeHeader, type WindowChromeKind } from "./windowChrome/model";
 import type { ReviewData } from "./types";
 import styles from "./App.module.css";
 
 export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { backend?: ReviewBackend; chromeMode?: WindowChromeKind }) {
-  const nativeChrome = chromeMode !== "html";
+  const nativeChrome = hasNativeHeader(chromeMode);
+  const titlebarVariant = chromeMode === "windows-native" ? "windows" : "html";
   const [state, dispatch] = useReducer(reviewReducer, initialState);
   const [commitSelectorOpen, setCommitSelectorOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
@@ -141,13 +142,13 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
 
   if (state.phase === "loading") return (
     <div class={styles.app} data-window-chrome={chromeMode}>
-      <div class={styles.headerArea}>{nativeChrome ? null : <WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
+      <div class={styles.headerArea}>{nativeChrome ? null : <WindowTitlebar variant={titlebarVariant} onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
       <div class={styles.center} role="status">Loading commit diff…</div>
     </div>
   );
   if (state.phase === "error" || !state.data) return (
     <div class={styles.app} data-window-chrome={chromeMode}>
-      <div class={styles.headerArea}>{nativeChrome ? null : <WindowTitlebar onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
+      <div class={styles.headerArea}>{nativeChrome ? null : <WindowTitlebar variant={titlebarVariant} onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
       <div class={styles.center}><div class={styles.fatal} role="alert"><h1>Could not load review</h1><p>{state.error}</p></div></div>
     </div>
   );
@@ -157,7 +158,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
     open={commitSelectorOpen}
     loading={state.phase === "selecting"}
     disabled={comments.length > 0 || state.phase === "submitting"}
-    placement={nativeChrome ? "native" : "inline"}
+    placement={nativeChrome ? "native" : titlebarVariant === "windows" ? "titlebar" : "inline"}
     onOpenChange={setCommitSelectorOpen}
     onSelect={(commitIds) => void selectCommits(commitIds)}
   />;
@@ -166,6 +167,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
     <div class={styles.app} data-window-chrome={chromeMode}>
       <div class={styles.headerArea}>
         {nativeChrome ? commitSelector : <WindowTitlebar
+          variant={titlebarVariant}
           sidebarOpen={sidebarOpen}
           onToggleSidebar={() => setSidebarOpen((open) => !open)}
           onHelp={() => setShortcutHelpOpen(true)}

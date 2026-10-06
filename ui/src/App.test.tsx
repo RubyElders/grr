@@ -6,6 +6,10 @@ import { ReviewApp } from "./App";
 import type { ReviewBackend } from "./backend";
 import type { ReviewData, SubmittedReview } from "./types";
 
+vi.mock("@tauri-apps/api/window", () => ({
+  getCurrentWindow: () => ({ isMaximized: () => Promise.resolve(false), onResized: () => Promise.resolve(() => undefined) }),
+}));
+
 function setup() {
   const submissions: SubmittedReview[] = [];
   const backend: ReviewBackend = {
@@ -34,6 +38,25 @@ describe("ReviewApp", () => {
     expect(screen.getByLabelText(/const char\* labelEn;/)).toBeInTheDocument();
     expect(screen.getByText("Binary file changed")).toBeInTheDocument();
     expect(screen.getByTitle("/tmp/example")).toBeInTheDocument();
+  });
+
+  it("places the review header in a Windows title bar", async () => {
+    const backend: ReviewBackend = {
+      getReview: vi.fn().mockResolvedValue(fixture as ReviewData),
+      selectCommits: vi.fn(),
+      finishReview: vi.fn(),
+      cancelReview: vi.fn().mockResolvedValue(undefined),
+    };
+    const user = userEvent.setup();
+    render(<ReviewApp backend={backend} chromeMode="windows-native" />);
+    const titlebar = screen.getByRole("banner");
+    expect(within(titlebar).getByText("grr")).toBeInTheDocument();
+    await within(titlebar).findByText("5 commits against origin/main");
+    expect(within(titlebar).getByRole("button", { name: "Hide file sidebar" })).toBeInTheDocument();
+    expect(within(titlebar).getByRole("button", { name: "Show keyboard shortcuts" })).toBeInTheDocument();
+    expect(within(titlebar).getByRole("button", { name: "Maximize window" })).toBeInTheDocument();
+    await user.click(within(titlebar).getByRole("button", { name: "Close window" }));
+    expect(backend.cancelReview).toHaveBeenCalledOnce();
   });
 
   it("toggles the file sidebar without losing its filter", async () => {

@@ -1,15 +1,21 @@
-import { fireEvent, render, screen } from "@testing-library/preact";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/preact";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { showWindowMenu } from "../windowChrome/bridge";
 import { WindowTitlebar } from "./WindowTitlebar";
 
 const windowApi = vi.hoisted(() => ({
   minimize: vi.fn().mockResolvedValue(undefined),
   startDragging: vi.fn().mockResolvedValue(undefined),
   toggleMaximize: vi.fn().mockResolvedValue(undefined),
+  isMaximized: vi.fn().mockResolvedValue(false),
+  onResized: vi.fn().mockResolvedValue(() => undefined),
 }));
 
 vi.mock("@tauri-apps/api/window", () => ({ getCurrentWindow: () => windowApi }));
+vi.mock("../windowChrome/bridge", () => ({ showWindowMenu: vi.fn().mockResolvedValue(undefined) }));
+
+beforeEach(() => vi.clearAllMocks());
 
 describe("WindowTitlebar", () => {
   it("routes titlebar controls and blank-area dragging", async () => {
@@ -41,5 +47,53 @@ describe("WindowTitlebar", () => {
     expect(windowApi.toggleMaximize).toHaveBeenCalledTimes(2);
     fireEvent.mouseDown(screen.getByRole("button", { name: "Commit selector" }), { button: 0, detail: 1 });
     expect(windowApi.startDragging).toHaveBeenCalledOnce();
+  });
+
+  it("does not open the native window menu in HTML mode", () => {
+    render(<WindowTitlebar onClose={vi.fn()} />);
+    fireEvent.contextMenu(screen.getByRole("banner"));
+    expect(showWindowMenu).not.toHaveBeenCalled();
+    expect(windowApi.isMaximized).not.toHaveBeenCalled();
+  });
+
+  it("uses Windows caption buttons that follow the maximized state", async () => {
+    const onClose = vi.fn();
+    const stop = vi.fn();
+    windowApi.onResized.mockResolvedValueOnce(stop);
+    const user = userEvent.setup();
+    const view = render(<WindowTitlebar variant="windows" sidebarOpen onHelp={vi.fn()} onClose={onClose}><button>Commit selector</button></WindowTitlebar>);
+
+    await user.click(screen.getByRole("button", { name: "Minimize window" }));
+    await user.click(screen.getByRole("button", { name: "Maximize window" }));
+    await user.click(screen.getByRole("button", { name: "Close window" }));
+    expect(windowApi.minimize).toHaveBeenCalledOnce();
+    expect(windowApi.toggleMaximize).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+
+    windowApi.isMaximized.mockResolvedValueOnce(true);
+    const resized = windowApi.onResized.mock.calls[0]![0] as () => void;
+    act(() => resized());
+    expect(await screen.findByRole("button", { name: "Restore window" })).toBeInTheDocument();
+
+    view.unmount();
+    await waitFor(() => expect(stop).toHaveBeenCalledOnce());
+  });
+
+  it("opens the native window menu from blank title bar space", () => {
+    render(<WindowTitlebar variant="windows" onClose={vi.fn()}><button>Commit selector</button></WindowTitlebar>);
+    fireEvent.contextMenu(screen.getByRole("button", { name: "Commit selector" }));
+    expect(showWindowMenu).not.toHaveBeenCalled();
+    const event = fireEvent.contextMenu(screen.getByRole("banner"));
+    expect(event).toBe(false);
+    expect(showWindowMenu).toHaveBeenCalledOnce();
+  });
+
+  it("dims the Windows title bar while the window is inactive", () => {
+    render(<WindowTitlebar variant="windows" onClose={vi.fn()} />);
+    const titlebar = screen.getByRole("banner");
+    act(() => { window.dispatchEvent(new Event("blur")); });
+    expect(titlebar).toHaveAttribute("data-inactive", "true");
+    act(() => { window.dispatchEvent(new Event("focus")); });
+    expect(titlebar).not.toHaveAttribute("data-inactive");
   });
 });

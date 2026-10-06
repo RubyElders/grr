@@ -11,7 +11,7 @@ use tauri::{Manager, State, Window};
 mod clipboard;
 mod shutdown;
 mod window_chrome;
-use window_chrome::{get_window_chrome, update_window_chrome};
+use window_chrome::{get_window_chrome, show_window_menu, update_window_chrome};
 
 struct AppState {
     repository: PathBuf,
@@ -124,6 +124,7 @@ fn main() {
             finish_review,
             cancel_review,
             get_window_chrome,
+            show_window_menu,
             update_window_chrome
         ])
         .build(context)

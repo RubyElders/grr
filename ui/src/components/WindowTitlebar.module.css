@@ -6,3 +6,20 @@
 .tool:hover, .windowButton:hover { border-color: var(--border); color: var(--fg); background: var(--canvas); }
 .tool[aria-pressed="false"] { color: var(--blue); }
 .close:hover { border-color: #cf222e; color: white; background: #cf222e; }
+
+.windows { min-height: 48px; }
+.windows .side { padding: 0 0 0 8px; }
+.windows .right { align-self: stretch; gap: 0; padding: 0; }
+.windows .tool { width: 40px; height: 32px; border: 0; border-radius: 4px; color: var(--fg); font-weight: 400; }
+.windows .tool:hover { background: var(--caption-hover); }
+.windows .tool:active { background: var(--caption-pressed); }
+.windows .tool[aria-pressed="false"] { color: var(--blue); }
+.windows .right .tool { width: 46px; height: 100%; border-radius: 0; }
+.glyph { font-family: var(--fluent-icons); font-size: 13px; line-height: 1; }
+.captions { align-self: stretch; display: flex; }
+.caption { width: 46px; height: 100%; display: grid; place-items: center; padding: 0; border: 0; border-radius: 0; color: var(--fg); background: transparent; font-family: var(--fluent-icons); font-size: 10px; line-height: 1; }
+.caption:hover { background: var(--caption-hover); }
+.caption:active { background: var(--caption-pressed); }
+.captionClose:hover { color: white; background: #c42b1c; }
+.captionClose:active { color: rgba(255, 255, 255, .7); background: rgba(196, 43, 28, .9); }
+.windows[data-inactive] .tool:not(:hover), .windows[data-inactive] .caption:not(:hover) { color: color-mix(in srgb, var(--fg) 40%, transparent); }

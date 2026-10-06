@@ -59,8 +59,8 @@ describe("useWindowChrome", () => {
     await waitFor(() => expect(stop).toHaveBeenCalledOnce());
   });
 
-  it("does not use native commands in HTML mode", async () => {
-    render(<Harness kind="html" onAction={vi.fn()} onError={vi.fn()} />);
+  it.each(["html", "windows-native"] as const)("does not use native header commands in %s mode", async (kind) => {
+    render(<Harness kind={kind} onAction={vi.fn()} onError={vi.fn()} />);
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(listenWindowChromeActions).not.toHaveBeenCalled();
     expect(updateWindowChrome).not.toHaveBeenCalled();

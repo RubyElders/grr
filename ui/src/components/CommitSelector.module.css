@@ -2,6 +2,13 @@
 .nativeRoot { position: absolute; top: 0; left: 50%; width: 0; }
 .nativeRoot .popover { top: 8px; left: 50%; transform: translateX(-50%); }
 .navigation { min-width: 0; display: flex; align-items: center; gap: 3px; padding: 2px 4px; border: 1px solid var(--border); border-radius: 7px; }
+.titlebarNavigation { gap: 4px; padding: 0; border-color: transparent; }
+.titlebarNavigation .step, .titlebarNavigation .trigger { border: 0; border-radius: 4px; }
+.titlebarNavigation .step { width: 40px; height: 32px; color: var(--fg); }
+.glyph { font-family: var(--fluent-icons); font-size: 13px; line-height: 1; }
+.titlebarNavigation .step:hover:not(:disabled), .titlebarNavigation .trigger:hover:not(:disabled), .titlebarNavigation .trigger[aria-expanded="true"] { background: var(--caption-hover); }
+.titlebarNavigation .triggerText { align-items: center; text-align: center; }
+.titlebarNavigation .caret { display: none; }
 .trigger { min-width: 260px; height: 40px; display: flex; flex: 1; align-items: center; gap: 10px; padding: 5px 10px; border: 1px solid transparent; border-radius: 5px; color: var(--fg); background: transparent; text-align: left; cursor: pointer; }
 .trigger:hover, .trigger[aria-expanded="true"] { border-color: transparent; background: var(--bg); }
 .trigger:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }

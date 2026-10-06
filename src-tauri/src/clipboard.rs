@@ -26,7 +26,7 @@ fn copy_with_command(program: &str, arguments: &[&str], text: &str) -> Result<()
         .ok_or_else(|| format!("could not open {program} input"))
         .and_then(|mut stdin| {
             stdin
-                .write_all(text.as_bytes())
+                .write_all(&clipboard_input(text))
                 .map_err(|error| format!("could not write to {program}: {error}"))
         });
     let status = child
@@ -37,6 +37,27 @@ fn copy_with_command(program: &str, arguments: &[&str], text: &str) -> Result<()
         return Ok(());
     }
     Err(format!("{program} failed with {status}"))
+}
+
+#[cfg(target_os = "windows")]
+fn clipboard_input(text: &str) -> Vec<u8> {
+    text.encode_utf16().flat_map(u16::to_le_bytes).collect()
+}
+
+#[cfg(not(target_os = "windows"))]
+fn clipboard_input(text: &str) -> Vec<u8> {
+    text.as_bytes().to_vec()
+}
+
+#[cfg(all(test, target_os = "windows"))]
+mod windows_tests {
+    #[test]
+    fn sends_utf16_text_to_clip() {
+        assert_eq!(
+            super::clipboard_input("Š…\n"),
+            [0x60, 0x01, 0x26, 0x20, 0x0a, 0x00]
+        );
+    }
 }
 
 #[cfg(all(test, unix))]

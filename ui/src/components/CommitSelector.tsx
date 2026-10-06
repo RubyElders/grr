@@ -10,7 +10,7 @@ interface CommitSelectorProps {
   open: boolean;
   loading: boolean;
   disabled: boolean;
-  placement?: "inline" | "native";
+  placement?: "inline" | "titlebar" | "native";
   onOpenChange(open: boolean): void;
   onSelect(commitIds: string[]): void;
 }
@@ -90,6 +90,7 @@ export function CommitSelector(props: CommitSelectorProps) {
   const newer = commitNavigationTarget(props.data, "newer");
   const older = commitNavigationTarget(props.data, "older");
   const navigationDisabled = props.disabled || props.loading;
+  const titlebar = props.placement === "titlebar";
 
   const toggle = (id: string) => {
     setChecked((current) => {
@@ -105,7 +106,7 @@ export function CommitSelector(props: CommitSelectorProps) {
 
   return (
     <div ref={root} class={`${styles.root} ${props.placement === "native" ? styles.nativeRoot : ""}`}>
-      {props.placement === "native" ? null : <div class={styles.navigation}>
+      {props.placement === "native" ? null : <div class={`${styles.navigation} ${titlebar ? styles.titlebarNavigation : ""}`}>
         <button
           type="button"
           class={styles.step}
@@ -113,7 +114,7 @@ export function CommitSelector(props: CommitSelectorProps) {
           aria-label={newer ? navigationLabel(newer.commit, "newer") : "No newer commit"}
           title={newer ? navigationTitle(newer.commit, "newer") : "No newer commit"}
           onClick={() => newer && apply(newer.selectedCommitIds)}
-        ><Icon name="arrow-left" /></button>
+        >{titlebar ? <span class={styles.glyph} aria-hidden="true">{"\uE76B"}</span> : <Icon name="arrow-left" />}</button>
         <button
           class={styles.trigger}
           aria-expanded={props.open}
@@ -143,7 +144,7 @@ export function CommitSelector(props: CommitSelectorProps) {
             ? `Latest: ${older.commit?.summary}`
             : navigationTitle(older.commit, "older") : "No older commit"}
           onClick={() => older && apply(older.selectedCommitIds)}
-        ><Icon name="arrow-right" /></button>
+        >{titlebar ? <span class={styles.glyph} aria-hidden="true">{"\uE76C"}</span> : <Icon name="arrow-right" />}</button>
       </div>}
       {props.open ? (
         <section ref={dialog} class={styles.popover} role="dialog" aria-label="Choose commits" tabIndex={-1}>
