@@ -1148,9 +1148,13 @@ dependencies = [
 name = "grr"
 version = "0.4.0"
 dependencies = [
+ "dispatch2",
  "git2",
  "gtk",
  "libc",
+ "objc2",
+ "objc2-app-kit",
+ "objc2-foundation",
  "serde",
  "serde_json",
  "tauri",

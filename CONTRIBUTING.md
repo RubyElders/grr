@@ -12,7 +12,9 @@ npm run check
 
 The Preact frontend lives in `ui/`. The Rust app, Tauri configuration, capabilities and icons live in `src-tauri/`. Git parsing uses libgit2; review data and window chrome are separate from the UI.
 
-`npm run build:app` uses the Tauri CLI to build the executable. `npm run install:local` also installs the Linux desktop integration. Packaged bundles and macOS support are not available yet.
+`npm run build:app` uses the Tauri CLI to build the executable. `npm run install:local` also installs the Linux desktop integration. macOS 11+ uses an AppKit toolbar for native window chrome. Packaged releases are not available yet.
+
+On macOS, Cargo uses a compatible system libgit2 when available and builds its bundled copy otherwise. For a direct production build on any platform, run `npm run build` at the project root, then `cargo build --release --locked` from `src-tauri`. The default `custom-protocol` feature embeds the frontend; rebuild it after frontend changes. `tauri dev` disables this feature to use the development server.
 
 ## Tests
 
@@ -51,6 +53,6 @@ The native test stack overrides WebdriverIO's transitive Mocha, diff parser, Jav
 
 ## GitHub Actions
 
-CI has independent jobs for frontend checks, Rust tests and coverage, Windows Rust checks, native Linux tests, dependency audits, secret scanning and workflow validation. It runs on pushes, pull requests or manual dispatch with read-only permissions and no repository secrets. The Rust and native jobs run directly on Ubuntu 26.04 and share the setup action in `.github/actions/setup-linux`.
+CI has independent jobs for frontend checks, Rust tests and coverage, Windows and macOS Rust checks, native Linux tests, dependency audits, secret scanning and workflow validation. It runs on pushes, pull requests or manual dispatch with read-only permissions and no repository secrets. The Rust and native Linux jobs run directly on Ubuntu 26.04 and share the setup action in `.github/actions/setup-linux`. The macOS job uses an Apple Silicon runner on macOS 15 and checks formatting, Clippy, Rust tests and the release build.
 
-Require `Frontend`, `Rust checks and coverage`, `Rust checks (Windows)`, `Native tests (Linux)`, `Dependency audit`, `Secret scan` and `Workflow lint` checks for `main` after the first hosted run succeeds. CI does not publish releases or establish macOS support.
+Require `Frontend`, `Rust checks and coverage`, `Rust checks (Windows)`, `Rust checks (macOS)`, `Native tests (Linux)`, `Dependency audit`, `Secret scan` and `Workflow lint` checks for `main` after the first hosted run succeeds. CI does not publish releases. Native macOS window behavior still needs manual validation.

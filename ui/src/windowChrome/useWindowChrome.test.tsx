@@ -25,18 +25,18 @@ beforeEach(() => {
 });
 
 describe("useWindowChrome", () => {
-  it("keeps one listener while using the latest review actions", async () => {
+  it.each(["gtk-native", "mac-native"] as const)("keeps one %s listener while using the latest review actions", async (kind) => {
     const first = vi.fn();
     const next = vi.fn();
     const onError = vi.fn();
     const stop = vi.fn();
     vi.mocked(listenWindowChromeActions).mockResolvedValue(stop);
-    const view = render(<Harness onAction={first} onError={onError} />);
+    const view = render(<Harness kind={kind} onAction={first} onError={onError} />);
     await waitFor(() => expect(listenWindowChromeActions).toHaveBeenCalledOnce());
     const receive = vi.mocked(listenWindowChromeActions).mock.calls[0]![0];
     receive("sidebar");
     expect(first).toHaveBeenCalledWith("sidebar");
-    view.rerender(<Harness disabled onAction={next} onError={onError} />);
+    view.rerender(<Harness kind={kind} disabled onAction={next} onError={onError} />);
     await waitFor(() => expect(updateWindowChrome).toHaveBeenCalledTimes(2));
     receive("older");
     expect(next).toHaveBeenCalledWith("older");

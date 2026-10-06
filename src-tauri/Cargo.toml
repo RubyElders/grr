@@ -9,7 +9,7 @@ license = "MIT"
 repository = "https://github.com/RubyElders/grr"
 
 [features]
-default = []
+default = ["custom-protocol"]
 custom-protocol = ["tauri/custom-protocol"]
 
 [dependencies]
@@ -25,6 +25,12 @@ windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_Wind
 [target.'cfg(target_os = "linux")'.dependencies]
 gtk = "0.18.2"
 libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+dispatch2 = "0.3.1"
+objc2 = "0.6.4"
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSAttributedString", "NSButton", "NSButtonCell", "NSCell", "NSColor", "NSControl", "NSFont", "NSImage", "NSResponder", "NSToolbar", "NSToolbarItem", "NSView", "NSWindow"] }
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSAttributedString", "NSDictionary", "NSGeometry", "NSObject", "NSString"] }
 
 [build-dependencies]
 tauri-build = { version = "2.7.1" }
