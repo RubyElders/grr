@@ -1,7 +1,23 @@
 import { describe, expect, it, vi } from "vitest";
 import fixture from "../__fixtures__/review.json";
-import { windowChromeTooltips, windowChromeUpdate } from "./model";
+import { isWindowChromeKind, windowChromeCapabilities, windowChromeTooltips, windowChromeUpdate } from "./model";
 import type { ReviewData } from "../types";
+
+describe("window chrome capabilities", () => {
+  it.each([
+    ["gtk-native", true, false, false],
+    ["mac-native", true, false, false],
+    ["windows-native", false, true, true],
+    ["html", false, false, false],
+  ] as const)("describes %s", (kind, nativeHeader, customCaptionButtons, systemMenu) => {
+    expect(isWindowChromeKind(kind)).toBe(true);
+    expect(windowChromeCapabilities(kind)).toEqual({ nativeHeader, customCaptionButtons, systemMenu });
+  });
+
+  it.each(["unknown", "toString", null, {}])("rejects unsupported chrome values: %s", (kind) => {
+    expect(isWindowChromeKind(kind)).toBe(false);
+  });
+});
 
 describe("windowChromeUpdate", () => {
   it("uses the shortcut registry for native header tooltips on each platform", () => {

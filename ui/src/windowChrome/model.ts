@@ -14,8 +14,25 @@ export interface WindowChromeUpdate {
   tooltips: Record<WindowChromeAction, string>;
 }
 
-export function hasNativeHeader(kind: WindowChromeKind): boolean {
-  return kind === "gtk-native" || kind === "mac-native";
+export interface WindowChromeCapabilities {
+  readonly nativeHeader: boolean;
+  readonly customCaptionButtons: boolean;
+  readonly systemMenu: boolean;
+}
+
+const CAPABILITIES: Record<WindowChromeKind, WindowChromeCapabilities> = {
+  "gtk-native": { nativeHeader: true, customCaptionButtons: false, systemMenu: false },
+  "mac-native": { nativeHeader: true, customCaptionButtons: false, systemMenu: false },
+  "windows-native": { nativeHeader: false, customCaptionButtons: true, systemMenu: true },
+  html: { nativeHeader: false, customCaptionButtons: false, systemMenu: false },
+};
+
+export function isWindowChromeKind(kind: unknown): kind is WindowChromeKind {
+  return typeof kind === "string" && Object.hasOwn(CAPABILITIES, kind);
+}
+
+export function windowChromeCapabilities(kind: WindowChromeKind): WindowChromeCapabilities {
+  return CAPABILITIES[kind];
 }
 
 export function windowChromeUpdate(data: ReviewData, disabled: boolean): WindowChromeUpdate {

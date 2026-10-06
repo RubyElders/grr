@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { showWindowMenu } from "../windowChrome/bridge";
 import { WindowTitlebar } from "./WindowTitlebar";
+import { windowChromeCapabilities } from "../windowChrome/model";
 
 const windowApi = vi.hoisted(() => ({
   minimize: vi.fn().mockResolvedValue(undefined),
@@ -56,12 +57,19 @@ describe("WindowTitlebar", () => {
     expect(windowApi.isMaximized).not.toHaveBeenCalled();
   });
 
+  it("gates the system menu independently of caption buttons", () => {
+    render(<WindowTitlebar capabilities={{ nativeHeader: false, customCaptionButtons: true, systemMenu: false }} onClose={vi.fn()} />);
+    fireEvent.contextMenu(screen.getByRole("banner"));
+    expect(showWindowMenu).not.toHaveBeenCalled();
+    expect(windowApi.isMaximized).toHaveBeenCalledOnce();
+  });
+
   it("uses Windows caption buttons that follow the maximized state", async () => {
     const onClose = vi.fn();
     const stop = vi.fn();
     windowApi.onResized.mockResolvedValueOnce(stop);
     const user = userEvent.setup();
-    const view = render(<WindowTitlebar variant="windows" sidebarOpen onHelp={vi.fn()} onClose={onClose}><button>Commit selector</button></WindowTitlebar>);
+    const view = render(<WindowTitlebar capabilities={windowChromeCapabilities("windows-native")} sidebarOpen onHelp={vi.fn()} onClose={onClose}><button>Commit selector</button></WindowTitlebar>);
 
     await user.click(screen.getByRole("button", { name: "Minimize window" }));
     await user.click(screen.getByRole("button", { name: "Maximize window" }));
@@ -80,7 +88,7 @@ describe("WindowTitlebar", () => {
   });
 
   it("opens the native window menu from blank title bar space", () => {
-    render(<WindowTitlebar variant="windows" onClose={vi.fn()}><button>Commit selector</button></WindowTitlebar>);
+    render(<WindowTitlebar capabilities={windowChromeCapabilities("windows-native")} onClose={vi.fn()}><button>Commit selector</button></WindowTitlebar>);
     fireEvent.contextMenu(screen.getByRole("button", { name: "Commit selector" }));
     expect(showWindowMenu).not.toHaveBeenCalled();
     const event = fireEvent.contextMenu(screen.getByRole("banner"));
@@ -89,7 +97,7 @@ describe("WindowTitlebar", () => {
   });
 
   it("dims the Windows title bar while the window is inactive", () => {
-    render(<WindowTitlebar variant="windows" onClose={vi.fn()} />);
+    render(<WindowTitlebar capabilities={windowChromeCapabilities("windows-native")} onClose={vi.fn()} />);
     const titlebar = screen.getByRole("banner");
     act(() => { window.dispatchEvent(new Event("blur")); });
     expect(titlebar).toHaveAttribute("data-inactive", "true");

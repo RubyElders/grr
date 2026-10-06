@@ -1,11 +1,11 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import type { WindowChromeAction, WindowChromeKind, WindowChromeUpdate } from "./model";
+import { isWindowChromeKind, type WindowChromeAction, type WindowChromeKind, type WindowChromeUpdate } from "./model";
 
 export async function resolveWindowChrome(): Promise<WindowChromeKind> {
   if (!isTauri()) return "html";
   const kind = await invoke<unknown>("get_window_chrome");
-  if (kind === "gtk-native" || kind === "mac-native" || kind === "windows-native" || kind === "html") return kind;
+  if (isWindowChromeKind(kind)) return kind;
   throw new Error("Unknown window chrome mode");
 }
 
