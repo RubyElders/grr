@@ -8,11 +8,24 @@ use windows_sys::Win32::UI::WindowsAndMessaging::{
     TPM_RIGHTBUTTON, TrackPopupMenu, WM_SYSCOMMAND,
 };
 
-pub fn install(window: &WebviewWindow) -> Result<(), String> {
+use super::WindowChromeUpdate;
+
+pub struct Header;
+
+impl Header {
+    pub fn update(&self, _update: WindowChromeUpdate) -> Result<(), String> {
+        Ok(())
+    }
+}
+
+pub fn prepare(_identifier: &str) {}
+
+pub fn install(window: &WebviewWindow) -> Result<Header, String> {
     window
         .set_decorations(false)
         .and_then(|()| window.set_shadow(true))
-        .map_err(|error| error.to_string())
+        .map_err(|error| error.to_string())?;
+    Ok(Header)
 }
 
 pub fn show_system_menu(window: &WebviewWindow) -> Result<(), String> {

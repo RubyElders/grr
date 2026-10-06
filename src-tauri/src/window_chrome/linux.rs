@@ -6,6 +6,12 @@ use tauri::{Emitter, WebviewWindow};
 
 use super::{WindowChromeAction, WindowChromeUpdate};
 
+pub(super) use super::unsupported_window_menu as show_system_menu;
+
+pub fn prepare(identifier: &str) {
+    gtk::glib::set_prgname(Some(identifier));
+}
+
 pub struct Header {
     sender: Mutex<glib::Sender<WindowChromeUpdate>>,
 }
