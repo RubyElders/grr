@@ -3,23 +3,24 @@ import { useEffect, useState } from "preact/hooks";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { shortcutTitle } from "../shortcuts";
 import { showWindowMenu } from "../windowChrome/bridge";
+import { windowChromeCapabilities, type WindowChromeCapabilities } from "../windowChrome/model";
 import { Icon } from "./Icon";
 import styles from "./WindowTitlebar.module.css";
 
 interface WindowTitlebarProps {
   children?: ComponentChildren;
-  variant?: "html" | "windows";
+  capabilities?: WindowChromeCapabilities;
   sidebarOpen?: boolean;
   onToggleSidebar?(): void;
   onHelp?(): void;
   onClose(): void;
 }
 
-export function WindowTitlebar({ children, variant = "html", sidebarOpen, onToggleSidebar, onHelp, onClose }: WindowTitlebarProps) {
-  const windows = variant === "windows";
+export function WindowTitlebar({ children, capabilities = windowChromeCapabilities("html"), sidebarOpen, onToggleSidebar, onHelp, onClose }: WindowTitlebarProps) {
+  const customCaptions = capabilities.customCaptionButtons;
   const [active, setActive] = useState(true);
   useEffect(() => {
-    if (!windows) return;
+    if (!customCaptions) return;
     const activate = () => setActive(true);
     const deactivate = () => setActive(false);
     window.addEventListener("focus", activate);
@@ -28,7 +29,7 @@ export function WindowTitlebar({ children, variant = "html", sidebarOpen, onTogg
       window.removeEventListener("focus", activate);
       window.removeEventListener("blur", deactivate);
     };
-  }, [windows]);
+  }, [customCaptions]);
   const drag = (event: MouseEvent) => {
     if (event.button !== 0 || (event.target as Element).closest("button, input, label, a")) return;
     const window = getCurrentWindow();
@@ -41,10 +42,10 @@ export function WindowTitlebar({ children, variant = "html", sidebarOpen, onTogg
   };
   return (
     <header
-      class={`${styles.titlebar} ${windows ? styles.windows : ""}`}
-      data-inactive={windows && !active ? "true" : undefined}
+      class={`${styles.titlebar} ${customCaptions ? styles.windows : ""}`}
+      data-inactive={customCaptions && !active ? "true" : undefined}
       onMouseDown={drag}
-      onContextMenu={windows ? openWindowMenu : undefined}
+      onContextMenu={capabilities.systemMenu ? openWindowMenu : undefined}
     >
       <div class={styles.side}>
         {sidebarOpen === undefined ? null : (
@@ -55,13 +56,13 @@ export function WindowTitlebar({ children, variant = "html", sidebarOpen, onTogg
             aria-pressed={sidebarOpen}
             title={`Toggle file sidebar (${shortcutTitle("toggleSidebar")})`}
             onClick={onToggleSidebar}
-          >{windows ? <span class={styles.glyph} aria-hidden="true">{"\uE90C"}</span> : <Icon name="sidebar" />}</button>
+          >{customCaptions ? <span class={styles.glyph} aria-hidden="true">{"\uE90C"}</span> : <Icon name="sidebar" />}</button>
         )}
       </div>
       <div class={styles.center}>{children}</div>
       <div class={`${styles.side} ${styles.right}`}>
-        {onHelp ? <button type="button" class={styles.tool} aria-label="Show keyboard shortcuts" title={`Keyboard shortcuts (${shortcutTitle("help")})`} onClick={onHelp}>{windows ? <span class={styles.glyph} aria-hidden="true">{"\uE897"}</span> : "?"}</button> : null}
-        {windows ? <CaptionButtons onClose={onClose} /> : <>
+        {onHelp ? <button type="button" class={styles.tool} aria-label="Show keyboard shortcuts" title={`Keyboard shortcuts (${shortcutTitle("help")})`} onClick={onHelp}>{customCaptions ? <span class={styles.glyph} aria-hidden="true">{"\uE897"}</span> : "?"}</button> : null}
+        {customCaptions ? <CaptionButtons onClose={onClose} /> : <>
           <button type="button" class={styles.windowButton} aria-label="Minimize window" onClick={() => void getCurrentWindow().minimize()}><Icon name="minimize" /></button>
           <button type="button" class={styles.windowButton} aria-label="Maximize window" onClick={() => void getCurrentWindow().toggleMaximize()}><Icon name="maximize" /></button>
           <button type="button" class={`${styles.windowButton} ${styles.close}`} aria-label="Close window" onClick={onClose}><Icon name="close" /></button>
