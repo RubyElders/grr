@@ -1,0 +1,34 @@
+name: Check desktop app
+description: Set up Node and Rust, test the app and build the release executable
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+      with:
+        node-version: 22.22.2
+        cache: npm
+    - name: Install Rust
+      shell: bash
+      run: |
+        rustup toolchain install 1.98.1 --profile minimal --component clippy,rustfmt
+        rustup default 1.98.1
+    - name: Install frontend dependencies
+      shell: bash
+      run: npm ci
+    - name: Build frontend
+      shell: bash
+      run: npm run build
+    - name: Check Rust formatting
+      shell: bash
+      run: cargo fmt --manifest-path src-tauri/Cargo.toml --all --check
+    - name: Lint Rust
+      shell: bash
+      run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings
+    - name: Test Rust
+      shell: bash
+      run: npm run test:rust
+    - name: Build release executable
+      shell: bash
+      run: npm run build:app
