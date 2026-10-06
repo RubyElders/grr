@@ -2,7 +2,7 @@
 
 A small local Git review app. Browse a unified diff, add line comments, and send the review back to your terminal.
 
-Currently tested on Fedora Linux 44. macOS support is planned.
+Currently tested on Fedora Linux 44 and Windows 10. macOS support is planned.
 
 ## Install
 
@@ -18,6 +18,14 @@ npm run install:local
 ```
 
 Make sure Cargo's bin directory is on your `PATH`. Installation includes the Linux desktop icon. Clipboard copying requires `wl-copy` from `wl-clipboard`.
+
+On Windows, install the Visual Studio C++ build tools instead of the Fedora packages. libgit2 is built from source and WebView2 ships with Windows 10 and 11:
+
+```sh
+npm ci
+npm run build
+cargo install --path src-tauri --locked --features custom-protocol
+```
 
 ## Use
 

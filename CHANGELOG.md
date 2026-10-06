@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Build and run on Windows with a native-style title bar that holds the review controls, like the GTK header bar.
+
+### Fixed
+
+- Copy non-ASCII review text to the Windows clipboard without corrupting it.
+
 ## 0.4.0 - 2026-10-03
 
 ### Added

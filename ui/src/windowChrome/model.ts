@@ -1,7 +1,7 @@
 import { commitContext, commitNavigationTarget } from "../commitPresentation";
 import type { ReviewData } from "../types";
 
-export type WindowChromeKind = "gtk-native" | "mac-native" | "html";
+export type WindowChromeKind = "gtk-native" | "mac-native" | "windows-native" | "html";
 export type WindowChromeAction = "sidebar" | "help" | "picker" | "newer" | "older";
 
 export interface WindowChromeUpdate {
@@ -10,6 +10,10 @@ export interface WindowChromeUpdate {
   canNavigateNewer: boolean;
   canNavigateOlder: boolean;
   commitSelectionEnabled: boolean;
+}
+
+export function hasNativeHeader(kind: WindowChromeKind): boolean {
+  return kind === "gtk-native" || kind === "mac-native";
 }
 
 export function windowChromeUpdate(data: ReviewData, disabled: boolean): WindowChromeUpdate {

@@ -26,6 +26,7 @@ runs:
         sudo cmake --install "$RUNNER_TEMP/libgit2-build"
         sudo ldconfig
         pkg-config --atleast-version=1.9.7 libgit2
+        echo "LIBGIT2_NO_VENDOR=1" >> "$GITHUB_ENV"
     - name: Set up Node
       uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
       with:

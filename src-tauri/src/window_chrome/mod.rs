@@ -1,5 +1,7 @@
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "windows")]
+mod windows;
 
 use serde::{Deserialize, Serialize};
 use tauri::{State, WebviewWindow};
@@ -8,6 +10,7 @@ use tauri::{State, WebviewWindow};
 #[serde(rename_all = "kebab-case")]
 pub enum WindowChromeKind {
     GtkNative,
+    WindowsNative,
     Html,
 }
 
@@ -48,6 +51,8 @@ pub fn prepare(identifier: &str) {
 pub fn get_window_chrome() -> WindowChromeKind {
     if cfg!(target_os = "linux") {
         WindowChromeKind::GtkNative
+    } else if cfg!(target_os = "windows") {
+        WindowChromeKind::WindowsNative
     } else {
         WindowChromeKind::Html
     }
@@ -81,12 +86,28 @@ pub fn update_window_chrome(
     }
 }
 
+#[tauri::command]
+pub fn show_window_menu(window: WebviewWindow) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    return windows::show_system_menu(&window);
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = window;
+        Err("the native window menu is only available on Windows".to_owned())
+    }
+}
+
 pub fn install(window: &WebviewWindow) -> Result<WindowChromeState, String> {
     #[cfg(target_os = "linux")]
     return Ok(WindowChromeState {
         header: linux::install(window)?,
     });
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(target_os = "windows")]
+    {
+        windows::install(window)?;
+        Ok(WindowChromeState {})
+    }
+    #[cfg(not(any(target_os = "linux", target_os = "windows")))]
     {
         let _ = window;
         Ok(WindowChromeState {})
@@ -109,6 +130,10 @@ mod tests {
         assert_eq!(
             serde_json::to_string(&WindowChromeKind::GtkNative).unwrap(),
             "\"gtk-native\""
+        );
+        assert_eq!(
+            serde_json::to_string(&WindowChromeKind::WindowsNative).unwrap(),
+            "\"windows-native\""
         );
         assert_eq!(
             serde_json::to_string(&WindowChromeKind::Html).unwrap(),
