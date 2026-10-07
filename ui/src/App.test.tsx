@@ -267,8 +267,10 @@ describe("ReviewApp", () => {
 
     await user.click(screen.getByTitle("tests/rendering/reference.png"));
 
-    expect(scrollTo).toHaveBeenCalledWith({ top: 488, behavior: "smooth" });
+    expect(scrollTo).toHaveBeenCalledWith({ top: 488, behavior: "instant" });
     expect(scrollTo.mock.calls[0]![0]).not.toHaveProperty("left");
+    await user.click(screen.getByTitle("tests/rendering/reference.png"));
+    expect(scrollTo).toHaveBeenCalledTimes(2);
   });
 
   it("steps between files with arrows or J and K while Space continues to page", async () => {

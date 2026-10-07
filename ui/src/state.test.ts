@@ -50,7 +50,7 @@ describe("review state", () => {
     expect(state.phase).toBe("error");
   });
 
-  it("reveals the active file when scroll tracking enters a collapsed directory", () => {
+  it("reveals the active file on explicit selection", () => {
     let state = reviewReducer(initialState, { type: "loaded", data });
     state = reviewReducer(state, { type: "toggle-directory", path: "tests" });
     state = reviewReducer(state, { type: "toggle-directory", path: "tests/rendering" });
@@ -58,6 +58,15 @@ describe("review state", () => {
     expect(state.activeFileId).toBe("f1");
     expect(state.collapsedDirectories.has("tests")).toBe(false);
     expect(state.collapsedDirectories.has("tests/rendering")).toBe(false);
+  });
+
+  it("preserves collapsed directories during passive scroll tracking", () => {
+    let state = reviewReducer(initialState, { type: "loaded", data });
+    state = reviewReducer(state, { type: "toggle-directory", path: "tests" });
+    state = reviewReducer(state, { type: "visible-file", fileId: "f1" });
+    expect(state.activeFileId).toBe("f1");
+    expect(state.collapsedDirectories.has("tests")).toBe(true);
+    expect(reviewReducer(state, { type: "visible-file", fileId: "f1" })).toBe(state);
   });
 
   it("resets review-local state when a commit selection loads", () => {

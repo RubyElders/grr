@@ -8,10 +8,13 @@ import { Icon } from "./Icon";
 import { SyntaxLine } from "./SyntaxLine";
 import styles from "./DiffView.module.css";
 
+const MAX_VIRTUAL_CONTENT_HEIGHT = 2048;
+
 interface DiffViewProps {
   viewKey: string;
   files: FileDiff[];
   activeFileId: string | null;
+  fileNavigation?: { fileId: string; requestId: number } | null;
   showSourceCommits: boolean;
   collapsedFiles: ReadonlySet<string>;
   openLineId: string | null;
@@ -29,8 +32,9 @@ interface DiffViewProps {
 export function DiffView(props: DiffViewProps) {
   const pane = useRef<HTMLElement>(null);
   const animationFrame = useRef<number | null>(null);
-  const scrollPositions = useRef<Map<string, number>>(new Map());
+  const scrollPositions = useRef<Map<string, { top: number; fileId: string | null; offset: number }>>(new Map());
   const contentHeights = useRef<Map<string, number>>(new Map());
+  const pendingAnchor = useRef<{ fileId: string; offset: number; scrollTop: number } | null>(null);
   const [nearbyFileIds, setNearbyFileIds] = useState<ReadonlySet<string>>(
     () => new Set(props.files.slice(0, 2).map((file) => file.id)),
   );
@@ -52,7 +56,16 @@ export function DiffView(props: DiffViewProps) {
   useLayoutEffect(() => {
     const element = pane.current;
     if (!element) return;
-    element.scrollTop = scrollPositions.current.get(props.viewKey) ?? 0;
+    if (animationFrame.current !== null) {
+      cancelAnimationFrame(animationFrame.current);
+      animationFrame.current = null;
+    }
+    pendingAnchor.current = null;
+    const saved = scrollPositions.current.get(props.viewKey);
+    const card = saved?.fileId ? document.getElementById(`file-${saved.fileId}`) : null;
+    element.scrollTop = saved && card && element.contains(card)
+      ? element.scrollTop + card.getBoundingClientRect().top - element.getBoundingClientRect().top - saved.offset
+      : saved?.top ?? 0;
   }, [props.viewKey]);
   useLayoutEffect(() => {
     if (props.activeSearchMatchIndex < 0) return;
@@ -68,6 +81,13 @@ export function DiffView(props: DiffViewProps) {
     }
     setNearbyFileIds(new Set(props.files.slice(0, 2).map((file) => file.id)));
     const observer = new IntersectionObserver((entries) => {
+      if (!pendingAnchor.current) {
+        const cards = root.querySelectorAll<HTMLElement>("article[data-file-id]");
+        const top = root.getBoundingClientRect().top;
+        const index = fileIndexAtViewportTop(cards.length, (index) => cards[index]!.getBoundingClientRect().top, top, false);
+        const card = index === null ? null : cards[index];
+        if (card?.dataset.fileId) pendingAnchor.current = { fileId: card.dataset.fileId, offset: card.getBoundingClientRect().top - top, scrollTop: root.scrollTop };
+      }
       setNearbyFileIds((current) => {
         const next = new Set(current);
         for (const entry of entries) {
@@ -86,6 +106,9 @@ export function DiffView(props: DiffViewProps) {
   const forcedFileIds = useMemo(() => {
     const forced = new Set<string>();
     if (props.activeFileId) forced.add(props.activeFileId);
+    if (props.fileNavigation) forced.add(props.fileNavigation.fileId);
+    const savedFileId = scrollPositions.current.get(props.viewKey)?.fileId;
+    if (savedFileId) forced.add(savedFileId);
     for (const draft of Object.values(props.drafts)) forced.add(draft.fileId);
     const activeMatch = props.searchMatches[props.activeSearchMatchIndex];
     if (activeMatch) forced.add(activeMatch.fileId);
@@ -96,14 +119,48 @@ export function DiffView(props: DiffViewProps) {
       if (openFile) forced.add(openFile.id);
     }
     return forced;
-  }, [props.activeFileId, props.activeSearchMatchIndex, props.drafts, props.files, props.openLineId, props.searchMatches]);
+  }, [props.activeFileId, props.fileNavigation, props.activeSearchMatchIndex, props.drafts, props.files, props.openLineId, props.searchMatches, props.viewKey]);
+
+  useLayoutEffect(() => {
+    const root = pane.current;
+    const anchor = pendingAnchor.current;
+    pendingAnchor.current = null;
+    if (!root || !anchor) return;
+    const card = document.getElementById(`file-${anchor.fileId}`);
+    if (!card || !root.contains(card)) return;
+    const shift = card.getBoundingClientRect().top - root.getBoundingClientRect().top - anchor.offset
+      + root.scrollTop - anchor.scrollTop;
+    if (shift !== 0) root.scrollTop += shift;
+  }, [nearbyFileIds]);
+
+  useLayoutEffect(() => {
+    const root = pane.current;
+    const navigation = props.fileNavigation;
+    if (!root || !navigation) return;
+    const file = document.getElementById(`file-${navigation.fileId}`);
+    if (!file || !root.contains(file)) return;
+    const top = root.scrollTop + file.getBoundingClientRect().top - root.getBoundingClientRect().top - 12;
+    root.scrollTo({ top, behavior: "instant" });
+  }, [props.fileNavigation, props.viewKey]);
 
   if (props.files.length === 0) {
     return <main class={styles.empty}><h2>No changed files</h2><p>This commit has no reviewable tree changes.</p></main>;
   }
   const updateVisibleFile = () => {
     const element = pane.current;
-    if (element) scrollPositions.current.set(props.viewKey, element.scrollTop);
+    if (element) {
+      const cards = element.querySelectorAll<HTMLElement>("article[data-file-id]");
+      const top = element.getBoundingClientRect().top;
+      const index = element.clientHeight > 0
+        ? fileIndexAtViewportTop(cards.length, (index) => cards[index]!.getBoundingClientRect().top, top, false)
+        : null;
+      const card = index === null ? null : cards[index];
+      scrollPositions.current.set(props.viewKey, {
+        top: element.scrollTop,
+        fileId: card?.dataset.fileId ?? null,
+        offset: card ? card.getBoundingClientRect().top - top : 0,
+      });
+    }
     if (animationFrame.current !== null) return;
     animationFrame.current = requestAnimationFrame(() => {
       animationFrame.current = null;
@@ -128,7 +185,7 @@ export function DiffView(props: DiffViewProps) {
           key={file.id}
           file={file}
           rendered={nearbyFileIds.has(file.id) || forcedFileIds.has(file.id)}
-          contentHeight={contentHeights.current.get(file.id) ?? estimatedContentHeight(file)}
+          contentHeight={Math.min(MAX_VIRTUAL_CONTENT_HEIGHT, contentHeights.current.get(file.id) ?? estimatedContentHeight(file))}
           onContentHeight={rememberContentHeight}
           searchMatchesByLine={searchMatchesByLine}
           {...props}
@@ -182,6 +239,17 @@ function FileContent({ file, onContentHeight, ...props }: DiffContentProps & {
   onContentHeight(fileId: string, height: number): void;
 }) {
   const content = useRef<HTMLDivElement>(null);
+  const virtualized = file.hunks.reduce((total, hunk) => total + hunk.lines.length, 0) > 256;
+  const columns = useMemo(() => {
+    if (!virtualized) return null;
+    let maximum = 0;
+    for (const hunk of file.hunks) for (const line of hunk.lines) {
+      let width = 0;
+      for (const character of line.text) width += character === "\t" ? 8 - width % 8 : character.length;
+      maximum = Math.max(maximum, width);
+    }
+    return maximum;
+  }, [file, virtualized]);
   useLayoutEffect(() => {
     const element = content.current;
     if (!element) return;
@@ -200,10 +268,11 @@ function FileContent({ file, onContentHeight, ...props }: DiffContentProps & {
   return (
     <div ref={content} class={styles.fileScroller} aria-label={`Scrollable diff for ${file.displayPath}`}>
       <div class={styles.fileContent}>
+        {columns !== null ? <div class={styles.widthGuide} style={{ "--diff-columns": columns }} aria-hidden="true" /> : null}
         {purePathChange ? <Placeholder title={file.status === "copied" ? "File copied" : "File moved"} detail={`${file.oldPath} -> ${file.newPath}`} /> : null}
         {!purePathChange && file.binary ? <Placeholder title="Binary file changed" detail="Binary contents cannot be reviewed line by line." /> : null}
         {!purePathChange && !file.binary && file.hunks.length === 0 ? <Placeholder title="File metadata changed" detail={file.oldMode === file.newMode ? "No line changes to display." : `${file.oldMode} -> ${file.newMode}`} /> : null}
-        {!file.binary && file.hunks.map((hunk) => <DiffHunk key={hunk.id} file={file} hunk={hunk} {...props} />)}
+        {!file.binary && file.hunks.map((hunk, index) => <DiffHunk key={hunk.id} file={file} hunk={hunk} virtualized={virtualized} initiallyVisible={index === 0} {...props} />)}
       </div>
     </div>
   );
@@ -218,13 +287,41 @@ function Placeholder({ title, detail }: { title: string; detail: string }) {
   return <div class={styles.placeholder}><strong>{title}</strong><span>{detail}</span></div>;
 }
 
-function DiffHunk({ file, hunk, ...props }: DiffContentProps & { file: FileDiff; hunk: DiffHunkType }) {
+function DiffHunk({ file, hunk, virtualized, initiallyVisible, ...props }: DiffContentProps & { file: FileDiff; hunk: DiffHunkType; virtualized: boolean; initiallyVisible: boolean }) {
+  const chunks = useMemo(() => virtualized
+    ? Array.from({ length: Math.ceil(hunk.lines.length / 64) }, (_, index) => hunk.lines.slice(index * 64, (index + 1) * 64))
+    : null, [hunk.lines, virtualized]);
   return (
     <section class={styles.hunk} aria-label={hunk.header}>
       <div class={styles.hunkHeader}><span /><span /><span /><span>{hunk.header}</span></div>
-      {hunk.lines.map((line) => <DiffRow key={line.id} file={file} line={line} {...props} />)}
+      {chunks ? chunks.map((lines, index) => <DiffLineChunk key={index} index={index} initiallyVisible={initiallyVisible && index === 0} file={file} lines={lines} {...props} />)
+        : hunk.lines.map((line) => <DiffRow key={line.id} file={file} line={line} {...props} />)}
     </section>
   );
+}
+
+function DiffLineChunk({ file, lines, index, initiallyVisible, ...props }: DiffContentProps & { file: FileDiff; lines: DiffLineType[]; index: number; initiallyVisible: boolean }) {
+  const element = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(initiallyVisible);
+  useLayoutEffect(() => {
+    const node = element.current;
+    if (!node) return;
+    if (!("IntersectionObserver" in window)) {
+      setVisible(true);
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) setVisible(entry.isIntersecting);
+    }, { root: node.closest("main"), rootMargin: "600px 0px" });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  const matchLine = props.searchMatches[props.activeSearchMatchIndex]?.lineId;
+  const forced = lines.some((line) => line.id === props.openLineId || line.id === matchLine || props.drafts[line.id]);
+  return <div ref={element} data-line-chunk={index}>
+    {visible || forced ? lines.map((line) => <DiffRow key={line.id} file={file} line={line} {...props} />)
+      : <div class={styles.virtualContent} style={{ height: `${lines.length * 26}px` }} aria-hidden="true" />}
+  </div>;
 }
 
 function DiffRow({ file, line, ...props }: DiffContentProps & { file: FileDiff; line: DiffLineType }) {

@@ -1,4 +1,4 @@
-.pane { min-width: 0; overflow-x: hidden; overflow-y: auto; padding: var(--content-inset); }
+.pane { min-width: 0; overflow-x: hidden; overflow-y: auto; overflow-anchor: none; padding: var(--content-inset); }
 .empty { display: grid; place-content: center; text-align: center; color: var(--muted); }
 .empty h2 { color: var(--fg); margin-bottom: 4px; }
 .file { min-width: 0; margin: 0 0 22px; overflow: clip; border: 1px solid var(--border); border-radius: 7px; background: var(--bg); scroll-margin-top: 12px; box-shadow: var(--shadow); }
@@ -6,6 +6,7 @@
 .fileHeader { min-height: 46px; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 12px; background: var(--canvas); border-bottom: 1px solid var(--border); }
 .fileScroller { width: 100%; max-width: 100%; overflow-x: auto; }
 .fileContent { min-width: 100%; width: max-content; }
+.widthGuide { height: 0; width: calc(118px + var(--diff-columns) * 1ch); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
 .virtualContent { width: 100%; contain: strict; }
 .collapseButton { min-width: 0; display: flex; align-items: center; gap: 8px; padding: 8px 0; border: 0; background: transparent; cursor: pointer; text-align: left; }
 .chevron { display: inline-flex; transition: transform 100ms ease; }
@@ -48,6 +49,7 @@
 .lossy { color: var(--red); font-weight: 700; }
 
 @media (max-width: 1000px) {
+  .widthGuide { width: calc(102px + var(--diff-columns) * 1ch); }
   .hunkHeader, .line { --line-number-width: 42px; grid-template-columns: var(--line-number-width) var(--line-number-width) 16px minmax(0, 1fr); }
   .commentRow { padding-left: 102px; }
 }
