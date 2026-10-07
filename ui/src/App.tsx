@@ -30,6 +30,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [findQuery, setFindQuery] = useState("");
   const [activeFindIndex, setActiveFindIndex] = useState(-1);
+  const [fileNavigation, setFileNavigation] = useState<{ fileId: string; requestId: number; viewKey: string } | null>(null);
   useEffect(() => {
     let mounted = true;
     backend.getReview().then(
@@ -77,6 +78,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   }, [backend]);
 
   const selectCommits = useCallback(async (commitIds: string[]) => {
+    setFileNavigation(null);
     dispatch({ type: "selection-started" });
     try {
       const data = await backend.selectCommits(commitIds);
@@ -94,12 +96,10 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
 
   const selectFile = useCallback((fileId: string) => {
     dispatch({ type: "activate-file", fileId });
-    const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
-    const file = document.getElementById(`file-${fileId}`);
-    if (!pane || !file) return;
-    const top = pane.scrollTop + file.getBoundingClientRect().top - pane.getBoundingClientRect().top - 12;
-    pane.scrollTo({ top, behavior: "smooth" });
-  }, []);
+    if (!state.data) return;
+    const viewKey = reviewViewKey(state.data);
+    setFileNavigation((previous) => ({ fileId, requestId: (previous?.requestId ?? 0) + 1, viewKey }));
+  }, [state.data]);
 
   const navigateFiles = useCallback((direction: "previous" | "next") => {
     if (!state.data || state.data.files.length === 0) return;
@@ -191,6 +191,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
           />
         ) : null}
         <DiffView
+          fileNavigation={fileNavigation?.viewKey === reviewViewKey(state.data) ? fileNavigation : null}
           viewKey={reviewViewKey(state.data)}
           files={state.data.files}
           activeFileId={state.activeFileId}
@@ -205,7 +206,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
           onCloseComment={() => dispatch({ type: "close-comment" })}
           onSaveComment={(comment) => dispatch({ type: "save-comment", comment })}
           onDeleteComment={(lineId) => dispatch({ type: "delete-comment", lineId })}
-          onVisibleFile={(fileId) => dispatch({ type: "activate-file", fileId })}
+          onVisibleFile={(fileId) => dispatch({ type: "visible-file", fileId })}
         />
         {findOpen ? (
           <FindPopover

@@ -35,6 +35,7 @@ export type ReviewAction =
   | { type: "toggle-directory"; path: string }
   | { type: "toggle-file"; fileId: string }
   | { type: "activate-file"; fileId: string }
+  | { type: "visible-file"; fileId: string }
   | { type: "open-comment"; lineId: string }
   | { type: "close-comment" }
   | { type: "save-comment"; comment: DraftComment }
@@ -79,6 +80,8 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
         ...state,
         collapsedFiles: toggled(state.collapsedFiles, action.fileId),
       };
+    case "visible-file":
+      return state.activeFileId === action.fileId ? state : { ...state, activeFileId: action.fileId };
     case "activate-file": {
       const collapsedDirectories = new Set(state.collapsedDirectories);
       const path = state.data?.files.find((file) => file.id === action.fileId)?.displayPath;

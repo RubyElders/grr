@@ -206,6 +206,10 @@ describe("grr review window", () => {
     await browser.execute(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "c", bubbles: true, cancelable: true }));
     });
+    await browser.waitUntil(async () => await browser.execute(() => {
+      const dialog = document.querySelector("section[role='dialog'][aria-label='Choose commits']");
+      return dialog !== null && document.activeElement === dialog;
+    }), { timeout: 5_000, interval: 50, timeoutMsg: "commit picker did not become ready for keyboard navigation" });
     const picker = await browser.execute(() => {
       const dialog = document.querySelector<HTMLElement>("section[role='dialog'][aria-label='Choose commits']");
       const rect = dialog?.getBoundingClientRect();
@@ -219,15 +223,24 @@ describe("grr review window", () => {
     await browser.execute(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowUp", bubbles: true, cancelable: true }));
     });
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.querySelector("button[data-commit-position='0'][data-active='true']")?.textContent === "Show all",
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "ArrowUp did not select Show all in the commit picker" });
     expect(await browser.execute(() => (
       document.querySelector<HTMLButtonElement>("button[data-commit-position='0'][data-active='true']")?.textContent
     ))).toBe("Show all");
     await browser.execute(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true, cancelable: true }));
     });
+    await browser.waitUntil(async () => await browser.execute(
+      () => Boolean(document.querySelector("[data-commit-position='1'][data-active='true']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "ArrowDown did not return to the first commit" });
     await browser.execute(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "j", bubbles: true, cancelable: true }));
     });
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.querySelector<HTMLElement>("[data-active='true']")?.dataset.commitIndex === "1",
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "J did not select the second commit" });
     expect(await browser.execute(() => (
       document.querySelector<HTMLElement>("[data-active='true']")?.dataset.commitIndex
     ))).toBe("1");
