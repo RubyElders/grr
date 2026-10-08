@@ -2,9 +2,18 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-10-08
+
 ### Added
 
+- Show the installed version and an About tab in help, with builder credits and a clearly marked updates placeholder.
+- Open the Ruby Elders website from the About tab.
 - Build and run on Windows with a native-style title bar that holds the review controls, like the GTK header bar.
+
+### Changed
+
+- Split Navigation shortcuts across two columns and separate alternative shortcuts with "or".
+- Keep the help dialog size and edge spacing consistent when switching tabs.
 
 ### Fixed
 

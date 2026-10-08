@@ -151,6 +151,28 @@ describe("grr review window", () => {
       && Boolean(document.querySelector<HTMLImageElement>("section[aria-label='Keyboard shortcuts'] img[alt='grr']")?.complete)
     ))).toBe(true);
     writeFileSync("e2e-results/keyboard-shortcuts.png", Buffer.from(await browser.takeScreenshot(), "base64"));
+    const helpSize = await browser.execute(() => {
+      const rect = document.querySelector("section[role='dialog'][aria-label='Keyboard shortcuts']")!.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
+    });
+    await clickElement("#help-tab-about");
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.querySelector("#help-tab-about")?.getAttribute("aria-selected") === "true",
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "About tab did not open" });
+    const about = await browser.execute(() => {
+      const dialog = document.querySelector("section[role='dialog'][aria-label='Keyboard shortcuts']")!;
+      const panel = document.querySelector<HTMLElement>("#help-panel-about")!;
+      const rect = dialog.getBoundingClientRect();
+      return {
+        width: rect.width, height: rect.height, visible: !panel.hidden,
+        version: dialog.querySelector("h2")?.textContent,
+        updateDisabled: panel.querySelector<HTMLButtonElement>("button")?.disabled,
+        website: panel.querySelector("a")?.getAttribute("href"),
+      };
+    });
+    expect(about).toMatchObject({ ...helpSize, visible: true, updateDisabled: true, website: "https://rubyelders.com" });
+    expect(about.version).toMatch(/^grr v\d+\.\d+\.\d+$/);
+    writeFileSync("e2e-results/about.png", Buffer.from(await browser.takeScreenshot(), "base64"));
     await browser.execute(() => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
     });
