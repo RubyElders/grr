@@ -83,6 +83,33 @@ fn cancel_review(window: Window) -> Result<(), String> {
     window.close().map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+async fn open_author_website() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        #[cfg(target_os = "macos")]
+        let mut command = std::process::Command::new("open");
+        #[cfg(target_os = "linux")]
+        let mut command = std::process::Command::new("xdg-open");
+        #[cfg(target_os = "windows")]
+        let mut command = {
+            let mut command = std::process::Command::new("rundll32");
+            command.arg("url.dll,FileProtocolHandler");
+            command
+        };
+        let status = command
+            .arg("https://rubyelders.com")
+            .status()
+            .map_err(|error| format!("could not open browser: {error}"))?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(format!("browser launcher exited with {status}"))
+        }
+    })
+    .await
+    .map_err(|error| format!("browser task failed: {error}"))?
+}
+
 fn main() {
     let options = match parse_args() {
         Ok(Some(options)) => options,
@@ -123,6 +150,7 @@ fn main() {
             select_commits,
             finish_review,
             cancel_review,
+            open_author_website,
             get_window_chrome,
             show_window_menu,
             update_window_chrome
