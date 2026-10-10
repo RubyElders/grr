@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::error::Error;
 use std::fmt;
 use std::path::Path;
@@ -10,7 +10,7 @@ use git2::{
 
 use crate::model::{
     CommitSummary, ComparisonSummary, DiffHunk, DiffLine, FileDiff, FileSourceCommit, FileStatus,
-    LineKind, ReviewData,
+    HistoryCommit, HistoryPage, LineKind, ReviewData,
 };
 
 pub const WORKTREE_COMMIT_ID: &str = "WORKTREE";
@@ -57,6 +57,121 @@ pub fn load_review_selection(
     selected_commit_ids: &[String],
 ) -> Result<ReviewData, ReviewLoadError> {
     load_review_impl(path, requested_base, selected_commit_ids, false)
+}
+
+pub fn load_history(
+    path: impl AsRef<Path>,
+    offset: usize,
+    limit: usize,
+) -> Result<HistoryPage, ReviewLoadError> {
+    let repository = Repository::discover(path)?;
+    let head_reference = repository.head().map_err(|_| ReviewLoadError::NoHead)?;
+    let head_ref = if repository.head_detached()? {
+        "HEAD".to_owned()
+    } else {
+        head_reference.shorthand().unwrap_or("HEAD").to_owned()
+    };
+    let head = head_reference.peel_to_commit()?;
+    let refs = commit_refs(&repository)?;
+
+    let mut commits = Vec::with_capacity(limit);
+    let mut skip = offset;
+    if !diff_worktree_files(&repository, Some(&head.tree()?), "worktree", None)?.is_empty() {
+        if skip == 0 {
+            commits.push(HistoryCommit {
+                commit: worktree_summary(&head),
+                parent_ids: vec![head.id().to_string()],
+                refs: Vec::new(),
+            });
+        } else {
+            skip -= 1;
+        }
+    }
+
+    let mut walk = repository.revwalk()?;
+    walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
+    walk.push(head.id())?;
+    let mut has_more = false;
+    for id in walk.skip(skip) {
+        if commits.len() == limit {
+            has_more = true;
+            break;
+        }
+        let commit = repository.find_commit(id?)?;
+        commits.push(HistoryCommit {
+            parent_ids: commit.parent_ids().map(|id| id.to_string()).collect(),
+            refs: refs.get(&commit.id()).cloned().unwrap_or_default(),
+            commit: commit_summary(&commit)?,
+        });
+    }
+    Ok(HistoryPage {
+        head_ref,
+        commits,
+        has_more,
+    })
+}
+
+pub fn load_history_files(
+    path: impl AsRef<Path>,
+    commit_ids: &[String],
+) -> Result<Vec<FileDiff>, ReviewLoadError> {
+    let repository = Repository::discover(path)?;
+    let mut files = Vec::new();
+    for (section_index, id) in commit_ids.iter().rev().enumerate() {
+        let prefix = format!("h{section_index}");
+        let source = commit_ids.len() > 1;
+        if id == WORKTREE_COMMIT_ID {
+            let head = repository.head()?.peel_to_commit()?;
+            let summary = source.then(|| worktree_summary(&head));
+            files.extend(diff_worktree_files(
+                &repository,
+                Some(&head.tree()?),
+                &prefix,
+                summary,
+            )?);
+            continue;
+        }
+        let oid = git2::Oid::from_str(id)
+            .map_err(|_| ReviewLoadError::InvalidSelection(format!("unknown commit {id}")))?;
+        let commit = repository.find_commit(oid)?;
+        let summary = source.then(|| commit_summary(&commit)).transpose()?;
+        files.extend(commit_files(&repository, &commit, &prefix, summary)?);
+    }
+    Ok(files)
+}
+
+fn commit_refs(repository: &Repository) -> Result<HashMap<git2::Oid, Vec<String>>, git2::Error> {
+    let mut refs: HashMap<git2::Oid, Vec<String>> = HashMap::new();
+    for reference in repository.references()? {
+        let reference = reference?;
+        if reference.symbolic_target_bytes().is_some()
+            || !(reference.is_branch() || reference.is_remote() || reference.is_tag())
+        {
+            continue;
+        }
+        let (Ok(name), Ok(commit)) = (reference.shorthand(), reference.peel_to_commit()) else {
+            continue;
+        };
+        refs.entry(commit.id()).or_default().push(name.to_owned());
+    }
+    Ok(refs)
+}
+
+fn commit_files(
+    repository: &Repository,
+    commit: &Commit<'_>,
+    id_prefix: &str,
+    source_commit: Option<CommitSummary>,
+) -> Result<Vec<FileDiff>, ReviewLoadError> {
+    let parent = commit.parent(0).ok();
+    let old_tree = parent.as_ref().map(Commit::tree).transpose()?;
+    diff_tree_files(
+        repository,
+        old_tree.as_ref(),
+        &commit.tree()?,
+        id_prefix,
+        source_commit,
+    )
 }
 
 fn load_review_impl(
@@ -138,13 +253,9 @@ fn load_review_impl(
                 continue;
             }
             let commit = repository.find_commit(git2::Oid::from_str(&summary.id)?)?;
-            let parent = commit.parent(0).ok();
-            let old_tree = parent.as_ref().map(Commit::tree).transpose()?;
-            let new_tree = commit.tree()?;
-            files.extend(diff_tree_files(
+            files.extend(commit_files(
                 &repository,
-                old_tree.as_ref(),
-                &new_tree,
+                &commit,
                 &format!("s{section_index}"),
                 Some(summary.clone()),
             )?);

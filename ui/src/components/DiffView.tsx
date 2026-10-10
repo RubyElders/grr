@@ -16,6 +16,7 @@ interface DiffViewProps {
   activeFileId: string | null;
   fileNavigation?: { fileId: string; requestId: number } | null;
   showSourceCommits: boolean;
+  readOnly?: boolean;
   collapsedFiles: ReadonlySet<string>;
   openLineId: string | null;
   drafts: Readonly<Record<string, DraftComment>>;
@@ -335,7 +336,7 @@ function DiffRow({ file, line, ...props }: DiffContentProps & { file: FileDiff; 
         <button
           class={styles.addComment}
           aria-label={`Add comment on ${file.displayPath} ${lineLabel}`}
-          disabled={line.kind === "marker"}
+          disabled={props.readOnly || line.kind === "marker"}
           onClick={() => props.onOpenComment(line.id)}
         >+
         </button>

@@ -3,7 +3,7 @@ import { useEffect, useState } from "preact/hooks";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { shortcutTitle } from "../shortcuts";
 import { showWindowMenu } from "../windowChrome/bridge";
-import { windowChromeCapabilities, type WindowChromeCapabilities } from "../windowChrome/model";
+import { windowChromeCapabilities, type ReviewView, type WindowChromeCapabilities } from "../windowChrome/model";
 import { Icon } from "./Icon";
 import styles from "./WindowTitlebar.module.css";
 
@@ -11,12 +11,14 @@ interface WindowTitlebarProps {
   children?: ComponentChildren;
   capabilities?: WindowChromeCapabilities;
   sidebarOpen?: boolean;
+  view?: ReviewView;
   onToggleSidebar?(): void;
+  onView?(view: ReviewView): void;
   onHelp?(): void;
   onClose(): void;
 }
 
-export function WindowTitlebar({ children, capabilities = windowChromeCapabilities("html"), sidebarOpen, onToggleSidebar, onHelp, onClose }: WindowTitlebarProps) {
+export function WindowTitlebar({ children, capabilities = windowChromeCapabilities("html"), sidebarOpen, view, onToggleSidebar, onView, onHelp, onClose }: WindowTitlebarProps) {
   const customCaptions = capabilities.customCaptionButtons;
   const [active, setActive] = useState(true);
   useEffect(() => {
@@ -58,6 +60,21 @@ export function WindowTitlebar({ children, capabilities = windowChromeCapabiliti
             onClick={onToggleSidebar}
           >{customCaptions ? <span class={styles.glyph} aria-hidden="true">{"\uE90C"}</span> : <Icon name="sidebar" />}</button>
         )}
+        {view && onView ? (
+          <div class={styles.views} role="group" aria-label="View">
+            {(["changes", "history"] as const).map((item) => (
+              <button
+                type="button"
+                class={styles.view}
+                aria-pressed={view === item}
+                title={`${item === "changes" ? "Show changes" : "Show history"} (${shortcutTitle(item === "changes" ? "showChanges" : "showHistory")})`}
+                onClick={() => onView(item)}
+              >
+                {item === "changes" ? "Changes" : "History"}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
       <div class={styles.center}>{children}</div>
       <div class={`${styles.side} ${styles.right}`}>

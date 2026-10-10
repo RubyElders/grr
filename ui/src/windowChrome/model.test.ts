@@ -38,6 +38,7 @@ describe("windowChromeUpdate", () => {
       canNavigateNewer: false,
       canNavigateOlder: true,
       commitSelectionEnabled: true,
+      view: "changes",
       tooltips: windowChromeTooltips(),
     });
   });
@@ -50,6 +51,7 @@ describe("windowChromeUpdate", () => {
       canNavigateNewer: false,
       canNavigateOlder: false,
       commitSelectionEnabled: false,
+      view: "changes",
       tooltips: windowChromeTooltips(),
     });
   });

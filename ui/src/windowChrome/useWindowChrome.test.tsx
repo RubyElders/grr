@@ -14,7 +14,7 @@ function Harness({ kind = "gtk-native", disabled = false, onAction, onError }: {
   onAction(action: WindowChromeAction): void;
   onError(error: unknown): void;
 }) {
-  useWindowChrome(kind, fixture as ReviewData, disabled, onAction, onError);
+  useWindowChrome(kind, fixture as ReviewData, disabled, "changes", null, onAction, onError);
   return null;
 }
 

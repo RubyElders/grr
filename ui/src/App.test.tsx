@@ -10,9 +10,17 @@ vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ isMaximized: () => Promise.resolve(false), onResized: () => Promise.resolve(() => undefined) }),
 }));
 
+function historyBackend(): Pick<ReviewBackend, "getHistory" | "getHistoryFiles"> {
+  return {
+    getHistory: vi.fn().mockResolvedValue({ headRef: "main", commits: [], hasMore: false }),
+    getHistoryFiles: vi.fn().mockResolvedValue([]),
+  };
+}
+
 function setup() {
   const submissions: SubmittedReview[] = [];
   const backend: ReviewBackend = {
+    ...historyBackend(),
     getReview: vi.fn().mockResolvedValue(fixture as ReviewData),
     selectCommits: vi.fn().mockResolvedValue(fixture as ReviewData),
     finishReview: vi.fn(async (review) => { submissions.push(review); }),
@@ -42,6 +50,7 @@ describe("ReviewApp", () => {
 
   it("places the review header in a Windows title bar", async () => {
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockResolvedValue(fixture as ReviewData),
       selectCommits: vi.fn(),
       finishReview: vi.fn(),
@@ -77,6 +86,7 @@ describe("ReviewApp", () => {
   it("presents a selected virtual commit independently from the comparison", async () => {
     const data = { ...(fixture as ReviewData), selectedCommitIds: ["WORKTREE"] };
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockResolvedValue(data),
       selectCommits: vi.fn(),
       finishReview: vi.fn(),
@@ -93,6 +103,7 @@ describe("ReviewApp", () => {
   it("renders diff files in the same order as the file tree", async () => {
     const data = { ...(fixture as ReviewData), files: [...(fixture as ReviewData).files].reverse() };
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockResolvedValue(data),
       selectCommits: vi.fn(),
       finishReview: vi.fn(),
@@ -115,6 +126,7 @@ describe("ReviewApp", () => {
     const renderReview = (selectedCommitIds: string[]) => {
       const data = { ...(fixture as ReviewData), commits: [commit], selectedCommitIds };
       const backend: ReviewBackend = {
+        ...historyBackend(),
         getReview: vi.fn().mockResolvedValue(data),
         selectCommits: vi.fn(),
         finishReview: vi.fn(),
@@ -144,6 +156,7 @@ describe("ReviewApp", () => {
     const source = fixture as ReviewData;
     const data = { ...source, commits: [], selectedCommitIds: [], files: [] };
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockResolvedValue(data),
       selectCommits: vi.fn(),
       finishReview: vi.fn(),
@@ -233,6 +246,7 @@ describe("ReviewApp", () => {
     const source = fixture as ReviewData;
     let current = { ...source, selectedCommitIds: [] as string[] };
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockImplementation(async () => current),
       selectCommits: vi.fn().mockImplementation(async (selectedCommitIds: string[]) => {
         current = { ...source, selectedCommitIds };
@@ -306,6 +320,7 @@ describe("ReviewApp", () => {
     const source = fixture as ReviewData;
     const data = { ...source, selectedCommitIds: [source.commit.id] };
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockResolvedValue(data),
       selectCommits: vi.fn(),
       finishReview: vi.fn(),
@@ -327,6 +342,7 @@ describe("ReviewApp", () => {
     const source = fixture as ReviewData;
     const data = { ...source, selectedCommitIds: [source.commits[1]!.id, source.commits[2]!.id] };
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockResolvedValue(data),
       selectCommits: vi.fn(),
       finishReview: vi.fn(),
@@ -417,6 +433,7 @@ describe("ReviewApp", () => {
       files: (fixture as ReviewData).files.map((file, index) => index === 0 ? { ...file, sourceCommit } : file),
     };
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockResolvedValue(selected),
       selectCommits: vi.fn(),
       finishReview: vi.fn(),
@@ -437,6 +454,7 @@ describe("ReviewApp", () => {
       files: source.files.map((file) => ({ ...file, sourceCommit })),
     };
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockResolvedValue(selected),
       selectCommits: vi.fn(),
       finishReview: vi.fn(),
@@ -745,6 +763,7 @@ describe("ReviewApp", () => {
 
   it("reports submission failures and restores the actions", async () => {
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockResolvedValue(fixture as ReviewData),
       selectCommits: vi.fn(),
       finishReview: vi.fn().mockRejectedValue(new Error("IPC failed")),
@@ -760,6 +779,7 @@ describe("ReviewApp", () => {
 
   it("shows loading failures", async () => {
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockRejectedValue(new Error("No repository")),
       selectCommits: vi.fn(),
       finishReview: vi.fn(),
@@ -772,6 +792,7 @@ describe("ReviewApp", () => {
   it("shows the empty commit state", async () => {
     const empty = { ...(fixture as ReviewData), files: [] };
     const backend: ReviewBackend = {
+      ...historyBackend(),
       getReview: vi.fn().mockResolvedValue(empty),
       selectCommits: vi.fn(),
       finishReview: vi.fn(),

@@ -4,7 +4,7 @@ use gtk::glib::{self, ControlFlow};
 use gtk::prelude::*;
 use tauri::{Emitter, WebviewWindow};
 
-use super::{WindowChromeAction, WindowChromeUpdate};
+use super::{ReviewView, WindowChromeAction, WindowChromeUpdate};
 
 pub(super) use super::unsupported_window_menu as show_system_menu;
 
@@ -36,6 +36,16 @@ pub fn install(window: &WebviewWindow) -> Result<Header, String> {
     let sidebar = icon_button("sidebar-show-symbolic", "Toggle file sidebar");
     emit_action(&sidebar, window, WindowChromeAction::Sidebar);
     header.pack_start(&sidebar);
+
+    let views = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    views.style_context().add_class("linked");
+    let changes = view_button("Changes", None);
+    let history = view_button("History", Some(&changes));
+    emit_view(&changes, window, WindowChromeAction::Changes);
+    emit_view(&history, window, WindowChromeAction::History);
+    views.pack_start(&changes, false, false, 0);
+    views.pack_start(&history, false, false, 0);
+    header.pack_start(&views);
 
     let help = icon_button("help-about-symbolic", "Keyboard shortcuts");
     emit_action(&help, window, WindowChromeAction::Help);
@@ -79,6 +89,12 @@ pub fn install(window: &WebviewWindow) -> Result<Header, String> {
         newer.set_sensitive(update.can_navigate_newer);
         older.set_sensitive(update.can_navigate_older);
         selector.set_sensitive(update.commit_selection_enabled);
+        match update.view {
+            ReviewView::Changes => changes.set_active(true),
+            ReviewView::History => history.set_active(true),
+        }
+        changes.set_tooltip_text(update.tooltips.get("changes").map(String::as_str));
+        history.set_tooltip_text(update.tooltips.get("history").map(String::as_str));
         sidebar.set_tooltip_text(update.tooltips.get("sidebar").map(String::as_str));
         help.set_tooltip_text(update.tooltips.get("help").map(String::as_str));
         selector.set_tooltip_text(update.tooltips.get("picker").map(String::as_str));
@@ -105,5 +121,23 @@ fn emit_action(button: &gtk::Button, window: &WebviewWindow, action: WindowChrom
     let window = window.clone();
     button.connect_clicked(move |_| {
         let _ = window.emit("window-chrome-action", action);
+    });
+}
+
+fn view_button(label: &str, group: Option<&gtk::RadioButton>) -> gtk::RadioButton {
+    let button = match group {
+        Some(group) => gtk::RadioButton::with_label_from_widget(group, label),
+        None => gtk::RadioButton::with_label(label),
+    };
+    button.set_mode(false);
+    button
+}
+
+fn emit_view(button: &gtk::RadioButton, window: &WebviewWindow, action: WindowChromeAction) {
+    let window = window.clone();
+    button.connect_toggled(move |button| {
+        if button.is_active() {
+            let _ = window.emit("window-chrome-action", action);
+        }
     });
 }
