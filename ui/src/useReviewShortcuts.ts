@@ -42,10 +42,9 @@ export function useReviewShortcuts({
         return;
       }
 
-      const targetView = matchesShortcut(event, "showChanges") ? "changes" : matchesShortcut(event, "showHistory") ? "history" : null;
-      if (targetView && state.phase !== "loading" && state.openLineId === null) {
+      if (matchesShortcut(event, "toggleView") && state.phase !== "loading" && state.openLineId === null && !isTextEntryTarget(event.target)) {
         event.preventDefault();
-        showView(targetView);
+        showView(view === "changes" ? "history" : "changes");
         return;
       }
       const changes = view === "changes";

@@ -1,7 +1,6 @@
 export type ShortcutId =
   | "help"
-  | "showChanges"
-  | "showHistory"
+  | "toggleView"
   | "toggleSidebar"
   | "find"
   | "nextMatch"
@@ -54,8 +53,7 @@ export interface ShortcutDefinition {
 
 export const SHORTCUTS: readonly ShortcutDefinition[] = [
   shortcut("help", "Window", "Show keyboard shortcuts", [chord("question", "?", { shift: "any" })]),
-  shortcut("showChanges", "Window", "Show changes", [chord("native", "1", { nativeModifier: true })]),
-  shortcut("showHistory", "Window", "Show history", [chord("native", "2", { nativeModifier: true })]),
+  shortcut("toggleView", "Window", "Switch between Changes and History", [chord("letter", "v")]),
   shortcut("toggleSidebar", "Window", "Toggle the file sidebar", [chord("native", "b", { nativeModifier: true })]),
   shortcut("find", "Search", "Open find in changed code", [
     chord("native", "f", { nativeModifier: true }),
