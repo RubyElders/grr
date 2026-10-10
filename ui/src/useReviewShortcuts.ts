@@ -1,13 +1,16 @@
 import { useLayoutEffect, type Dispatch, type StateUpdater } from "preact/hooks";
 import type { ReviewState } from "./state";
+import type { ReviewView } from "./windowChrome/model";
 import { matchesShortcut } from "./shortcuts";
 
 interface ReviewShortcutContext {
   state: Pick<ReviewState, "openLineId" | "phase">;
+  view: ReviewView;
   commentCount: number;
   commitSelectorOpen: boolean;
   findOpen: boolean;
   shortcutHelpOpen: boolean;
+  showView(view: ReviewView): void;
   setCommitSelectorOpen: Dispatch<StateUpdater<boolean>>;
   setFindOpen: Dispatch<StateUpdater<boolean>>;
   setShortcutHelpOpen: Dispatch<StateUpdater<boolean>>;
@@ -20,8 +23,8 @@ interface ReviewShortcutContext {
 }
 
 export function useReviewShortcuts({
-  state, commentCount, commitSelectorOpen, findOpen, shortcutHelpOpen,
-  setCommitSelectorOpen, setFindOpen, setShortcutHelpOpen, setSidebarOpen,
+  state, view, commentCount, commitSelectorOpen, findOpen, shortcutHelpOpen,
+  showView, setCommitSelectorOpen, setFindOpen, setShortcutHelpOpen, setSidebarOpen,
   cancelReview, moveFind, navigateCommits, navigateFiles, submit,
 }: ReviewShortcutContext): void {
   useLayoutEffect(() => {
@@ -39,13 +42,27 @@ export function useReviewShortcuts({
         return;
       }
 
+      const targetView = matchesShortcut(event, "showChanges") ? "changes" : matchesShortcut(event, "showHistory") ? "history" : null;
+      if (targetView && state.phase !== "loading" && state.openLineId === null) {
+        event.preventDefault();
+        showView(targetView);
+        return;
+      }
+      const changes = view === "changes";
+      if (!changes && matchesShortcut(event, "historyBack") && state.openLineId === null) {
+        event.preventDefault();
+        showView("changes");
+        return;
+      }
+
       const openHelp = matchesShortcut(event, "help")
         && state.openLineId === null
         && state.phase === "ready"
         && !isTextEntryTarget(event.target);
       const toggleSidebar = matchesShortcut(event, "toggleSidebar")
         && state.phase === "ready";
-      const browseCommits = matchesShortcut(event, "browseCommits")
+      const browseCommits = changes
+        && matchesShortcut(event, "browseCommits")
         && state.openLineId === null
         && state.phase === "ready"
         && commentCount === 0
@@ -53,7 +70,7 @@ export function useReviewShortcuts({
         && !isTextEntryTarget(event.target);
       const findNative = matchesShortcut(event, "find", "native");
       const findFunction = matchesShortcut(event, "find", "function");
-      const openFind = findNative || (!findOpen && findFunction);
+      const openFind = changes && (findNative || (!findOpen && findFunction));
       const findInput = event.target instanceof HTMLElement && event.target.matches("[data-find-input]");
       const nextMatch = findOpen
         && matchesShortcut(event, "nextMatch")
@@ -82,16 +99,18 @@ export function useReviewShortcuts({
         && !isTextEntryTarget(event.target);
       const newerCommit = matchesShortcut(event, "newerCommit");
       const olderCommit = matchesShortcut(event, "olderCommit");
-      const stepCommit = (newerCommit || olderCommit)
+      const stepCommit = changes
+        && (newerCommit || olderCommit)
         && !commitSelectorOpen
         && !findOpen
         && state.openLineId === null
         && state.phase === "ready"
         && commentCount === 0
         && !isTextEntryTarget(event.target);
-      const previousFile = matchesShortcut(event, "previousFile");
-      const nextFile = matchesShortcut(event, "nextFile");
-      const stepFile = (previousFile || nextFile)
+      const previousFile = matchesShortcut(event, "previousFile") || matchesShortcut(event, "previousDiffFile");
+      const nextFile = matchesShortcut(event, "nextFile") || matchesShortcut(event, "nextDiffFile");
+      const stepFile = changes
+        && (previousFile || nextFile)
         && !commitSelectorOpen
         && !findOpen
         && state.openLineId === null
@@ -134,7 +153,8 @@ export function useReviewShortcuts({
         return;
       }
       if (pageDiff) {
-        const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
+        const pane = [...document.querySelectorAll<HTMLElement>("main[aria-label='Commit diff']")]
+          .find((element) => (element.closest("section[aria-label='History']") !== null) === !changes);
         pane?.scrollBy({
           top: (pageUp ? -1 : 1) * Math.max(1, pane.clientHeight - 48),
           behavior: "smooth",
@@ -161,7 +181,7 @@ export function useReviewShortcuts({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [cancelReview, commentCount, commitSelectorOpen, findOpen, moveFind, navigateCommits, navigateFiles, shortcutHelpOpen, state.openLineId, state.phase, submit]);
+  }, [cancelReview, commentCount, commitSelectorOpen, findOpen, moveFind, navigateCommits, navigateFiles, shortcutHelpOpen, showView, state.openLineId, state.phase, submit, view]);
 }
 
 function isTextEntryTarget(target: EventTarget | null): boolean {

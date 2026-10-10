@@ -19,7 +19,7 @@ export function showWindowMenu(): Promise<void> {
 
 export function listenWindowChromeActions(handler: (action: WindowChromeAction) => void): Promise<UnlistenFn> {
   return listen<unknown>("window-chrome-action", ({ payload }) => {
-    if (payload === "sidebar" || payload === "help" || payload === "picker" || payload === "newer" || payload === "older") {
+    if (payload === "sidebar" || payload === "help" || payload === "picker" || payload === "newer" || payload === "older" || payload === "changes" || payload === "history") {
       handler(payload);
     }
   });

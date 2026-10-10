@@ -3,8 +3,8 @@ use std::path::Path;
 
 use git2::{Commit, Repository, Signature};
 use grr::{
-    FileStatus, ReviewData, ReviewLoadError, WORKTREE_COMMIT_ID, load_initial_review, load_review,
-    load_review_selection,
+    FileStatus, ReviewData, ReviewLoadError, WORKTREE_COMMIT_ID, load_history, load_history_files,
+    load_initial_review, load_review, load_review_selection,
 };
 
 fn commit_file<'repo>(
@@ -197,10 +197,17 @@ fn uses_first_parent_for_merge_commit() {
 fn reports_unborn_repository() {
     let directory = tempfile::tempdir().unwrap();
     Repository::init(directory.path()).unwrap();
-    assert!(matches!(
-        load_review(directory.path()),
-        Err(ReviewLoadError::NoHead)
-    ));
+    let error = load_review(directory.path()).unwrap_err();
+    assert!(matches!(error, ReviewLoadError::NoHead));
+    assert_eq!(error.to_string(), "the repository has no commit at HEAD");
+}
+
+#[test]
+fn reports_a_missing_repository() {
+    let directory = tempfile::tempdir().unwrap();
+    let error = load_review(directory.path()).unwrap_err();
+    assert!(matches!(error, ReviewLoadError::Git(_)));
+    assert!(error.to_string().starts_with("Git repository error: "));
 }
 
 #[test]
@@ -252,8 +259,28 @@ fn detects_base_branch_and_loads_cumulative_or_selected_commits() {
         first.id().to_string()
     );
 
-    let error = load_review_selection(directory.path(), Some("main"), &[root.id().to_string()]);
-    assert!(matches!(error, Err(ReviewLoadError::InvalidSelection(_))));
+    let error = load_review_selection(directory.path(), Some("main"), &[root.id().to_string()])
+        .unwrap_err();
+    assert!(matches!(error, ReviewLoadError::InvalidSelection(_)));
+    assert_eq!(
+        error.to_string(),
+        format!(
+            "commit {} is outside the current base comparison",
+            root.id()
+        )
+    );
+
+    repository
+        .config()
+        .unwrap()
+        .set_str("grr.base", "feature~1")
+        .unwrap();
+    let configured = load_review(directory.path()).unwrap();
+    assert_eq!(configured.comparison.base_ref, "feature~1");
+    assert_eq!(
+        configured.comparison.merge_base_id,
+        Some(first.id().to_string())
+    );
 }
 
 #[test]
@@ -396,4 +423,70 @@ fn canonical_frontend_fixture_matches_rust_contract() {
     let review: ReviewData = serde_json::from_str(fixture).unwrap();
     assert_eq!(review.files.len(), 2);
     assert_eq!(review.files[0].hunks[0].lines[2].new_line, Some(26));
+}
+
+#[test]
+fn pages_history_with_refs_and_the_worktree_entry() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let first = commit_file(&repository, "a.txt", b"one\n", "First");
+    repository
+        .tag_lightweight("v1", first.as_object(), false)
+        .unwrap();
+    repository
+        .reference_symbolic("refs/remotes/origin/HEAD", "refs/heads/main", false, "")
+        .unwrap();
+    commit_file(&repository, "a.txt", b"two\n", "Second");
+    let third = commit_file(&repository, "a.txt", b"three\n", "Third").id();
+    fs::write(directory.path().join("a.txt"), b"four\n").unwrap();
+
+    let page = load_history(directory.path(), 0, 2).unwrap();
+    assert!(page.has_more);
+    assert_eq!(page.commits[0].commit.id, WORKTREE_COMMIT_ID);
+    assert_eq!(page.commits[0].parent_ids, vec![third.to_string()]);
+    assert_eq!(page.commits[1].commit.summary, "Third");
+    assert!(page.commits[1].refs.contains(&page.head_ref));
+
+    let rest = load_history(directory.path(), 2, 10).unwrap();
+    assert!(!rest.has_more);
+    let summaries = rest
+        .commits
+        .iter()
+        .map(|commit| commit.commit.summary.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(summaries, ["Second", "First"]);
+    assert_eq!(rest.commits[1].refs, ["v1"]);
+    assert!(rest.commits[1].parent_ids.is_empty());
+}
+
+#[test]
+fn loads_history_files_without_a_base_comparison() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let first = commit_file(&repository, "a.txt", b"one\n", "First")
+        .id()
+        .to_string();
+    let second = commit_file(&repository, "b.txt", b"two\n", "Second")
+        .id()
+        .to_string();
+    fs::write(directory.path().join("c.txt"), b"three\n").unwrap();
+
+    let single = load_history_files(directory.path(), std::slice::from_ref(&first)).unwrap();
+    assert_eq!(single.len(), 1);
+    assert_eq!(single[0].status, FileStatus::Added);
+    assert!(single[0].source_commit.is_none());
+
+    let range = load_history_files(
+        directory.path(),
+        &[WORKTREE_COMMIT_ID.to_owned(), second, first],
+    )
+    .unwrap();
+    let paths = range
+        .iter()
+        .map(|file| file.display_path.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(paths, ["a.txt", "b.txt", "c.txt"]);
+    assert!(range.iter().all(|file| file.source_commit.is_some()));
+
+    assert!(load_history_files(directory.path(), &["nope".to_owned()]).is_err());
 }

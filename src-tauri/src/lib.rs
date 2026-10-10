@@ -3,7 +3,8 @@ pub mod model;
 pub mod output;
 
 pub use git_review::{
-    ReviewLoadError, WORKTREE_COMMIT_ID, load_initial_review, load_review, load_review_selection,
+    ReviewLoadError, WORKTREE_COMMIT_ID, load_history, load_history_files, load_initial_review,
+    load_review, load_review_selection,
 };
 pub use model::*;
 pub use output::{format_review_result, validate_submission};

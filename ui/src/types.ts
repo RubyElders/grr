@@ -89,3 +89,14 @@ export interface SubmittedReview {
   outcome: "approve" | "share";
   comments: ReviewComment[];
 }
+
+export interface HistoryCommit extends CommitSummary {
+  parentIds: string[];
+  refs: string[];
+}
+
+export interface HistoryPage {
+  headRef: string;
+  commits: HistoryCommit[];
+  hasMore: boolean;
+}

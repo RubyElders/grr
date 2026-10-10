@@ -34,7 +34,17 @@ pub struct WindowChromeUpdate {
     can_navigate_older: bool,
     commit_selection_enabled: bool,
     #[serde(default)]
+    view: ReviewView,
+    #[serde(default)]
     tooltips: HashMap<String, String>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum ReviewView {
+    #[default]
+    Changes,
+    History,
 }
 
 #[derive(Clone, Copy, Serialize)]
@@ -46,6 +56,10 @@ pub enum WindowChromeAction {
     Picker,
     Newer,
     Older,
+    #[cfg(any(target_os = "linux", test))]
+    Changes,
+    #[cfg(any(target_os = "linux", test))]
+    History,
 }
 
 pub struct WindowChromeState {
@@ -155,6 +169,8 @@ mod tests {
             (WindowChromeAction::Picker, "picker"),
             (WindowChromeAction::Newer, "newer"),
             (WindowChromeAction::Older, "older"),
+            (WindowChromeAction::Changes, "changes"),
+            (WindowChromeAction::History, "history"),
         ] {
             assert_eq!(serde_json::to_value(action).unwrap(), name);
         }
@@ -174,6 +190,7 @@ mod tests {
         assert!(!update.can_navigate_newer);
         assert!(update.can_navigate_older);
         assert!(update.commit_selection_enabled);
+        assert_eq!(update.view, ReviewView::Changes);
         assert_eq!(
             update.tooltips["sidebar"],
             "Toggle the file sidebar (Ctrl + B)"

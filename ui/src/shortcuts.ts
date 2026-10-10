@@ -1,5 +1,7 @@
 export type ShortcutId =
   | "help"
+  | "showChanges"
+  | "showHistory"
   | "toggleSidebar"
   | "find"
   | "nextMatch"
@@ -11,6 +13,19 @@ export type ShortcutId =
   | "olderCommit"
   | "previousFile"
   | "nextFile"
+  | "previousDiffFile"
+  | "nextDiffFile"
+  | "historyPrevious"
+  | "historyNext"
+  | "historyExtend"
+  | "historyFirst"
+  | "historyLast"
+  | "historyPageUp"
+  | "historyPageDown"
+  | "historyOpen"
+  | "historyFilter"
+  | "historyMessage"
+  | "historyBack"
   | "pageUp"
   | "pageDown"
   | "primaryAction"
@@ -19,7 +34,7 @@ export type ShortcutId =
   | "dismiss"
   | "closeWindow";
 
-export type ShortcutCategory = "Review" | "Navigation" | "Search" | "Window";
+export type ShortcutCategory = "Review" | "Navigation" | "History" | "Search" | "Window";
 
 interface ShortcutChord {
   id: string;
@@ -39,6 +54,8 @@ export interface ShortcutDefinition {
 
 export const SHORTCUTS: readonly ShortcutDefinition[] = [
   shortcut("help", "Window", "Show keyboard shortcuts", [chord("question", "?", { shift: "any" })]),
+  shortcut("showChanges", "Window", "Show changes", [chord("native", "1", { nativeModifier: true })]),
+  shortcut("showHistory", "Window", "Show history", [chord("native", "2", { nativeModifier: true })]),
   shortcut("toggleSidebar", "Window", "Toggle the file sidebar", [chord("native", "b", { nativeModifier: true })]),
   shortcut("find", "Search", "Open find in changed code", [
     chord("native", "f", { nativeModifier: true }),
@@ -73,6 +90,22 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
     chord("arrow", "ArrowDown"),
     chord("vim", "j"),
   ]),
+  shortcut("previousDiffFile", "Navigation", "Jump to the previous file in the diff", [chord("bracket", "[")]),
+  shortcut("nextDiffFile", "Navigation", "Jump to the next file in the diff", [chord("bracket", "]")]),
+  shortcut("historyPrevious", "History", "Select the previous commit", [chord("arrow", "ArrowUp"), chord("vim", "k")]),
+  shortcut("historyNext", "History", "Select the next commit", [chord("arrow", "ArrowDown"), chord("vim", "j")]),
+  shortcut("historyExtend", "History", "Extend the selection up or down", [
+    chord("up", "ArrowUp", { shift: true }),
+    chord("down", "ArrowDown", { shift: true }),
+  ]),
+  shortcut("historyFirst", "History", "Select the first commit", [chord("home", "Home"), chord("vim", "g")]),
+  shortcut("historyLast", "History", "Select the last loaded commit and load more", [chord("end", "End"), chord("vim", "g", { shift: true })]),
+  shortcut("historyPageUp", "History", "Move a page of commits up", [chord("page", "PageUp")]),
+  shortcut("historyPageDown", "History", "Move a page of commits down", [chord("page", "PageDown")]),
+  shortcut("historyOpen", "History", "Open the selection in Changes", [chord("enter", "Enter")]),
+  shortcut("historyFilter", "History", "Filter commits", [chord("slash", "/", { shift: "any" }), chord("native", "f", { nativeModifier: true })]),
+  shortcut("historyMessage", "History", "Show or hide the full commit message", [chord("letter", "m")]),
+  shortcut("historyBack", "History", "Clear the filter or return to Changes", [chord("escape", "Escape")]),
   shortcut("pageUp", "Navigation", "Page the diff up", [chord("space", " ", { code: "Space", shift: true })]),
   shortcut("pageDown", "Navigation", "Page the diff down", [chord("space", " ", { code: "Space" })]),
   shortcut("primaryAction", "Review", "Approve or share queued comments", [chord("native", "Enter", { nativeModifier: true })]),
@@ -87,7 +120,7 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
   ]),
 ];
 
-export const SHORTCUT_CATEGORIES: readonly ShortcutCategory[] = ["Review", "Navigation", "Search", "Window"];
+export const SHORTCUT_CATEGORIES: readonly ShortcutCategory[] = ["Review", "Navigation", "History", "Search", "Window"];
 
 export function shortcutDefinition(id: ShortcutId): ShortcutDefinition {
   const definition = SHORTCUTS.find((candidate) => candidate.id === id);

@@ -1,12 +1,14 @@
 import { useEffect, useLayoutEffect, useRef } from "preact/hooks";
 import type { ReviewData } from "../types";
 import { listenWindowChromeActions, updateWindowChrome } from "./bridge";
-import { windowChromeCapabilities, windowChromeUpdate, type WindowChromeAction, type WindowChromeKind } from "./model";
+import { windowChromeCapabilities, windowChromeUpdate, type ReviewView, type WindowChromeAction, type WindowChromeKind } from "./model";
 
 export function useWindowChrome(
   kind: WindowChromeKind,
   data: ReviewData | null,
   disabled: boolean,
+  view: ReviewView,
+  headRef: string | null,
   onAction: (action: WindowChromeAction) => void,
   onError: (error: unknown) => void,
 ): void {
@@ -34,9 +36,9 @@ export function useWindowChrome(
   useEffect(() => {
     if (!windowChromeCapabilities(kind).nativeHeader || !data) return;
     let disposed = false;
-    void updateWindowChrome(windowChromeUpdate(data, disabled)).catch((error: unknown) => {
+    void updateWindowChrome(windowChromeUpdate(data, disabled, view, headRef)).catch((error: unknown) => {
       if (!disposed) callbacks.current.onError(error);
     });
     return () => { disposed = true; };
-  }, [kind, data, disabled]);
+  }, [kind, data, disabled, view, headRef]);
 }

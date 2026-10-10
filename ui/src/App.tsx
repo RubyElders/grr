@@ -7,6 +7,7 @@ import { DiffView } from "./components/DiffView";
 import { ReviewActions } from "./components/ReviewActions";
 import { CommitSelector } from "./components/CommitSelector";
 import { CommitMessagePanel } from "./components/CommitMessagePanel";
+import { HistoryView } from "./components/HistoryView";
 import { FindPopover } from "./components/FindPopover";
 import { ShortcutHelp } from "./components/ShortcutHelp";
 import { WindowTitlebar } from "./components/WindowTitlebar";
@@ -16,7 +17,7 @@ import { reviewViewKey } from "./scrollPosition";
 import { useReviewShortcuts } from "./useReviewShortcuts";
 import { filesInTreeOrder } from "./tree";
 import { useWindowChrome } from "./windowChrome/useWindowChrome";
-import { windowChromeCapabilities, type WindowChromeKind } from "./windowChrome/model";
+import { windowChromeCapabilities, type ReviewView, type WindowChromeKind } from "./windowChrome/model";
 import type { ReviewData } from "./types";
 import styles from "./App.module.css";
 
@@ -28,6 +29,9 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   const [findOpen, setFindOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [view, setView] = useState<ReviewView>("changes");
+  const [historyMounted, setHistoryMounted] = useState(false);
+  const [historyRef, setHistoryRef] = useState<string | null>(null);
   const [findQuery, setFindQuery] = useState("");
   const [activeFindIndex, setActiveFindIndex] = useState(-1);
   const [fileNavigation, setFileNavigation] = useState<{ fileId: string; requestId: number; viewKey: string } | null>(null);
@@ -77,6 +81,15 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
     });
   }, [backend]);
 
+  const showView = useCallback((next: ReviewView) => {
+    if (next === "history") {
+      setCommitSelectorOpen(false);
+      setFindOpen(false);
+      setHistoryMounted(true);
+    }
+    setView(next);
+  }, []);
+
   const selectCommits = useCallback(async (commitIds: string[]) => {
     setFileNavigation(null);
     dispatch({ type: "selection-started" });
@@ -115,13 +128,17 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
     chromeMode,
     state.data,
     comments.length > 0 || state.phase !== "ready",
+    view,
+    historyRef,
     (action) => {
+      if ((action === "changes" || action === "history") && state.phase !== "loading") showView(action);
       if (action === "sidebar" && state.phase === "ready") setSidebarOpen((open) => !open);
       if (action === "help" && state.phase === "ready") {
         setCommitSelectorOpen(false);
         setFindOpen(false);
         setShortcutHelpOpen(true);
       }
+      if (view !== "changes") return;
       if (action === "picker" && state.phase === "ready" && comments.length === 0) {
         setCommitSelectorOpen((open) => !open);
       }
@@ -135,8 +152,8 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   );
 
   useReviewShortcuts({
-    state, commentCount: comments.length, commitSelectorOpen, findOpen, shortcutHelpOpen,
-    setCommitSelectorOpen, setFindOpen, setShortcutHelpOpen, setSidebarOpen,
+    state, view, commentCount: comments.length, commitSelectorOpen, findOpen, shortcutHelpOpen,
+    showView, setCommitSelectorOpen, setFindOpen, setShortcutHelpOpen, setSidebarOpen,
     cancelReview, moveFind, navigateCommits, navigateFiles, submit,
   });
 
@@ -163,21 +180,48 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
     onSelect={(commitIds) => void selectCommits(commitIds)}
   />;
 
+  const openDisabledReason = comments.length > 0
+    ? "Share or discard draft comments before opening other commits"
+    : state.phase !== "ready" ? "Wait for the current action to finish" : null;
+  const historyTitle = (
+    <div class={styles.historyTitle}>
+      <strong>{historyRef ?? "History"}</strong>
+      <span>History</span>
+    </div>
+  );
+
   return (
     <div class={styles.app} data-window-chrome={chromeMode}>
       <div class={styles.headerArea}>
-        {nativeChrome ? commitSelector : <WindowTitlebar
+        {nativeChrome ? (view === "changes" ? commitSelector : null) : <WindowTitlebar
           capabilities={capabilities}
           sidebarOpen={sidebarOpen}
+          view={view}
+          onView={showView}
           onToggleSidebar={() => setSidebarOpen((open) => !open)}
           onHelp={() => setShortcutHelpOpen(true)}
           onClose={cancelReview}
         >
-          {commitSelector}
+          {view === "changes" ? commitSelector : historyTitle}
         </WindowTitlebar>}
-        <CommitMessagePanel data={state.data} />
+        {view === "changes" ? <CommitMessagePanel data={state.data} /> : null}
       </div>
-      <div class={`${styles.content} ${sidebarOpen ? "" : styles.sidebarHidden}`}>
+      {historyMounted ? (
+        <HistoryView
+          backend={backend}
+          review={state.data}
+          hidden={view !== "history"}
+          keyboardEnabled={!shortcutHelpOpen}
+          sidebarOpen={sidebarOpen}
+          openDisabledReason={openDisabledReason}
+          onHeadRef={setHistoryRef}
+          onOpen={(commitIds) => {
+            showView("changes");
+            void selectCommits(commitIds);
+          }}
+        />
+      ) : null}
+      <div class={`${styles.content} ${sidebarOpen ? "" : styles.sidebarHidden} ${view === "changes" ? "" : styles.hiddenView}`}>
         {sidebarOpen ? (
           <FileTree
             files={state.data.files}

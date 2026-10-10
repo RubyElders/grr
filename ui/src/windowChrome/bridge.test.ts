@@ -30,7 +30,7 @@ describe("window chrome bridge", () => {
   });
 
   it("passes the header state to the shared command", async () => {
-    const update = { title: "Review", subtitle: "abc", canNavigateNewer: false, canNavigateOlder: true, commitSelectionEnabled: true, tooltips: windowChromeTooltips() };
+    const update = { title: "Review", subtitle: "abc", canNavigateNewer: false, canNavigateOlder: true, commitSelectionEnabled: true, view: "changes" as const, tooltips: windowChromeTooltips() };
     await updateWindowChrome(update);
     expect(invoke).toHaveBeenCalledWith("update_window_chrome", { update });
   });

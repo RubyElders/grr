@@ -32,6 +32,23 @@ pub struct CommitSummary {
     pub authored_at: i64,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryPage {
+    pub head_ref: String,
+    pub commits: Vec<HistoryCommit>,
+    pub has_more: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct HistoryCommit {
+    #[serde(flatten)]
+    pub commit: CommitSummary,
+    pub parent_ids: Vec<String>,
+    pub refs: Vec<String>,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum FileStatus {

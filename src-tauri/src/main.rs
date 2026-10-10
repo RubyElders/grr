@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use grr::{
-    ReviewData, SubmittedReview, format_review_result, load_initial_review, load_review_selection,
-    validate_submission,
+    FileDiff, HistoryPage, ReviewData, SubmittedReview, format_review_result, load_history,
+    load_history_files, load_initial_review, load_review_selection, validate_submission,
 };
 use tauri::{Manager, State, Window};
 
@@ -47,6 +47,31 @@ fn select_commits(
         .lock()
         .map_err(|_| "review data lock was poisoned".to_owned())? = Arc::clone(&review);
     Ok(review)
+}
+
+#[tauri::command]
+async fn get_history(
+    offset: usize,
+    limit: usize,
+    state: State<'_, AppState>,
+) -> Result<HistoryPage, String> {
+    let repository = state.repository.clone();
+    tauri::async_runtime::spawn_blocking(move || load_history(repository, offset, limit))
+        .await
+        .map_err(|error| error.to_string())?
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+async fn get_history_files(
+    commit_ids: Vec<String>,
+    state: State<'_, AppState>,
+) -> Result<Vec<FileDiff>, String> {
+    let repository = state.repository.clone();
+    tauri::async_runtime::spawn_blocking(move || load_history_files(repository, &commit_ids))
+        .await
+        .map_err(|error| error.to_string())?
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -148,6 +173,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_review,
             select_commits,
+            get_history,
+            get_history_files,
             finish_review,
             cancel_review,
             open_author_website,

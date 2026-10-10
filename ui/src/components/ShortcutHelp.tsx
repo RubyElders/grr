@@ -35,7 +35,7 @@ export function ShortcutHelp({ onClose }: { onClose(): void }) {
         <div class={styles.groups} role="tabpanel" id="help-panel-shortcuts" aria-labelledby="help-tab-shortcuts" tabIndex={0} hidden={tab !== "shortcuts"}>
           <p class={styles.shortcutHint}>Keys in one badge are pressed together. "or" separates alternative shortcuts.</p>
           {SHORTCUT_CATEGORIES.map((category) => (
-            <section class={`${styles.group} ${category === "Navigation" ? styles.navigation : category === "Window" ? styles.window : ""}`} key={category} aria-labelledby={`shortcut-${category}`}>
+            <section class={`${styles.group} ${category === "Navigation" ? styles.navigation : category === "History" ? styles.history : category === "Window" ? styles.window : ""}`} key={category} aria-labelledby={`shortcut-${category}`}>
               <h3 id={`shortcut-${category}`}>{category}</h3>
               <dl>
                 {SHORTCUTS.filter((shortcut) => shortcut.category === category).map((shortcut) => (

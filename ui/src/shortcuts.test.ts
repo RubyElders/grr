@@ -58,6 +58,11 @@ describe("shortcut registry", () => {
     expect(matchesShortcut(key("k"), "previousFile")).toBe(true);
     expect(matchesShortcut(key("h"), "newerCommit")).toBe(true);
     expect(matchesShortcut(key("l"), "olderCommit")).toBe(true);
+    expect(matchesShortcut(key("]"), "nextDiffFile")).toBe(true);
+    expect(matchesShortcut(key("G", { shiftKey: true }), "historyLast")).toBe(true);
+    expect(matchesShortcut(key("g"), "historyLast")).toBe(false);
+    expect(matchesShortcut(key("ArrowUp", { shiftKey: true }), "historyExtend", "up")).toBe(true);
+    expect(matchesShortcut(key("ArrowUp", { shiftKey: true }), "historyPrevious")).toBe(false);
     expect(matchesShortcut(key("j", { shiftKey: true }), "nextFile")).toBe(false);
     expect(matchesShortcut(key("ArrowDown", { altKey: true }), "nextFile")).toBe(false);
     expect(matchesShortcut(key(" "), "pageDown")).toBe(true);
