@@ -140,7 +140,7 @@ export function DiffView(props: DiffViewProps) {
     if (!root || !navigation) return;
     const file = document.getElementById(`file-${navigation.fileId}`);
     if (!file || !root.contains(file)) return;
-    const top = root.scrollTop + file.getBoundingClientRect().top - root.getBoundingClientRect().top - 12;
+    const top = root.scrollTop + file.getBoundingClientRect().top - root.getBoundingClientRect().top;
     root.scrollTo({ top, behavior: "instant" });
   }, [props.fileNavigation, props.viewKey]);
 

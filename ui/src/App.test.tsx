@@ -281,7 +281,7 @@ describe("ReviewApp", () => {
 
     await user.click(screen.getByTitle("tests/rendering/reference.png"));
 
-    expect(scrollTo).toHaveBeenCalledWith({ top: 488, behavior: "instant" });
+    expect(scrollTo).toHaveBeenCalledWith({ top: 500, behavior: "instant" });
     expect(scrollTo.mock.calls[0]![0]).not.toHaveProperty("left");
     await user.click(screen.getByTitle("tests/rendering/reference.png"));
     expect(scrollTo).toHaveBeenCalledTimes(2);
