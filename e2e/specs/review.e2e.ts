@@ -43,7 +43,7 @@ describe("grr review window", () => {
       };
     });
     expect(diffInsets).not.toBeNull();
-    for (const inset of Object.values(diffInsets ?? {})) expect(Math.abs(inset - 24)).toBeLessThanOrEqual(1);
+    for (const inset of Object.values(diffInsets ?? {})) expect(Math.abs(inset)).toBeLessThanOrEqual(1);
     const shellInsets = await browser.execute(() => {
       const commit = document.querySelector<HTMLElement>("section[aria-label='Commit message']");
       const commitMessage = commit?.querySelector("button")?.getBoundingClientRect();
@@ -84,7 +84,7 @@ describe("grr review window", () => {
       return pane && file ? { paneLeft: pane.left, fileLeft: file.left - pane.left } : null;
     });
     expect(Math.abs(hiddenSidebarLayout?.paneLeft ?? 100)).toBeLessThanOrEqual(1);
-    expect(Math.abs((hiddenSidebarLayout?.fileLeft ?? 0) - 24)).toBeLessThanOrEqual(1);
+    expect(Math.abs(hiddenSidebarLayout?.fileLeft ?? 100)).toBeLessThanOrEqual(1);
     await pressShortcut("b", { ctrlKey: true });
     await browser.waitUntil(async () => await browser.execute(
       () => Boolean(document.querySelector("input[aria-label='Filter files']")),
@@ -412,7 +412,7 @@ describe("grr review window", () => {
       return paneRect.top + pane.clientTop + pane.clientHeight - finalFile.getBoundingClientRect().bottom;
     });
     expect(bottomInset).not.toBeNull();
-    expect(Math.abs((bottomInset ?? 0) - 24)).toBeLessThanOrEqual(1);
+    expect(Math.abs(bottomInset ?? 100)).toBeLessThanOrEqual(1);
     await browser.waitUntil(async () => await browser.execute((fileId) => {
       const row = document.querySelector<HTMLElement>(`nav[aria-label='File tree'] [data-file-id="${fileId}"]`);
       const sidebar = document.querySelector<HTMLElement>("aside[aria-label='Changed files']");

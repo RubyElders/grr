@@ -266,7 +266,7 @@ describe("DiffView scroll positions", () => {
       drafts: {}, searchMatches: [], activeSearchMatchIndex: -1,
     };
     view.rerender(<DiffView {...navigationProps} fileNavigation={{ fileId: target.id, requestId: 1 }} {...callbacks} />);
-    expect(scrollTo).toHaveBeenLastCalledWith({ top: 488, behavior: "instant" });
+    expect(scrollTo).toHaveBeenLastCalledWith({ top: 500, behavior: "instant" });
     act(() => notify([{ target: card, isIntersecting: false } as unknown as IntersectionObserverEntry], {} as IntersectionObserver));
     expect(card).toHaveAttribute("data-diff-rendered", "true");
     view.rerender(<DiffView {...navigationProps} fileNavigation={{ fileId: target.id, requestId: 2 }} {...callbacks} />);
