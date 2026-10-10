@@ -69,7 +69,7 @@ export function windowChromeTooltips(): Record<WindowChromeAction, string> {
     picker: tooltip("browseCommits"),
     newer: tooltip("newerCommit"),
     older: tooltip("olderCommit"),
-    changes: tooltip("showChanges"),
-    history: tooltip("showHistory"),
+    changes: tooltip("toggleView"),
+    history: tooltip("toggleView"),
   };
 }

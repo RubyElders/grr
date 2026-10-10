@@ -67,7 +67,7 @@ export function WindowTitlebar({ children, capabilities = windowChromeCapabiliti
                 type="button"
                 class={styles.view}
                 aria-pressed={view === item}
-                title={`${item === "changes" ? "Show changes" : "Show history"} (${shortcutTitle(item === "changes" ? "showChanges" : "showHistory")})`}
+                title={`${item === "changes" ? "Show changes" : "Show history"} (${shortcutTitle("toggleView")})`}
                 onClick={() => onView(item)}
               >
                 {item === "changes" ? "Changes" : "History"}

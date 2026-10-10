@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/preact";
+import { render, screen, waitFor, within } from "@testing-library/preact";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import fixture from "../__fixtures__/review.json";
@@ -85,7 +85,7 @@ describe("HistoryView", () => {
   it("moves with the keyboard and switches views with shortcuts", async () => {
     const { backend, user } = setup();
     await screen.findByRole("button", { name: "History" });
-    fireEvent.keyDown(document, { key: "2", ctrlKey: true });
+    await user.keyboard("v");
     const list = await screen.findByRole("listbox", { name: "Commits" });
     await within(list).findByText("Prepare graphics page");
 
@@ -94,7 +94,7 @@ describe("HistoryView", () => {
     await user.keyboard("{Enter}");
     expect(backend.selectCommits).toHaveBeenCalledWith([review.commits[2]!.id]);
 
-    fireEvent.keyDown(document, { key: "2", ctrlKey: true });
+    await user.keyboard("v");
     await user.keyboard("{Escape}");
     expect(screen.getByRole("button", { name: "Changes" }).getAttribute("aria-pressed")).toBe("true");
     expect(backend.cancelReview).not.toHaveBeenCalled();
