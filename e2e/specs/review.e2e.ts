@@ -145,7 +145,7 @@ describe("grr review window", () => {
       () => Boolean(document.querySelector("section[role='dialog'][aria-label='Keyboard shortcuts']")),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "question mark did not open keyboard shortcuts" });
     expect(await browser.execute(() => (
-      document.body.textContent?.includes("Jump to the next file or commit")
+      document.body.textContent?.includes("Jump to the next file (arrows scroll a focused diff)")
       && document.body.textContent?.includes("Browse commits")
       && document.body.textContent?.includes("Approve or share queued comments")
       && Boolean(document.querySelector<HTMLImageElement>("section[aria-label='Keyboard shortcuts'] img[alt='grr']")?.complete)

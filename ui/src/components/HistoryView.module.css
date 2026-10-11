@@ -1,4 +1,4 @@
-.history { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto minmax(120px, 38%) auto auto minmax(0, 1fr); background: var(--canvas); overflow: hidden; }
+.history { min-width: 0; min-height: 0; display: grid; grid-template-rows: minmax(160px, 42%) auto auto minmax(0, 1fr); background: var(--canvas); overflow: hidden; }
 .hidden { display: none; }
 
 .toolbar { display: flex; align-items: center; gap: 12px; padding: 10px var(--shell-inset); border-bottom: 1px solid var(--border); background: var(--bg); }
@@ -6,10 +6,14 @@
 .filter:focus { outline: 0; border-color: var(--blue); box-shadow: 0 0 0 2px color-mix(in srgb, var(--blue) 25%, transparent); }
 .count { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
-.list { min-height: 0; overflow: auto; background: var(--bg); user-select: none; }
-.row { height: 28px; display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(80px, 160px) 150px 64px; align-items: center; gap: 12px; padding-right: var(--shell-inset); font-size: 13px; cursor: default; }
+.commitsPane { position: relative; min-height: 0; display: flex; flex-direction: column; }
+.commitsPane::after { content: ""; position: absolute; top: 0; right: 0; left: 0; z-index: 5; height: 2px; background: var(--pane-focus); opacity: 0; pointer-events: none; transition: opacity 160ms ease; }
+.commitsPane:focus-within::after { opacity: 1; }
+.list { flex: 1; min-height: 0; overflow: auto; background: var(--bg); user-select: none; }
+.row { height: 28px; display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(80px, 160px) 150px 64px; align-items: center; gap: 12px; padding-right: var(--shell-inset); font-size: 13px; cursor: default; transition: background-color 160ms ease; }
 .row:hover { background: var(--canvas); }
 .row[aria-selected="true"] { background: var(--blue-muted); }
+.commitsPane:not(:focus-within) .row[aria-selected="true"] { background: var(--selection-inactive); }
 .outside .summaryText { color: var(--muted); }
 .graph { display: block; }
 .graph path { fill: none; stroke-width: 2; }
@@ -37,7 +41,7 @@
 .open:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
 .open:disabled { cursor: default; opacity: .55; }
 
-.details { min-height: 0; display: grid; grid-template-columns: minmax(240px, 330px) minmax(0, 1fr); overflow: hidden; }
+.details { position: relative; min-height: 0; display: grid; grid-template-columns: minmax(240px, 330px) minmax(0, 1fr); overflow: hidden; }
 .details.stale { opacity: .6; transition: opacity 120ms ease 120ms; }
 .details.noSidebar { grid-template-columns: minmax(0, 1fr); }
 .placeholder { grid-column: 1 / -1; display: grid; place-items: center; color: var(--muted); }

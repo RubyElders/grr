@@ -90,6 +90,56 @@ describe("HistoryView", () => {
     expect(screen.getByRole("button", { name: "History" }).getAttribute("aria-pressed")).toBe("true");
   });
 
+  it("moves between commit, file and diff panes and finds in the focused one", async () => {
+    Element.prototype.scrollTo = vi.fn();
+    const { user } = setup();
+    const list = await openHistory(user);
+    await within(list).findByText("Prepare graphics page");
+    const section = screen.getByRole("region", { name: "History" });
+    await within(section).findByRole("main", { name: "Commit diff" });
+    const commits = list.closest<HTMLElement>("[data-pane]")!;
+    const files = within(section).getByRole("complementary", { name: "Changed files" });
+    const diff = within(section).getByRole("main", { name: "Commit diff" });
+    const activeFile = () => files.querySelector("[aria-current='true']")?.textContent;
+    const selectedCommit = () => within(list).getAllByRole("option", { selected: true })[0]!.textContent;
+    expect(document.activeElement).toBe(commits);
+
+    await user.keyboard("{Tab}");
+    expect(document.activeElement).toBe(files);
+    const commit = selectedCommit();
+    const first = activeFile();
+    await user.keyboard("{ArrowDown}");
+    expect(activeFile()).not.toBe(first);
+    expect(selectedCommit()).toBe(commit);
+    await user.keyboard("{Control>}f{/Control}");
+    expect(document.activeElement).toBe(within(section).getByRole("searchbox", { name: "Filter files" }));
+
+    await user.keyboard("{Tab}");
+    expect(document.activeElement).toBe(diff);
+    const second = activeFile();
+    await user.keyboard("{ArrowUp}");
+    expect(activeFile()).toBe(second);
+    await user.keyboard("k");
+    expect(activeFile()).toBe(first);
+
+    await user.keyboard("/");
+    const find = await within(section).findByRole("searchbox", { name: "Find in code" });
+    await waitFor(() => expect(document.activeElement).toBe(find));
+    await user.keyboard("graphics");
+    expect(within(section).getByRole("status").textContent).toMatch(/of|No results/);
+    await user.keyboard("{Enter}{Shift>}{Enter}{/Shift}");
+    await user.keyboard("{Escape}");
+    expect(within(section).queryByRole("search", { name: "Find in diff" })).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(diff);
+    expect(screen.getByRole("button", { name: "History" }).getAttribute("aria-pressed")).toBe("true");
+
+    await user.keyboard("{Tab}");
+    expect(document.activeElement).toBe(commits);
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(document.activeElement).toBe(diff);
+    Reflect.deleteProperty(Element.prototype, "scrollTo");
+  });
+
   it("moves with the keyboard and switches views with shortcuts", async () => {
     const { backend, user } = setup();
     await screen.findByRole("button", { name: "History" });

@@ -2,6 +2,7 @@ import { useLayoutEffect, type Dispatch, type StateUpdater } from "preact/hooks"
 import type { ReviewState } from "./state";
 import type { ReviewView } from "./windowChrome/model";
 import { matchesShortcut } from "./shortcuts";
+import { cyclePane, focusPaneFilter, paneOf } from "./panes";
 
 interface ReviewShortcutContext {
   state: Pick<ReviewState, "openLineId" | "phase">;
@@ -48,9 +49,26 @@ export function useReviewShortcuts({
         return;
       }
       const changes = view === "changes";
-      if (!changes && matchesShortcut(event, "historyBack") && state.openLineId === null) {
+      if (!changes && matchesShortcut(event, "historyBack") && state.openLineId === null && !event.defaultPrevented && !isTextEntryTarget(event.target)) {
         event.preventDefault();
         showView("changes");
+        return;
+      }
+
+      const pane = paneOf(event.target);
+      const changesScope = document.querySelector("[data-view='changes']");
+      const nextPane = matchesShortcut(event, "nextPane");
+      if (changes && (nextPane || matchesShortcut(event, "previousPane"))
+        && state.openLineId === null
+        && !commitSelectorOpen
+        && !(event.target instanceof Element && event.target.closest("[role='search']"))) {
+        event.preventDefault();
+        cyclePane(changesScope, pane, nextPane ? 1 : -1);
+        return;
+      }
+      if (changes && findNative(event) && pane === "files" && state.phase === "ready") {
+        event.preventDefault();
+        focusPaneFilter(changesScope, "files");
         return;
       }
 
@@ -67,9 +85,8 @@ export function useReviewShortcuts({
         && commentCount === 0
         && !findOpen
         && !isTextEntryTarget(event.target);
-      const findNative = matchesShortcut(event, "find", "native");
       const findFunction = matchesShortcut(event, "find", "function");
-      const openFind = changes && (findNative || (!findOpen && findFunction));
+      const openFind = changes && (findNative(event) || (!findOpen && findFunction));
       const findInput = event.target instanceof HTMLElement && event.target.matches("[data-find-input]");
       const nextMatch = findOpen
         && matchesShortcut(event, "nextMatch")
@@ -79,7 +96,7 @@ export function useReviewShortcuts({
         && (!matchesShortcut(event, "previousMatch", "enter") || findInput);
       const dismissFind = dismiss && findOpen;
       const dismissSelector = dismiss && commitSelectorOpen;
-      const closeWithEscape = dismiss && state.openLineId === null && !commitSelectorOpen && !findOpen;
+      const closeWithEscape = dismiss && state.openLineId === null && !commitSelectorOpen && !findOpen && !isTextEntryTarget(event.target);
       const runPrimaryAction = matchesShortcut(event, "primaryAction")
         && state.openLineId === null
         && !findOpen
@@ -108,8 +125,10 @@ export function useReviewShortcuts({
         && !isTextEntryTarget(event.target);
       const previousFile = matchesShortcut(event, "previousFile") || matchesShortcut(event, "previousDiffFile");
       const nextFile = matchesShortcut(event, "nextFile") || matchesShortcut(event, "nextDiffFile");
+      const arrowStep = matchesShortcut(event, "previousFile", "arrow") || matchesShortcut(event, "nextFile", "arrow");
       const stepFile = changes
         && (previousFile || nextFile)
+        && !(arrowStep && pane === "diff")
         && !commitSelectorOpen
         && !findOpen
         && state.openLineId === null
@@ -181,6 +200,10 @@ export function useReviewShortcuts({
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [cancelReview, commentCount, commitSelectorOpen, findOpen, moveFind, navigateCommits, navigateFiles, shortcutHelpOpen, showView, state.openLineId, state.phase, submit, view]);
+}
+
+function findNative(event: KeyboardEvent): boolean {
+  return matchesShortcut(event, "find", "native");
 }
 
 function isTextEntryTarget(target: EventTarget | null): boolean {

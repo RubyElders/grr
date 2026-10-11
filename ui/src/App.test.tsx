@@ -399,6 +399,43 @@ describe("ReviewApp", () => {
     expect(backend.cancelReview).not.toHaveBeenCalled();
   });
 
+  it("moves between panes with Tab and finds in the focused pane", async () => {
+    Element.prototype.scrollTo = vi.fn();
+    const { backend, user } = setup();
+    await screen.findByText("5 commits against origin/main");
+    const files = screen.getByRole("complementary", { name: "Changed files" });
+    const diff = screen.getByRole("main", { name: "Commit diff" });
+    const activeFile = () => files.querySelector("[aria-current='true']")?.textContent;
+    await waitFor(() => expect(document.activeElement).toBe(files));
+
+    await user.keyboard("{Control>}f{/Control}");
+    const filter = screen.getByRole("searchbox", { name: "Filter files" }) as HTMLInputElement;
+    expect(document.activeElement).toBe(filter);
+    expect(screen.queryByRole("search", { name: "Find in diff" })).not.toBeInTheDocument();
+    await user.keyboard("zzz{Escape}");
+    expect(filter.value).toBe("");
+    expect(document.activeElement).toBe(filter);
+    await user.keyboard("{Escape}");
+    expect(document.activeElement).toBe(files);
+    expect(backend.cancelReview).not.toHaveBeenCalled();
+
+    await user.keyboard("{Tab}");
+    expect(document.activeElement).toBe(diff);
+    const first = activeFile();
+    await user.keyboard("{ArrowDown}");
+    expect(activeFile()).toBe(first);
+    await user.keyboard("j");
+    expect(activeFile()).not.toBe(first);
+
+    await user.keyboard("{Control>}f{/Control}");
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("searchbox", { name: "Find in code" })));
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(document.activeElement).toBe(diff));
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(document.activeElement).toBe(files);
+    Reflect.deleteProperty(Element.prototype, "scrollTo");
+  });
+
   it("opens shortcut help with question mark and dismisses it before closing the app", async () => {
     const { backend, user } = setup();
     await screen.findByText("5 commits against origin/main");
@@ -406,7 +443,7 @@ describe("ReviewApp", () => {
     fireEvent.keyDown(document, { key: "?", shiftKey: true });
     const dialog = screen.getByRole("dialog", { name: "Keyboard shortcuts" });
     expect(within(dialog).getByRole("img", { name: "grr" })).toBeInTheDocument();
-    expect(within(dialog).getByText("Jump to the next file or commit")).toBeInTheDocument();
+    expect(within(dialog).getByText("Jump to the next file (arrows scroll a focused diff)")).toBeInTheDocument();
     expect(within(dialog).getByText("Approve or share queued comments")).toBeInTheDocument();
 
     fireEvent.keyDown(document, { key: "Escape" });
