@@ -29,7 +29,7 @@ libc = "0.2"
 [target.'cfg(target_os = "macos")'.dependencies]
 dispatch2 = "0.3.1"
 objc2 = "0.6.4"
-objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSAttributedString", "NSButton", "NSButtonCell", "NSCell", "NSColor", "NSControl", "NSFont", "NSImage", "NSResponder", "NSToolbar", "NSToolbarItem", "NSView", "NSWindow"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "NSAttributedString", "NSButton", "NSButtonCell", "NSCell", "NSColor", "NSControl", "NSFont", "NSImage", "NSResponder", "NSSegmentedControl", "NSToolbar", "NSToolbarItem", "NSView", "NSWindow"] }
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSAttributedString", "NSDictionary", "NSGeometry", "NSObject", "NSString"] }
 
 [build-dependencies]

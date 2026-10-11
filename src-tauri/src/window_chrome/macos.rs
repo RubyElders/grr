@@ -8,9 +8,9 @@ use objc2::{
 };
 use objc2_app_kit::{
     NSBezelStyle, NSButton, NSColor, NSFont, NSFontAttributeName, NSForegroundColorAttributeName,
-    NSImage, NSToolbar, NSToolbarDelegate, NSToolbarDisplayMode,
-    NSToolbarFlexibleSpaceItemIdentifier, NSToolbarItem, NSView, NSWindow, NSWindowTitleVisibility,
-    NSWindowToolbarStyle,
+    NSImage, NSSegmentStyle, NSSegmentSwitchTracking, NSSegmentedControl, NSToolbar,
+    NSToolbarDelegate, NSToolbarDisplayMode, NSToolbarFlexibleSpaceItemIdentifier, NSToolbarItem,
+    NSView, NSWindow, NSWindowTitleVisibility, NSWindowToolbarStyle,
 };
 use objc2_foundation::{
     NSArray, NSAttributedString, NSDictionary, NSMutableAttributedString, NSObject,
@@ -18,7 +18,7 @@ use objc2_foundation::{
 };
 use tauri::{Emitter, WebviewWindow};
 
-use super::{WindowChromeAction, WindowChromeUpdate};
+use super::{ReviewView, WindowChromeAction, WindowChromeUpdate};
 
 pub(super) use super::unsupported_window_menu as show_system_menu;
 
@@ -44,6 +44,7 @@ struct Navigation {
 struct ToolbarIvars {
     window: WebviewWindow,
     navigation: RefCell<Option<Navigation>>,
+    views: RefCell<Option<Retained<NSSegmentedControl>>>,
     buttons: RefCell<Vec<(&'static str, Retained<NSButton>)>>,
 }
 
@@ -90,6 +91,15 @@ define_class!(
 
         #[unsafe(method(older:))]
         fn older(&self, _sender: &AnyObject) { self.emit(WindowChromeAction::Older); }
+
+        #[unsafe(method(changeView:))]
+        fn change_view(&self, sender: &NSSegmentedControl) {
+            match sender.selectedSegment() {
+                0 => self.emit(WindowChromeAction::Changes),
+                1 => self.emit(WindowChromeAction::History),
+                _ => {}
+            }
+        }
     }
 );
 
@@ -107,6 +117,26 @@ impl ToolbarDelegate {
                     sel!(sidebar:),
                     "sidebar",
                 )));
+            }
+            "views" => {
+                item.setLabel(ns_string!("View"));
+                let views = unsafe {
+                    NSSegmentedControl::segmentedControlWithLabels_trackingMode_target_action(
+                        &NSArray::from_slice(&[ns_string!("Changes"), ns_string!("History")]),
+                        NSSegmentSwitchTracking::SelectOne,
+                        Some(self),
+                        Some(sel!(changeView:)),
+                        self.mtm(),
+                    )
+                };
+                views.setSegmentStyle(NSSegmentStyle::TexturedRounded);
+                views.setSelectedSegment(0);
+                views.setToolTip_forSegment(Some(ns_string!("Show changes")), 0);
+                views.setToolTip_forSegment(Some(ns_string!("Show history")), 1);
+                item.setView(Some(&views));
+                if inserted {
+                    *self.ivars().views.borrow_mut() = Some(views);
+                }
             }
             "help" => {
                 item.setLabel(ns_string!("Keyboard shortcuts"));
@@ -155,6 +185,7 @@ impl ToolbarDelegate {
         let this = Self::alloc(mtm).set_ivars(ToolbarIvars {
             window,
             navigation: RefCell::new(None),
+            views: RefCell::new(None),
             buttons: RefCell::new(Vec::new()),
         });
         unsafe { msg_send![super(this), init] }
@@ -201,6 +232,19 @@ impl Header {
         self.native.get_on_main(move |native| {
             let navigation = native.delegate.ivars().navigation.borrow();
             let navigation = navigation.as_ref().ok_or("native header is unavailable")?;
+            let views = native.delegate.ivars().views.borrow();
+            let views = views
+                .as_ref()
+                .ok_or("native view selector is unavailable")?;
+            views.setSelectedSegment(match update.view {
+                ReviewView::Changes => 0,
+                ReviewView::History => 1,
+            });
+            for (segment, key) in [(0, "changes"), (1, "history")] {
+                if let Some(tooltip) = update.tooltips.get(key) {
+                    views.setToolTip_forSegment(Some(&NSString::from_str(tooltip)), segment);
+                }
+            }
             native.window.setTitle(&NSString::from_str(&update.title));
             navigation
                 .picker
@@ -267,6 +311,7 @@ pub fn install(window: &WebviewWindow) -> Result<Header, String> {
 fn item_identifiers() -> Retained<NSArray<NSString>> {
     NSArray::from_slice(&[
         ns_string!("sidebar"),
+        ns_string!("views"),
         unsafe { NSToolbarFlexibleSpaceItemIdentifier },
         ns_string!("navigation"),
         unsafe { NSToolbarFlexibleSpaceItemIdentifier },
