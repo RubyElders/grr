@@ -282,6 +282,17 @@ describe("DiffView scroll positions", () => {
     act(() => notify([{ target: distant, isIntersecting: false } as unknown as IntersectionObserverEntry], {} as IntersectionObserver));
     expect(pane.scrollTop).toBe(4500);
 
+    act(() => notify([{ target: distant, isIntersecting: true } as unknown as IntersectionObserverEntry], {} as IntersectionObserver));
+    card.getBoundingClientRect = vi.fn(() => ({
+      top: 90 + 5000 - pane.scrollTop + (distant.dataset.diffRendered === "false" ? -500 : 0),
+    }) as DOMRect);
+    pane.scrollTop = 5000;
+    act(() => {
+      notify([{ target: distant, isIntersecting: false } as unknown as IntersectionObserverEntry], {} as IntersectionObserver);
+      pane.scrollTop = 4950;
+    });
+    expect(pane.scrollTop).toBe(4500);
+
     Object.defineProperty(pane, "clientHeight", { configurable: true, value: 400 });
     pane.querySelectorAll<HTMLElement>("article").forEach((item, index) => {
       item.getBoundingClientRect = vi.fn(() => ({ top: index < 18 ? -5000 + index * 10 : index === 18 ? -200 : 2000 }) as DOMRect);
