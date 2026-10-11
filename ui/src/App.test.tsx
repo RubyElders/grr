@@ -10,8 +10,9 @@ vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ isMaximized: () => Promise.resolve(false), onResized: () => Promise.resolve(() => undefined) }),
 }));
 
-function historyBackend(): Pick<ReviewBackend, "getHistory" | "getHistoryFiles"> {
+function historyBackend(): Pick<ReviewBackend, "getInitialView" | "getHistory" | "getHistoryFiles"> {
   return {
+    getInitialView: vi.fn().mockResolvedValue("changes"),
     getHistory: vi.fn().mockResolvedValue({ headRef: "main", commits: [], hasMore: false }),
     getHistoryFiles: vi.fn().mockResolvedValue([]),
   };

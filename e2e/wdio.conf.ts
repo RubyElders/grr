@@ -51,7 +51,7 @@ export const config: WdioTauriConfig = {
     browserName: "tauri",
     "tauri:options": {
       application: resolve("src-tauri/target/release/grr"),
-      args: [repository],
+      args: ["-C", repository],
       webviewOptions: { width: 1280, height: 820 },
     },
     "wdio:tauriServiceOptions": {

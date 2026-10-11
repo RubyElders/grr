@@ -37,8 +37,15 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   const [fileNavigation, setFileNavigation] = useState<{ fileId: string; requestId: number; viewKey: string } | null>(null);
   useEffect(() => {
     let mounted = true;
-    backend.getReview().then(
-      (data) => mounted && dispatch({ type: "loaded", data: orderReviewFiles(data) }),
+    Promise.all([backend.getReview(), backend.getInitialView()]).then(
+      ([data, initialView]) => {
+        if (!mounted) return;
+        if (initialView === "history") {
+          setHistoryMounted(true);
+          setView("history");
+        }
+        dispatch({ type: "loaded", data: orderReviewFiles(data) });
+      },
       (error: unknown) => mounted && dispatch({ type: "failed", error: errorMessage(error) }),
     );
     return () => { mounted = false; };

@@ -21,7 +21,7 @@ try {
       ["add", "."],
       ["commit", "-qm", `Review repository ${index}`],
     ]) execFileSync("git", args, { cwd: repository });
-    const child = spawn(binary, [repository], {
+    const child = spawn(binary, ["-C", repository], {
       stdio: ["ignore", "pipe", "pipe"],
       env: { ...process.env, GDK_BACKEND: "x11", NO_AT_BRIDGE: "1", GIO_USE_VFS: "local" },
     });

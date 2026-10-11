@@ -21,9 +21,10 @@ const history: HistoryCommit[] = [
   { id: baseId, shortId: baseId.slice(0, 8), parentId: null, summary: "Base commit", message: "Base commit", author: "Base Author", authoredAt: 1_700_000_000, parentIds: [], refs: ["origin/main"] },
 ];
 
-function setup() {
+function setup(initialView: "changes" | "history" = "changes") {
   const backend: ReviewBackend = {
     getReview: vi.fn().mockResolvedValue(review),
+    getInitialView: vi.fn().mockResolvedValue(initialView),
     selectCommits: vi.fn().mockResolvedValue(review),
     getHistory: vi.fn().mockResolvedValue({ headRef: "main", commits: history, hasMore: false }),
     getHistoryFiles: vi.fn().mockResolvedValue(review.files),
@@ -80,6 +81,13 @@ describe("HistoryView", () => {
     expect(open.getAttribute("title")).toBe("Only commits after origin/main can be reviewed");
     await user.dblClick(within(list).getByText("Base commit"));
     expect(backend.selectCommits).not.toHaveBeenCalled();
+  });
+
+  it("starts in History when asked to", async () => {
+    setup("history");
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    expect(await within(list).findByText("Prepare graphics page")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "History" }).getAttribute("aria-pressed")).toBe("true");
   });
 
   it("moves with the keyboard and switches views with shortcuts", async () => {
