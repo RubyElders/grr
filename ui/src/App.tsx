@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from "preact/hooks";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "preact/hooks";
 import type { ReviewBackend } from "./backend";
 import { tauriBackend } from "./backend";
 import { reviewReducer, initialState, orderedComments, submissionFor } from "./state";
@@ -15,6 +15,7 @@ import { adjacentMatch, findCodeMatches } from "./codeSearch";
 import { commitNavigationTarget } from "./commitPresentation";
 import { reviewViewKey } from "./scrollPosition";
 import { useReviewShortcuts } from "./useReviewShortcuts";
+import { focusFirstPane, focusPane } from "./panes";
 import { filesInTreeOrder } from "./tree";
 import { useWindowChrome } from "./windowChrome/useWindowChrome";
 import { windowChromeCapabilities, type ReviewView, type WindowChromeKind } from "./windowChrome/model";
@@ -87,6 +88,18 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
       dispatch({ type: "submit-failed", error: errorMessage(error) });
     });
   }, [backend]);
+
+  const changesScope = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (view === "changes") focusFirstPane(changesScope.current);
+  }, [view]);
+  useEffect(() => {
+    const focused = document.activeElement;
+    if (view === "changes" && (focused === null || focused === document.body)) focusFirstPane(changesScope.current);
+  }, [state.phase, sidebarOpen]);
+  useEffect(() => {
+    if (!findOpen && document.activeElement === document.body) focusPane(changesScope.current, "diff");
+  }, [findOpen]);
 
   const showView = useCallback((next: ReviewView) => {
     if (next === "history") {
@@ -228,7 +241,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
           }}
         />
       ) : null}
-      <div class={`${styles.content} ${sidebarOpen ? "" : styles.sidebarHidden} ${view === "changes" ? "" : styles.hiddenView}`}>
+      <div ref={changesScope} data-view="changes" class={`${styles.content} ${sidebarOpen ? "" : styles.sidebarHidden} ${view === "changes" ? "" : styles.hiddenView}`}>
         {sidebarOpen ? (
           <FileTree
             files={state.data.files}

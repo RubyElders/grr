@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef } from "preact/hooks";
 import type { FileDiff } from "../types";
 import { baseName, buildFileTree, filteredFiles, type FileTreeNode } from "../tree";
+import { clearFilterOnEscape } from "../panes";
 import { Icon } from "./Icon";
 import styles from "./FileTree.module.css";
 
@@ -25,7 +26,7 @@ export function FileTree(props: FileTreeProps) {
     active?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [props.activeFileId]);
   return (
-    <aside class={styles.sidebar} aria-label="Changed files">
+    <aside class={styles.sidebar} aria-label="Changed files" data-pane="files" tabIndex={-1}>
       <div class={styles.searchBox}>
         <Icon name="search" />
         <input
@@ -34,6 +35,7 @@ export function FileTree(props: FileTreeProps) {
           placeholder="Filter files…"
           value={props.filter}
           onInput={(event) => props.onFilter(event.currentTarget.value)}
+          onKeyDown={(event) => clearFilterOnEscape(event, () => props.onFilter(""))}
         />
       </div>
       <div class={styles.count}>{visible.length} of {props.files.length} files</div>

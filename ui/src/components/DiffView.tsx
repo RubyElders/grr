@@ -147,7 +147,7 @@ export function DiffView(props: DiffViewProps) {
   }, [props.fileNavigation, props.viewKey]);
 
   if (props.files.length === 0) {
-    return <main class={styles.empty}><h2>No changed files</h2><p>This commit has no reviewable tree changes.</p></main>;
+    return <main class={styles.empty} data-pane="diff" tabIndex={-1}><h2>No changed files</h2><p>This commit has no reviewable tree changes.</p></main>;
   }
   const updateVisibleFile = () => {
     const element = pane.current;
@@ -182,19 +182,21 @@ export function DiffView(props: DiffViewProps) {
     });
   };
   return (
-    <main ref={pane} class={styles.pane} aria-label="Commit diff" onScroll={updateVisibleFile}>
-      {props.files.map((file) => (
-        <DiffFileCard
-          key={file.id}
-          file={file}
-          rendered={nearbyFileIds.has(file.id) || forcedFileIds.has(file.id)}
-          contentHeight={Math.min(MAX_VIRTUAL_CONTENT_HEIGHT, contentHeights.current.get(file.id) ?? estimatedContentHeight(file))}
-          onContentHeight={rememberContentHeight}
-          searchMatchesByLine={searchMatchesByLine}
-          {...props}
-        />
-      ))}
-    </main>
+    <div class={styles.frame}>
+      <main ref={pane} class={styles.pane} aria-label="Commit diff" data-pane="diff" tabIndex={-1} onScroll={updateVisibleFile}>
+        {props.files.map((file) => (
+          <DiffFileCard
+            key={file.id}
+            file={file}
+            rendered={nearbyFileIds.has(file.id) || forcedFileIds.has(file.id)}
+            contentHeight={Math.min(MAX_VIRTUAL_CONTENT_HEIGHT, contentHeights.current.get(file.id) ?? estimatedContentHeight(file))}
+            onContentHeight={rememberContentHeight}
+            searchMatchesByLine={searchMatchesByLine}
+            {...props}
+          />
+        ))}
+      </main>
+    </div>
   );
 }
 

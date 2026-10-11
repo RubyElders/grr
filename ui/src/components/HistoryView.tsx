@@ -2,13 +2,16 @@ import { Fragment } from "preact";
 import { memo } from "preact/compat";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ReviewBackend } from "../backend";
+import { adjacentMatch, findCodeMatches, type CodeMatch } from "../codeSearch";
 import { fullMessageBody, summarizeCommitAuthors } from "../commitPresentation";
 import { historyGraph, type GraphRow } from "../historyGraph";
+import { clearFilterOnEscape, cyclePane, focusPane, focusPaneFilter, paneOf } from "../panes";
 import { matchesShortcut, shortcutTitle } from "../shortcuts";
 import { filesInTreeOrder } from "../tree";
 import { WORKTREE_COMMIT_ID, type FileDiff, type HistoryCommit, type ReviewData } from "../types";
 import { DiffView } from "./DiffView";
 import { FileTree } from "./FileTree";
+import { FindPopover } from "./FindPopover";
 import styles from "./HistoryView.module.css";
 
 const PAGE_SIZE = 200;
@@ -16,7 +19,7 @@ const LANE_WIDTH = 14;
 const ROW_HEIGHT = 28;
 const LANE_COLORS = ["var(--blue)", "var(--green)", "#8250df", "#bf8700", "var(--red)", "#1b7c83"];
 const NO_DRAFTS = {};
-const NO_MATCHES: never[] = [];
+const NO_MATCHES: CodeMatch[] = [];
 
 interface HistoryViewProps {
   backend: ReviewBackend;
@@ -32,7 +35,6 @@ interface HistoryViewProps {
 export function HistoryView(props: HistoryViewProps) {
   const { backend, onHeadRef } = props;
   const list = useRef<HTMLDivElement>(null);
-  const filterInput = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLElement>(null);
   const [commits, setCommits] = useState<HistoryCommit[]>([]);
   const [hasMore, setHasMore] = useState(false);
@@ -51,6 +53,9 @@ export function HistoryView(props: HistoryViewProps) {
   const [activeFileId, setActiveFileId] = useState<string | null>(null);
   const [fileNavigation, setFileNavigation] = useState<{ fileId: string; requestId: number } | null>(null);
   const [listHeight, setListHeight] = useState<number | null>(null);
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findIndex, setFindIndex] = useState(-1);
 
   const loadPage = useCallback((offset: number) => {
     setLoading(true);
@@ -155,62 +160,112 @@ export function HistoryView(props: HistoryViewProps) {
   }, []);
   const onRowOpen = useCallback((id: string) => rowActions.current.openOne(id), []);
   const shownCount = shownKey === "" ? 0 : shownKey.split(",").length;
+  const findMatches = useMemo(() => (findOpen ? findCodeMatches(files ?? [], findQuery) : NO_MATCHES), [files, findOpen, findQuery]);
+  const activeFindIndex = findIndex < findMatches.length ? findIndex : findMatches.length > 0 ? 0 : -1;
+  const closeFind = useCallback(() => {
+    setFindOpen(false);
+    focusPane(root.current, "diff");
+  }, []);
+
+  useEffect(() => {
+    if (!props.hidden) focusPane(root.current, "commits");
+  }, [props.hidden]);
 
   useLayoutEffect(() => {
     if (props.hidden || !props.keyboardEnabled) return;
     const onKeyDown = (event: KeyboardEvent) => {
+      const scope = root.current;
       const typing = isTextEntryTarget(event.target);
       const onControl = (event.target as Element | null)?.closest?.("button, a") != null;
-      const extendUp = matchesShortcut(event, "historyExtend", "up");
-      const extendDown = matchesShortcut(event, "historyExtend", "down");
-      const step = matchesShortcut(event, "historyPrevious", "arrow") || (!typing && matchesShortcut(event, "historyPrevious", "vim")) || extendUp
-        ? -1
-        : matchesShortcut(event, "historyNext", "arrow") || (!typing && matchesShortcut(event, "historyNext", "vim")) || extendDown
-          ? 1
-          : 0;
-      const pageRows = Math.max(1, Math.floor((list.current?.clientHeight ?? 0) / ROW_HEIGHT) - 1);
-      const target = step !== 0 ? (focusIndex < 0 ? 0 : focusIndex + step)
-        : matchesShortcut(event, "historyPageUp") ? Math.max(0, focusIndex) - pageRows
-          : matchesShortcut(event, "historyPageDown") ? Math.max(0, focusIndex) + pageRows
-            : !typing && matchesShortcut(event, "historyFirst") ? 0
-              : !typing && matchesShortcut(event, "historyLast") ? visible.length - 1
-                : null;
-      if (target !== null) {
+      const inFind = (event.target as Element | null)?.closest?.("[role='search']") != null;
+      if (findOpen) {
+        const findInput = (event.target as Element | null)?.matches?.("[data-find-input]") === true;
+        const next = matchesShortcut(event, "nextMatch") && (!matchesShortcut(event, "nextMatch", "enter") || findInput);
+        const previous = matchesShortcut(event, "previousMatch") && (!matchesShortcut(event, "previousMatch", "enter") || findInput);
+        if (next || previous) {
+          event.preventDefault();
+          setFindIndex(adjacentMatch(activeFindIndex, findMatches.length, previous ? -1 : 1));
+          return;
+        }
+        if (matchesShortcut(event, "dismiss") && (inFind || !typing)) {
+          event.preventDefault();
+          closeFind();
+          return;
+        }
+      }
+      if (inFind) return;
+      const nextPane = matchesShortcut(event, "nextPane");
+      if (nextPane || matchesShortcut(event, "previousPane")) {
         event.preventDefault();
-        const index = Math.min(visible.length - 1, Math.max(0, target));
-        selectAt(index, extendUp || extendDown ? "range" : "single");
-        if (index >= visible.length - 1 && hasMore && !loading && query === "") void loadPage(commits.length);
+        cyclePane(scope, paneOf(event.target), nextPane ? 1 : -1);
         return;
       }
+      const pane = paneOf(event.target) ?? "commits";
       if (matchesShortcut(event, "historyFilter", "native") || (!typing && matchesShortcut(event, "historyFilter", "slash"))) {
         event.preventDefault();
-        filterInput.current?.focus();
-        filterInput.current?.select();
+        if (pane !== "diff") {
+          focusPaneFilter(scope, pane);
+        } else if (findOpen) {
+          const input = scope?.querySelector<HTMLInputElement>("[data-find-input]");
+          input?.focus();
+          input?.select();
+        } else {
+          setFindOpen(true);
+        }
         return;
       }
-      if (typing && !matchesShortcut(event, "historyOpen")) return;
-      if (matchesShortcut(event, "historyOpen") && !onControl) {
+      const arrowUp = matchesShortcut(event, "historyPrevious", "arrow");
+      const arrowDown = matchesShortcut(event, "historyNext", "arrow");
+      const vimUp = !typing && matchesShortcut(event, "historyPrevious", "vim");
+      const vimDown = !typing && matchesShortcut(event, "historyNext", "vim");
+      const fileStep = pane === "files" && (arrowUp || vimUp) ? -1
+        : pane === "files" && (arrowDown || vimDown) ? 1
+          : pane === "diff" && vimUp ? -1
+            : pane === "diff" && vimDown ? 1
+              : !typing && matchesShortcut(event, "previousDiffFile") ? -1
+                : !typing && matchesShortcut(event, "nextDiffFile") ? 1
+                  : 0;
+      if (fileStep !== 0) {
         event.preventDefault();
-        open();
-        return;
-      }
-      if (matchesShortcut(event, "historyMessage")) {
-        event.preventDefault();
-        setMessageOpen((value) => !value);
-        return;
-      }
-      const fileStep = matchesShortcut(event, "previousDiffFile") ? -1 : matchesShortcut(event, "nextDiffFile") ? 1 : 0;
-      if (fileStep !== 0 && files && files.length > 0) {
-        event.preventDefault();
+        if (!files || files.length === 0) return;
         const current = files.findIndex((file) => file.id === activeFileId);
         const next = files[Math.min(files.length - 1, Math.max(0, current < 0 ? 0 : current + fileStep))]!;
         setActiveFileId(next.id);
         setFileNavigation((previous) => ({ fileId: next.id, requestId: (previous?.requestId ?? 0) + 1 }));
+        return;
+      }
+      if (pane === "commits") {
+        const extendUp = matchesShortcut(event, "historyExtend", "up");
+        const extendDown = matchesShortcut(event, "historyExtend", "down");
+        const step = arrowUp || vimUp || extendUp ? -1 : arrowDown || vimDown || extendDown ? 1 : 0;
+        const pageRows = Math.max(1, Math.floor((list.current?.clientHeight ?? 0) / ROW_HEIGHT) - 1);
+        const target = step !== 0 ? (focusIndex < 0 ? 0 : focusIndex + step)
+          : matchesShortcut(event, "historyPageUp") ? Math.max(0, focusIndex) - pageRows
+            : matchesShortcut(event, "historyPageDown") ? Math.max(0, focusIndex) + pageRows
+              : !typing && matchesShortcut(event, "historyFirst") ? 0
+                : !typing && matchesShortcut(event, "historyLast") ? visible.length - 1
+                  : null;
+        if (target !== null) {
+          event.preventDefault();
+          const index = Math.min(visible.length - 1, Math.max(0, target));
+          selectAt(index, extendUp || extendDown ? "range" : "single");
+          if (index >= visible.length - 1 && hasMore && !loading && query === "") void loadPage(commits.length);
+          return;
+        }
+        if (matchesShortcut(event, "historyOpen") && !onControl) {
+          event.preventDefault();
+          open();
+          return;
+        }
+      }
+      if (!typing && matchesShortcut(event, "historyMessage")) {
+        event.preventDefault();
+        setMessageOpen((value) => !value);
       }
     };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [activeFileId, commits.length, files, focusIndex, hasMore, loadPage, loading, open, props.hidden, props.keyboardEnabled, query, selectAt, visible]);
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => document.removeEventListener("keydown", onKeyDown, true);
+  }, [activeFileId, activeFindIndex, closeFind, commits.length, files, findMatches.length, findOpen, focusIndex, hasMore, loadPage, loading, open, props.hidden, props.keyboardEnabled, query, selectAt, visible]);
 
   useEffect(() => {
     const id = selected[selected.length - 1];
@@ -226,7 +281,7 @@ export function HistoryView(props: HistoryViewProps) {
     divider.setPointerCapture?.(event.pointerId);
     const top = section.getBoundingClientRect().top;
     const limit = section.clientHeight - 160;
-    const move = (moveEvent: PointerEvent) => setListHeight(Math.max(120, Math.min(limit, moveEvent.clientY - top)));
+    const move = (moveEvent: PointerEvent) => setListHeight(Math.max(160, Math.min(limit, moveEvent.clientY - top)));
     const stop = () => {
       divider.removeEventListener("pointermove", move);
       divider.removeEventListener("pointerup", stop);
@@ -241,47 +296,42 @@ export function HistoryView(props: HistoryViewProps) {
       ref={root}
       class={`${styles.history} ${props.hidden ? styles.hidden : ""}`}
       aria-label="History"
-      style={listHeight === null ? undefined : { gridTemplateRows: `auto ${listHeight}px auto auto minmax(0, 1fr)` }}
+      style={listHeight === null ? undefined : { gridTemplateRows: `${listHeight}px auto auto minmax(0, 1fr)` }}
     >
-      <div class={styles.toolbar}>
-        <input
-          ref={filterInput}
-          class={styles.filter}
-          type="search"
-          aria-label="Filter commits"
-          placeholder="Filter commits by message, author, hash or ref..."
-          value={filter}
-          onInput={(event) => setFilter(event.currentTarget.value)}
-          onKeyDown={(event) => {
-            if (!matchesShortcut(event, "historyBack")) return;
-            event.preventDefault();
-            event.stopPropagation();
-            if (filter !== "") setFilter("");
-            else event.currentTarget.blur();
-          }}
-        />
-        <span class={styles.count}>{query === "" ? `${commits.length}${hasMore ? "+" : ""} commits` : `${visible.length} of ${commits.length} commits`}</span>
-      </div>
-      <div ref={list} class={styles.list} role="listbox" aria-label="Commits" aria-multiselectable="true">
-        {visible.map((commit, index) => (
-          <CommitRow
-            key={commit.id}
-            commit={commit}
-            index={index}
-            graphRow={graph ? graph[index]! : null}
-            graphWidth={graphWidth}
-            selected={selectedSet.has(commit.id)}
-            outside={!inReview.has(commit.id)}
-            baseRef={commit.id === mergeBaseId ? props.review.comparison.baseRef : null}
-            onClick={onRowClick}
-            onOpen={onRowOpen}
+      <div class={styles.commitsPane} data-pane="commits" tabIndex={-1}>
+        <div class={styles.toolbar}>
+          <input
+            class={styles.filter}
+            type="search"
+            aria-label="Filter commits"
+            placeholder="Filter commits by message, author, hash or ref..."
+            value={filter}
+            onInput={(event) => setFilter(event.currentTarget.value)}
+            onKeyDown={(event) => clearFilterOnEscape(event, () => setFilter(""))}
           />
-        ))}
-        {error ? <div class={styles.notice} role="alert">{error}</div> : null}
-        {loading ? <div class={styles.notice} role="status">Loading history...</div> : null}
-        {!loading && hasMore ? (
-          <button type="button" class={styles.more} onClick={() => void loadPage(commits.length)}>Load more commits</button>
-        ) : null}
+          <span class={styles.count}>{query === "" ? `${commits.length}${hasMore ? "+" : ""} commits` : `${visible.length} of ${commits.length} commits`}</span>
+        </div>
+        <div ref={list} class={styles.list} role="listbox" aria-label="Commits" aria-multiselectable="true">
+          {visible.map((commit, index) => (
+            <CommitRow
+              key={commit.id}
+              commit={commit}
+              index={index}
+              graphRow={graph ? graph[index]! : null}
+              graphWidth={graphWidth}
+              selected={selectedSet.has(commit.id)}
+              outside={!inReview.has(commit.id)}
+              baseRef={commit.id === mergeBaseId ? props.review.comparison.baseRef : null}
+              onClick={onRowClick}
+              onOpen={onRowOpen}
+            />
+          ))}
+          {error ? <div class={styles.notice} role="alert">{error}</div> : null}
+          {loading ? <div class={styles.notice} role="status">Loading history...</div> : null}
+          {!loading && hasMore ? (
+            <button type="button" class={styles.more} onClick={() => void loadPage(commits.length)}>Load more commits</button>
+          ) : null}
+        </div>
       </div>
       <div class={styles.divider} role="separator" aria-orientation="horizontal" aria-label="Resize commit list" onPointerDown={startResize} />
       <CommitStrip
@@ -321,8 +371,8 @@ export function HistoryView(props: HistoryViewProps) {
                   collapsedFiles={collapsedFiles}
                   openLineId={null}
                   drafts={NO_DRAFTS}
-                  searchMatches={NO_MATCHES}
-                  activeSearchMatchIndex={-1}
+                  searchMatches={findMatches}
+                  activeSearchMatchIndex={findOpen ? activeFindIndex : -1}
                   onToggleFile={(fileId) => setCollapsedFiles((current) => toggled(current, fileId))}
                   onOpenComment={() => undefined}
                   onCloseComment={() => undefined}
@@ -332,6 +382,20 @@ export function HistoryView(props: HistoryViewProps) {
                 />
               </>
             )}
+        {findOpen ? (
+          <FindPopover
+            query={findQuery}
+            activeIndex={activeFindIndex}
+            matchCount={findMatches.length}
+            onQuery={(value) => {
+              setFindQuery(value);
+              setFindIndex(0);
+            }}
+            onPrevious={() => setFindIndex(adjacentMatch(activeFindIndex, findMatches.length, -1))}
+            onNext={() => setFindIndex(adjacentMatch(activeFindIndex, findMatches.length, 1))}
+            onClose={closeFind}
+          />
+        ) : null}
       </div>
     </section>
   );

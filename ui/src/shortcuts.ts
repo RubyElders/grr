@@ -2,6 +2,8 @@ export type ShortcutId =
   | "help"
   | "toggleView"
   | "toggleSidebar"
+  | "nextPane"
+  | "previousPane"
   | "find"
   | "nextMatch"
   | "previousMatch"
@@ -55,7 +57,7 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
   shortcut("help", "Window", "Show keyboard shortcuts", [chord("question", "?", { shift: "any" })]),
   shortcut("toggleView", "Window", "Switch between Changes and History", [chord("letter", "v")]),
   shortcut("toggleSidebar", "Window", "Toggle the file sidebar", [chord("native", "b", { nativeModifier: true })]),
-  shortcut("find", "Search", "Open find in changed code", [
+  shortcut("find", "Search", "Filter the file list or find in the diff", [
     chord("native", "f", { nativeModifier: true }),
     chord("function", "F3"),
   ]),
@@ -69,6 +71,8 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
     chord("function", "F3", { shift: true }),
     chord("native", "g", { nativeModifier: true, shift: true }),
   ]),
+  shortcut("nextPane", "Navigation", "Focus the next pane", [chord("tab", "Tab", { code: "Tab" })]),
+  shortcut("previousPane", "Navigation", "Focus the previous pane", [chord("tab", "Tab", { code: "Tab", shift: true })]),
   shortcut("browseCommits", "Navigation", "Browse commits", [chord("letter", "c")]),
   shortcut("showHighlightedCommit", "Navigation", "Show the highlighted commit", [chord("enter", "Enter")]),
   shortcut("toggleHighlightedCommit", "Navigation", "Toggle the highlighted commit", [chord("space", " ", { code: "Space" })]),
@@ -80,18 +84,18 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
     chord("arrow", "ArrowRight"),
     chord("vim", "l"),
   ]),
-  shortcut("previousFile", "Navigation", "Jump to the previous file or commit", [
+  shortcut("previousFile", "Navigation", "Jump to the previous file (arrows scroll a focused diff)", [
     chord("arrow", "ArrowUp"),
     chord("vim", "k"),
   ]),
-  shortcut("nextFile", "Navigation", "Jump to the next file or commit", [
+  shortcut("nextFile", "Navigation", "Jump to the next file (arrows scroll a focused diff)", [
     chord("arrow", "ArrowDown"),
     chord("vim", "j"),
   ]),
   shortcut("previousDiffFile", "Navigation", "Jump to the previous file in the diff", [chord("bracket", "[")]),
   shortcut("nextDiffFile", "Navigation", "Jump to the next file in the diff", [chord("bracket", "]")]),
-  shortcut("historyPrevious", "History", "Select the previous commit", [chord("arrow", "ArrowUp"), chord("vim", "k")]),
-  shortcut("historyNext", "History", "Select the next commit", [chord("arrow", "ArrowDown"), chord("vim", "j")]),
+  shortcut("historyPrevious", "History", "Select the previous commit or file in the focused list", [chord("arrow", "ArrowUp"), chord("vim", "k")]),
+  shortcut("historyNext", "History", "Select the next commit or file in the focused list", [chord("arrow", "ArrowDown"), chord("vim", "j")]),
   shortcut("historyExtend", "History", "Extend the selection up or down", [
     chord("up", "ArrowUp", { shift: true }),
     chord("down", "ArrowDown", { shift: true }),
@@ -101,9 +105,9 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
   shortcut("historyPageUp", "History", "Move a page of commits up", [chord("page", "PageUp")]),
   shortcut("historyPageDown", "History", "Move a page of commits down", [chord("page", "PageDown")]),
   shortcut("historyOpen", "History", "Open the selection in Changes", [chord("enter", "Enter")]),
-  shortcut("historyFilter", "History", "Filter commits", [chord("slash", "/", { shift: "any" }), chord("native", "f", { nativeModifier: true })]),
+  shortcut("historyFilter", "History", "Filter commits or files, or find in the diff", [chord("slash", "/", { shift: "any" }), chord("native", "f", { nativeModifier: true })]),
   shortcut("historyMessage", "History", "Show or hide the full commit message", [chord("letter", "m")]),
-  shortcut("historyBack", "History", "Clear the filter or return to Changes", [chord("escape", "Escape")]),
+  shortcut("historyBack", "History", "Return to Changes", [chord("escape", "Escape")]),
   shortcut("pageUp", "Navigation", "Page the diff up", [chord("space", " ", { code: "Space", shift: true })]),
   shortcut("pageDown", "Navigation", "Page the diff down", [chord("space", " ", { code: "Space" })]),
   shortcut("primaryAction", "Review", "Approve or share queued comments", [chord("native", "Enter", { nativeModifier: true })]),
@@ -176,7 +180,7 @@ function availableChords(id: ShortcutId, mac = /Mac/.test(navigator.platform)) {
 function matchesChord(event: ShortcutEvent, item: ShortcutChord): boolean {
   const keyMatches = item.key.length === 1
     ? event.key.toLowerCase() === item.key.toLowerCase()
-    : event.key === item.key;
+    : event.key === item.key || (event.key === "Unidentified" && item.code !== undefined);
   if (!keyMatches || (item.code && event.code !== item.code)) return false;
   return matchesModifiers(event, item);
 }

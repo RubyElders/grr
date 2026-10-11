@@ -32,6 +32,8 @@
   --caption-pressed: rgba(0, 0, 0, 0.04);
   --shell-inset: 12px;
   --content-inset: 24px;
+  --pane-focus: var(--blue);
+  --selection-inactive: color-mix(in srgb, var(--fg) 9%, transparent);
 }
 
 @media (max-width: 1000px) {
@@ -76,3 +78,4 @@ body { background: var(--canvas); color: var(--fg); font-size: 14px; }
 button, input, textarea { font: inherit; }
 button { color: inherit; }
 :focus-visible { outline: 2px solid var(--blue); outline-offset: -1px; }
+[data-pane]:focus-visible { outline: none; }
