@@ -56,9 +56,7 @@ pub enum WindowChromeAction {
     Picker,
     Newer,
     Older,
-    #[cfg(any(target_os = "linux", test))]
     Changes,
-    #[cfg(any(target_os = "linux", test))]
     History,
 }
 
