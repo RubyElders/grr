@@ -31,11 +31,12 @@ cargo install --path src-tauri --locked --features custom-protocol
 
 ```sh
 grr
-grr ../another-project
-grr --base main
+grr main
+grr log
+grr -C ../another-project
 ```
 
-The app detects the base branch automatically. Uncommitted changes open as a separate virtual commit; use the commit picker to review individual commits or the whole branch.
+`grr` (or `grr diff`) opens the changes and `grr log` opens the commit history; press `v` to switch between them. The app detects the base branch automatically; pass a revision such as `main` (or `--merge-base main`) to choose it. Like Git, `-C` opens another repository. Run `grr help` for all options. Uncommitted changes open as a separate virtual commit; use the commit picker to review individual commits or the whole branch.
 
 Add comments with the line's `+` button. `Ctrl+Enter` approves or shares comments; `Ctrl+Alt+Enter` also copies the result. Press `?` for all shortcuts. Closing the window cancels the review.
 
