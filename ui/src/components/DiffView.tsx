@@ -131,7 +131,9 @@ export function DiffView(props: DiffViewProps) {
     if (!card || !root.contains(card)) return;
     const shift = card.getBoundingClientRect().top - root.getBoundingClientRect().top - anchor.offset
       + root.scrollTop - anchor.scrollTop;
-    if (shift !== 0) root.scrollTop += shift;
+    if (shift === 0) return;
+    const clamped = root.scrollTop + root.clientHeight >= root.scrollHeight - 1;
+    root.scrollTop = (clamped ? anchor.scrollTop : root.scrollTop) + shift;
   }, [nearbyFileIds]);
 
   useLayoutEffect(() => {
