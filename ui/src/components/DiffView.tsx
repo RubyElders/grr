@@ -17,6 +17,9 @@ interface DiffViewProps {
   fileNavigation?: { fileId: string; requestId: number } | null;
   showSourceCommits: boolean;
   readOnly?: boolean;
+  emptyLabel?: string;
+  loading?: boolean;
+  error?: string | null;
   collapsedFiles: ReadonlySet<string>;
   openLineId: string | null;
   drafts: Readonly<Record<string, DraftComment>>;
@@ -146,10 +149,8 @@ export function DiffView(props: DiffViewProps) {
     root.scrollTo({ top, behavior: "instant" });
   }, [props.fileNavigation, props.viewKey]);
 
-  if (props.files.length === 0) {
-    return <main class={styles.empty} data-pane="diff" tabIndex={-1}><h2>No changed files</h2><p>This commit has no reviewable tree changes.</p></main>;
-  }
   const updateVisibleFile = () => {
+    if (props.loading) return;
     const element = pane.current;
     if (element) {
       const cards = element.querySelectorAll<HTMLElement>("article[data-file-id]");
@@ -183,7 +184,9 @@ export function DiffView(props: DiffViewProps) {
   };
   return (
     <div class={styles.frame}>
-      <main ref={pane} class={styles.pane} aria-label="Commit diff" data-pane="diff" tabIndex={-1} onScroll={updateVisibleFile}>
+      <main ref={pane} class={`${styles.pane} ${props.files.length === 0 ? styles.empty : ""}`} aria-label="Commit diff" data-pane="diff" tabIndex={-1} onScroll={updateVisibleFile}>
+        {props.loading ? <p role="status">Loading changes...</p> : props.error ? <p role="alert">{props.error}</p>
+          : props.files.length === 0 ? <><h2>{props.emptyLabel ?? "No changed files"}</h2><p>{props.emptyLabel ? "Try clearing the filter." : "This commit has no reviewable tree changes."}</p></> : null}
         {props.files.map((file) => (
           <DiffFileCard
             key={file.id}

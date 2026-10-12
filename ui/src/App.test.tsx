@@ -216,7 +216,9 @@ describe("ReviewApp", () => {
     fireEvent.keyDown(picker, { key: "ArrowUp" });
     expect(showAll).toHaveAttribute("data-active", "true");
     fireEvent.keyDown(picker, { key: " ", code: "Space" });
-    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([]));
+    expect(screen.queryByRole("dialog", { name: "Choose commits" })).not.toBeInTheDocument();
+    expect(screen.getByTitle("Choose commits to review")).toHaveTextContent("5 commits against origin/main");
+    expect(backend.selectCommits).not.toHaveBeenCalled();
 
     fireEvent.keyDown(document, { key: "c" });
     const reopened = screen.getByRole("dialog", { name: "Choose commits" });
@@ -516,6 +518,32 @@ describe("ReviewApp", () => {
     const engine = screen.getByRole("button", { name: /^engine$/ });
     await user.click(engine);
     expect(engine).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("uses the file filter for the diff, code search and keyboard navigation", async () => {
+    Element.prototype.scrollTo = vi.fn();
+    const { user } = setup();
+    await screen.findByText("5 commits against origin/main");
+    const filter = screen.getByRole("searchbox", { name: "Filter files" });
+    const diff = screen.getByRole("main", { name: "Commit diff" });
+    await user.type(filter, "reference");
+    expect([...diff.querySelectorAll("article")].map((card) => card.dataset.fileId)).toEqual(["f1"]);
+    expect(screen.queryByLabelText(/const char\* labelEn;/)).not.toBeInTheDocument();
+    diff.focus();
+    await user.keyboard("kj");
+    expect(screen.getByRole("navigation", { name: "File tree" }).querySelector("[aria-current='true']")).toHaveAttribute("data-file-id", "f1");
+    await user.keyboard("{Control>}f{/Control}");
+    await user.type(screen.getByRole("searchbox", { name: "Find in code" }), "labelEn");
+    expect(screen.getByRole("status")).toHaveTextContent("No results");
+    await user.keyboard("{Escape}");
+    await user.clear(filter);
+    expect(screen.getByRole("main", { name: "Commit diff" })).toBe(diff);
+    expect(diff.querySelectorAll("article")).toHaveLength(2);
+    await user.type(filter, "missing-file");
+    expect(within(diff).getByText("No matching files")).toBeInTheDocument();
+    expect(diff.querySelector("article")).toBeNull();
+    expect(screen.getByRole("navigation", { name: "File tree" }).querySelector("[aria-current='true']")).toBeNull();
+    Reflect.deleteProperty(Element.prototype, "scrollTo");
   });
 
   it("tracks the visible diff file and follows it in the sidebar", async () => {

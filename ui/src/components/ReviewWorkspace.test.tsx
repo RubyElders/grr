@@ -40,8 +40,28 @@ async function openHistory(user: ReturnType<typeof userEvent.setup>) {
   return screen.findByRole("listbox", { name: "Commits" });
 }
 
-describe("HistoryView", () => {
-  it("keeps focus in the visible view while a Changes editor is preserved", async () => {
+describe("Review workspace", () => {
+  it("does not mark a review boundary when HEAD has no review changes", async () => {
+    const data = { ...review, commits: [], selectedCommitIds: [], files: [],
+      comparison: { ...review.comparison, mergeBaseId: review.comparison.headId } };
+    setup("history", data, [{ ...history[1]!, id: data.comparison.headId }]);
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    await within(list).findByText("Improve graphics options");
+    expect(within(list).queryByRole("separator")).not.toBeInTheDocument();
+    expect(screen.getByText("No changed files")).toBeInTheDocument();
+  });
+
+  it("does not mark a boundary for a selected commit with no changes", async () => {
+    const { backend, user } = setup();
+    const list = await openHistory(user);
+    vi.mocked(backend.selectCommits).mockResolvedValue({ ...review, files: [] });
+    await user.click(await within(list).findByText("Improve graphics options"));
+    await waitFor(() => expect(within(list).queryByRole("separator")).not.toBeInTheDocument());
+    await screen.findByText("No changed files");
+    expect(within(list).queryByRole("separator")).not.toBeInTheDocument();
+  });
+
+  it("preserves the same focused editor when changing layouts", async () => {
     const { user } = setup();
     await screen.findByText("5 commits against origin/main");
     screen.getByRole("main", { name: "Commit diff" }).focus();
@@ -51,9 +71,8 @@ describe("HistoryView", () => {
     await openHistory(user);
     const historyScope = screen.getByRole("region", { name: "History" });
     await within(historyScope).findByRole("main", { name: "Commit diff" });
-    await waitFor(() => expect(historyScope.querySelector("[data-pane='commits']")).toHaveFocus());
-    await user.keyboard("{Tab}{Tab}");
-    expect(historyScope.querySelector("[data-pane='diff']")).toHaveFocus();
+    expect(within(historyScope).getByRole("textbox", { name: "Review comment" })).toBe(editor);
+    expect(editor).toHaveFocus();
     await user.click(screen.getByRole("button", { name: "Changes" }));
     await waitFor(() => expect(editor).toHaveFocus());
     expect(editor).toHaveValue("Keep my unsaved note.");
@@ -94,7 +113,7 @@ describe("HistoryView", () => {
     expect(marker.querySelector("path")).toHaveAttribute("d", "M10 0V20");
   });
 
-  it("lists history with refs and the base marker and shows the selected commit read-only", async () => {
+  it("lists history with refs and the base marker while sharing the active review", async () => {
     const { backend, user } = setup();
     const list = await openHistory(user);
 
@@ -102,12 +121,13 @@ describe("HistoryView", () => {
     expect(within(list).getByText("main")).toBeTruthy();
     expect(within(list).getByText("base: origin/main")).toBeTruthy();
     expect(screen.getByText("History", { selector: "span" })).toBeTruthy();
-    await waitFor(() => expect(backend.getHistoryFiles).toHaveBeenCalledWith(["WORKTREE"]));
+    expect(backend.getHistoryFiles).not.toHaveBeenCalled();
+    expect(within(list).getAllByRole("option", { selected: true })).toHaveLength(review.commits.length);
     const section = screen.getByRole("region", { name: "History" });
     await within(section).findByRole("main", { name: "Commit diff" });
     const addButtons = within(section).queryAllByRole("button", { name: /^Add comment/, hidden: true });
     expect(addButtons.length).toBeGreaterThan(0);
-    expect(addButtons.every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
+    expect(addButtons.every((button) => !(button as HTMLButtonElement).disabled)).toBe(true);
   });
 
   it("opens a shift-selected range in Changes", async () => {
@@ -120,7 +140,7 @@ describe("HistoryView", () => {
 
     expect(screen.getByText("3 commits selected")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Open in Changes" }));
-    expect(backend.selectCommits).toHaveBeenCalledWith(review.commits.slice(1, 4).map((commit) => commit.id));
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenCalledWith(review.commits.slice(1, 4).map((commit) => commit.id)));
     expect(screen.getByRole("button", { name: "Changes" }).getAttribute("aria-pressed")).toBe("true");
   });
 
@@ -203,7 +223,7 @@ describe("HistoryView", () => {
     await user.keyboard("{ArrowDown}{ArrowDown}");
     expect(within(list).getAllByRole("option", { selected: true })[0]!.textContent).toContain("Add graphics labels");
     await user.keyboard("{Enter}");
-    expect(backend.selectCommits).toHaveBeenCalledWith([review.commits[2]!.id]);
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenCalledWith([review.commits[2]!.id]));
 
     await user.keyboard("v");
     await user.keyboard("{Escape}");
@@ -212,12 +232,13 @@ describe("HistoryView", () => {
   });
 
   it("jumps, filters, steps files and toggles the message from the keyboard", async () => {
+    Element.prototype.scrollTo = vi.fn();
     const { user } = setup();
     const list = await openHistory(user);
     await within(list).findByText("Prepare graphics page");
     const selectedText = () => within(list).getAllByRole("option", { selected: true }).map((option) => option.textContent);
 
-    await waitFor(() => expect(selectedText()).toHaveLength(1));
+    await waitFor(() => expect(selectedText()).toHaveLength(review.commits.length));
     await user.keyboard("{End}");
     expect(selectedText()[0]).toContain("Base commit");
     await user.keyboard("g");
@@ -230,6 +251,7 @@ describe("HistoryView", () => {
     await user.keyboard("g");
     const section = screen.getByRole("region", { name: "History" });
     await within(section).findByRole("main", { name: "Commit diff" });
+    await waitFor(() => expect(within(section).queryByText("Loading changes...")).not.toBeInTheDocument());
     const tree = within(section).getByRole("navigation", { name: "File tree" });
     const activeFile = () => tree.querySelector("[aria-current='true']")?.textContent;
     const first = activeFile();
@@ -259,5 +281,82 @@ describe("HistoryView", () => {
     await user.keyboard("{Escape}");
     expect(document.activeElement).not.toBe(filter);
     expect(screen.getByRole("button", { name: "History" }).getAttribute("aria-pressed")).toBe("true");
+    Reflect.deleteProperty(Element.prototype, "scrollTo");
+  });
+
+  it("cascades the commit and file filters through both layouts", async () => {
+    const { backend, user } = setup();
+    const list = await openHistory(user);
+    const id = review.commits[2]!.id;
+    const files = [review.files[0]!, { ...review.files[0]!, id: "docs", displayPath: "docs/notes.md" }];
+    vi.mocked(backend.selectCommits).mockResolvedValue({ ...review, selectedCommitIds: [id], files });
+    await user.type(screen.getByRole("searchbox", { name: "Filter commits" }), "Add graphics");
+    expect(within(list).getAllByRole("option", { selected: true })).toHaveLength(1);
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([id]));
+    await screen.findByTitle("docs/notes.md");
+    const diff = screen.getByRole("main", { name: "Commit diff" });
+    const fileFilter = screen.getByRole("searchbox", { name: "Filter files" });
+    await user.type(fileFilter, "notes");
+    expect([...diff.querySelectorAll("article")].map((card) => card.dataset.fileId)).toEqual(["docs"]);
+    const tree = screen.getByRole("navigation", { name: "File tree" });
+    expect([...tree.querySelectorAll("[data-file-id]")].map((row) => (row as HTMLElement).dataset.fileId)).toEqual(["docs"]);
+    expect(tree.querySelector("[aria-current='true']")).toHaveAttribute("data-file-id", "docs");
+
+    await user.click(screen.getByRole("button", { name: "Changes" }));
+    expect(screen.getByRole("main", { name: "Commit diff" })).toBe(diff);
+    expect(screen.getByRole("searchbox", { name: "Filter files" })).toBe(fileFilter);
+    expect(fileFilter).toHaveValue("notes");
+    expect(screen.getByTitle("Choose commits to review")).toHaveTextContent("Add graphics labels");
+    await user.click(screen.getByRole("button", { name: "History" }));
+    expect(screen.getByRole("searchbox", { name: "Filter commits" })).toHaveValue("Add graphics");
+    expect(screen.getByRole("main", { name: "Commit diff" })).toBe(diff);
+    expect(backend.selectCommits).toHaveBeenCalledOnce();
+  });
+
+  it("empties both downstream panes when a commit filter matches nothing", async () => {
+    const { backend, user } = setup();
+    const list = await openHistory(user);
+    await user.type(screen.getByRole("searchbox", { name: "Filter commits" }), "missing-commit");
+    await screen.findByText("No matching commits");
+    expect(within(list).queryAllByRole("option")).toHaveLength(0);
+    expect(screen.getByRole("navigation", { name: "File tree" }).querySelector("[data-file-id]")).toBeNull();
+    expect(screen.getByRole("main", { name: "Commit diff" }).querySelector("article")).toBeNull();
+    expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
+    screen.getByRole("main", { name: "Commit diff" }).focus();
+    await user.keyboard("{Control>}{Enter}{/Control}");
+    expect(backend.finishReview).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Changes" }));
+    expect(screen.getByText("No matching commits")).toBeInTheDocument();
+  });
+
+  it("keeps an outside-base preview read-only when switching layouts", async () => {
+    const { backend, user } = setup();
+    const list = await openHistory(user);
+    await user.click(await within(list).findByText("Base commit"));
+    await waitFor(() => expect(backend.getHistoryFiles).toHaveBeenCalledWith([baseId]));
+    await screen.findByText("Binary file changed");
+    await user.click(screen.getByRole("button", { name: "Changes" }));
+    expect(screen.getByTitle("Choose commits to review")).toHaveTextContent("Base commit");
+    expect(screen.getByRole("button", { name: "Approve" })).toBeDisabled();
+    expect(screen.getAllByRole("button", { name: /^Add comment/ }).every((button) => (button as HTMLButtonElement).disabled)).toBe(true);
+    screen.getByRole("main", { name: "Commit diff" }).focus();
+    await user.keyboard("{Control>}{Enter}{/Control}");
+    expect(backend.finishReview).not.toHaveBeenCalled();
+  });
+
+  it("preserves code search and restores diff focus across layouts", async () => {
+    const { user } = setup();
+    await screen.findByText("5 commits against origin/main");
+    const diff = screen.getByRole("main", { name: "Commit diff" });
+    diff.focus();
+    await user.keyboard("{Control>}f{/Control}");
+    const find = screen.getByRole("searchbox", { name: "Find in code" });
+    await user.type(find, "labelEn");
+    await user.click(screen.getByRole("button", { name: "History" }));
+    expect(screen.getByRole("searchbox", { name: "Find in code" })).toBe(find);
+    expect(find).toHaveValue("labelEn");
+    expect(find).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(diff).toHaveFocus();
   });
 });

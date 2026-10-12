@@ -1,4 +1,5 @@
 import type { ReviewComment, ReviewData, SubmittedReview } from "./types";
+import { filteredFiles } from "./tree";
 
 export interface DraftComment extends ReviewComment {}
 
@@ -30,6 +31,7 @@ export type ReviewAction =
   | { type: "loaded"; data: ReviewData }
   | { type: "failed"; error: string }
   | { type: "selection-started" }
+  | { type: "selection-cancelled" }
   | { type: "selection-loaded"; data: ReviewData }
   | { type: "filter"; value: string }
   | { type: "toggle-directory"; path: string }
@@ -51,25 +53,34 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
         data: action.data,
         phase: "ready",
         error: null,
-        activeFileId: action.data.files[0]?.id ?? null,
+        activeFileId: filteredFiles(action.data.files, state.filter)[0]?.id ?? null,
       };
     case "failed":
       return { ...state, phase: "error", error: action.error };
     case "selection-started":
       return { ...state, phase: "selecting", error: null, openLineId: null };
+    case "selection-cancelled":
+      return state.phase === "selecting" ? { ...state, phase: "ready", error: null } : state;
     case "selection-loaded":
       return {
         ...state,
         data: action.data,
         phase: "ready",
         error: null,
-        activeFileId: action.data.files[0]?.id ?? null,
+        activeFileId: filteredFiles(action.data.files, state.filter)[0]?.id ?? null,
         collapsedFiles: new Set(),
         drafts: {},
         openLineId: null,
       };
-    case "filter":
-      return { ...state, filter: action.value };
+    case "filter": {
+      const files = filteredFiles(state.data?.files ?? [], action.value);
+      return {
+        ...state,
+        filter: action.value,
+        activeFileId: files.some((file) => file.id === state.activeFileId) ? state.activeFileId : files[0]?.id ?? null,
+        openLineId: files.some((file) => file.hunks.some((hunk) => hunk.lines.some((line) => line.id === state.openLineId))) ? state.openLineId : null,
+      };
+    }
     case "toggle-directory":
       return {
         ...state,
@@ -81,8 +92,10 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
         collapsedFiles: toggled(state.collapsedFiles, action.fileId),
       };
     case "visible-file":
+      if (!filteredFiles(state.data?.files ?? [], state.filter).some((file) => file.id === action.fileId)) return state;
       return state.activeFileId === action.fileId ? state : { ...state, activeFileId: action.fileId };
     case "activate-file": {
+      if (!filteredFiles(state.data?.files ?? [], state.filter).some((file) => file.id === action.fileId)) return state;
       const collapsedDirectories = new Set(state.collapsedDirectories);
       const path = state.data?.files.find((file) => file.id === action.fileId)?.displayPath;
       const parts = path?.split("/") ?? [];
