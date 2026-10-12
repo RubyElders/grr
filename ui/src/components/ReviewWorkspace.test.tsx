@@ -41,6 +41,26 @@ async function openHistory(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("Review workspace", () => {
+  it("does not mark a review boundary when HEAD has no review changes", async () => {
+    const data = { ...review, commits: [], selectedCommitIds: [], files: [],
+      comparison: { ...review.comparison, mergeBaseId: review.comparison.headId } };
+    setup("history", data, [{ ...history[1]!, id: data.comparison.headId }]);
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    await within(list).findByText("Improve graphics options");
+    expect(within(list).queryByRole("separator")).not.toBeInTheDocument();
+    expect(screen.getByText("No changed files")).toBeInTheDocument();
+  });
+
+  it("does not mark a boundary for a selected commit with no changes", async () => {
+    const { backend, user } = setup();
+    const list = await openHistory(user);
+    vi.mocked(backend.selectCommits).mockResolvedValue({ ...review, files: [] });
+    await user.click(await within(list).findByText("Improve graphics options"));
+    await waitFor(() => expect(within(list).queryByRole("separator")).not.toBeInTheDocument());
+    await screen.findByText("No changed files");
+    expect(within(list).queryByRole("separator")).not.toBeInTheDocument();
+  });
+
   it("preserves the same focused editor when changing layouts", async () => {
     const { user } = setup();
     await screen.findByText("5 commits against origin/main");
