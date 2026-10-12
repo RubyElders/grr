@@ -13,6 +13,7 @@ const fileFor = (id: string) => ({ ...review.files[0]!, id, displayPath: `src/${
 async function setup(data = review) {
   const backend: ReviewBackend = {
     getReview: vi.fn().mockResolvedValue(data),
+    reloadReview: vi.fn().mockResolvedValue(data),
     getInitialView: vi.fn().mockResolvedValue("changes"),
     selectCommits: vi.fn().mockImplementation(async (ids: string[]) => ({
       ...review, selectedCommitIds: ids, files: ids.length === 0 ? review.files : ids.map(fileFor),
@@ -29,6 +30,30 @@ async function setup(data = review) {
 }
 
 describe("review scope", () => {
+  it("reloads files and history while keeping the file filter", async () => {
+    const { result, backend } = await setup();
+    const updated = { ...review, selectedCommitIds: ["WORKTREE"], files: [fileFor("fresh")] };
+    vi.mocked(backend.reloadReview).mockResolvedValue(updated);
+    act(() => result.current.dispatch({ type: "filter", value: "fresh" }));
+    await act(async () => { expect(await result.current.reload()).toBe(true); });
+    expect(result.current.data?.files).toEqual(updated.files);
+    expect(result.current.selectedIds).toEqual(["WORKTREE"]);
+    expect(result.current.state.filter).toBe("fresh");
+    expect(backend.getHistory).toHaveBeenCalledTimes(2);
+    expect(backend.selectCommits).not.toHaveBeenCalled();
+  });
+
+  it("keeps the snapshot and drafts when reload fails", async () => {
+    const { result, backend } = await setup();
+    act(() => result.current.dispatch({ type: "save-comment", comment: { fileId: "f0", lineId: "f0:h0:l1", body: "Keep me" } }));
+    vi.mocked(backend.reloadReview).mockRejectedValue(new Error("Cannot read repository"));
+    await act(async () => { expect(await result.current.reload()).toBe(false); });
+    expect(result.current.state.drafts["f0:h0:l1"]?.body).toBe("Keep me");
+    expect(result.current.data?.files).toEqual(review.files);
+    expect(result.current.state.error).toBe("Cannot read repository");
+    expect(result.current.pending).toBe(false);
+  });
+
   it("starts from the same commit selection as the review", async () => {
     const { result, backend } = await setup({ ...review, selectedCommitIds: ["WORKTREE"] });
     expect(result.current.selectedIds).toEqual(["WORKTREE"]);

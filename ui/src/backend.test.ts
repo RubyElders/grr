@@ -8,6 +8,12 @@ import { tauriBackend } from "./backend";
 describe("tauri backend adapter", () => {
   beforeEach(() => invoke.mockReset());
 
+  it("reloads through a fresh Git snapshot command", async () => {
+    invoke.mockResolvedValue({ files: [] });
+    await expect(tauriBackend.reloadReview()).resolves.toEqual({ files: [] });
+    expect(invoke).toHaveBeenCalledWith("reload_review");
+  });
+
   it("loads the review through the expected command", async () => {
     invoke.mockResolvedValue({ files: [] });
     await expect(tauriBackend.getReview()).resolves.toEqual({ files: [] });

@@ -11,6 +11,9 @@ interface ReviewShortcutContext {
   commitSelectorOpen: boolean;
   findOpen: boolean;
   shortcutHelpOpen: boolean;
+  reloadOpen: boolean;
+  requestReload(): void;
+  closeReload(): void;
   showView(view: ReviewView): void;
   setCommitSelectorOpen: Dispatch<StateUpdater<boolean>>;
   setFindOpen: Dispatch<StateUpdater<boolean>>;
@@ -25,6 +28,7 @@ interface ReviewShortcutContext {
 
 export function useReviewShortcuts({
   state, view, commentCount, commitSelectorOpen, findOpen, shortcutHelpOpen,
+  reloadOpen, requestReload, closeReload,
   showView, setCommitSelectorOpen, setFindOpen, setShortcutHelpOpen, setSidebarOpen,
   cancelReview, moveFind, navigateCommits, navigateFiles, submit,
 }: ReviewShortcutContext): void {
@@ -33,6 +37,21 @@ export function useReviewShortcuts({
       if (event.defaultPrevented) return;
       const dismiss = matchesShortcut(event, "dismiss");
       const closeWindow = matchesShortcut(event, "closeWindow");
+      if (matchesShortcut(event, "reload")) {
+        event.preventDefault();
+        if (!reloadOpen && !shortcutHelpOpen && state.phase === "ready") requestReload();
+        return;
+      }
+      if (reloadOpen) {
+        if (dismiss) {
+          event.preventDefault();
+          closeReload();
+        } else if (closeWindow) {
+          event.preventDefault();
+          cancelReview();
+        }
+        return;
+      }
       if (shortcutHelpOpen) {
         if (!dismiss && !closeWindow) return;
         event.preventDefault();
@@ -200,7 +219,7 @@ export function useReviewShortcuts({
     };
     document.addEventListener("keydown", onKeyDown);
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [cancelReview, commentCount, commitSelectorOpen, findOpen, moveFind, navigateCommits, navigateFiles, shortcutHelpOpen, showView, state.openLineId, state.phase, submit, view]);
+  }, [cancelReview, commentCount, commitSelectorOpen, findOpen, moveFind, navigateCommits, navigateFiles, shortcutHelpOpen, showView, state.openLineId, state.phase, submit, view, reloadOpen, requestReload, closeReload]);
 }
 
 function findNative(event: KeyboardEvent): boolean {

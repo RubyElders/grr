@@ -1,5 +1,6 @@
 export type ShortcutId =
   | "help"
+  | "reload"
   | "toggleView"
   | "toggleSidebar"
   | "nextPane"
@@ -54,6 +55,7 @@ export interface ShortcutDefinition {
 }
 
 export const SHORTCUTS: readonly ShortcutDefinition[] = [
+  shortcut("reload", "Review", "Reload changes from Git", [chord("native", "r", { nativeModifier: true })]),
   shortcut("help", "Window", "Show keyboard shortcuts", [chord("question", "?", { shift: "any" })]),
   shortcut("toggleView", "Window", "Switch between Changes and History", [chord("letter", "v")]),
   shortcut("toggleSidebar", "Window", "Toggle the file sidebar", [chord("native", "b", { nativeModifier: true })]),

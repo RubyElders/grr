@@ -24,6 +24,7 @@ const history: HistoryCommit[] = [
 function setup(initialView: "changes" | "history" = "changes", data = review, historyCommits = history) {
   const backend: ReviewBackend = {
     getReview: vi.fn().mockResolvedValue(data),
+    reloadReview: vi.fn().mockResolvedValue(data),
     getInitialView: vi.fn().mockResolvedValue(initialView),
     selectCommits: vi.fn().mockResolvedValue(review),
     getHistory: vi.fn().mockResolvedValue({ headRef: "main", commits: historyCommits, hasMore: false }),

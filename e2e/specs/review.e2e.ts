@@ -507,10 +507,14 @@ describe("grr review window", () => {
     expect(await browser.execute(() => document.querySelector<HTMLInputElement>("input[aria-label='Filter commits']")?.value)).toBe("Return the correct answer");
     await setInputValue("input[aria-label='Filter commits']", "");
     await browser.waitUntil(async () => await browser.execute(() =>
-      !document.querySelector("main[aria-label='Commit diff'] [role='status']"),
+      document.querySelectorAll("[data-view='history'] [role='option'][aria-selected='true']").length === 5
+        && !document.querySelector("main[aria-label='Commit diff'] [role='status']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "comparison did not return after clearing the commit filter" });
     await setInputValue("input[aria-label='Filter files']", "");
     await pressShortcut("v");
+    await browser.waitUntil(async () => await browser.execute(() =>
+      Boolean(document.querySelector("[data-view='changes']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "Changes did not reopen before choosing all commits" });
     await pressShortcut("c");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
