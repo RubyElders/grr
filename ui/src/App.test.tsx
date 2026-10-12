@@ -10,8 +10,9 @@ vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: () => ({ isMaximized: () => Promise.resolve(false), onResized: () => Promise.resolve(() => undefined) }),
 }));
 
-function historyBackend(): Pick<ReviewBackend, "getInitialView" | "getHistory" | "getHistoryFiles"> {
+function historyBackend(): Pick<ReviewBackend, "getInitialView" | "getHistory" | "getHistoryFiles" | "reloadReview"> {
   return {
+    reloadReview: vi.fn().mockResolvedValue(fixture as ReviewData),
     getInitialView: vi.fn().mockResolvedValue("changes"),
     getHistory: vi.fn().mockResolvedValue({ headRef: "main", commits: [], hasMore: false }),
     getHistoryFiles: vi.fn().mockResolvedValue([]),
@@ -32,6 +33,52 @@ function setup() {
 }
 
 describe("ReviewApp", () => {
+  it("reloads with the native shortcut without reloading the web page", async () => {
+    const { backend } = setup();
+    await screen.findByText("5 commits against origin/main");
+    const event = new KeyboardEvent("keydown", { key: "r", ctrlKey: true, bubbles: true, cancelable: true });
+    document.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(backend.reloadReview).toHaveBeenCalledOnce());
+  });
+
+  it("asks before discarding comments and keeps them on cancel or failure", async () => {
+    const { backend, user } = setup();
+    await screen.findByText("5 commits against origin/main");
+    await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R27/ }));
+    await user.type(screen.getByRole("textbox", { name: "Review comment" }), "Keep this note");
+    await user.keyboard("{Control>}{Enter}{/Control}");
+    await user.keyboard("{Control>}r{/Control}");
+    const dialog = screen.getByRole("dialog", { name: "Reload review" });
+    expect(dialog).toHaveTextContent("discard 1 queued comment");
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toHaveFocus();
+    await user.keyboard("{Escape}");
+    expect(screen.getByText("Keep this note")).toBeInTheDocument();
+    expect(backend.reloadReview).not.toHaveBeenCalled();
+    vi.mocked(backend.reloadReview).mockRejectedValueOnce(new Error("Git unavailable"));
+    await user.keyboard("{Control>}r{/Control}");
+    await user.click(screen.getByRole("button", { name: "Discard comments and reload" }));
+    await within(screen.getByRole("dialog", { name: "Reload review" })).findByText("Git unavailable");
+    expect(screen.getByText("Keep this note")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Discard comments and reload" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Reload review" })).not.toBeInTheDocument());
+    expect(screen.queryByText("Keep this note")).not.toBeInTheDocument();
+  });
+
+  it("keeps an unsaved editor intact when reload is cancelled", async () => {
+    const { backend, user } = setup();
+    await screen.findByText("5 commits against origin/main");
+    await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R27/ }));
+    const editor = screen.getByRole("textbox", { name: "Review comment" });
+    await user.type(editor, "Unsaved note");
+    await user.keyboard("{Control>}r{/Control}");
+    expect(screen.getByRole("dialog", { name: "Reload review" })).toHaveTextContent("open comment");
+    await user.keyboard("{Escape}");
+    expect(editor).toHaveValue("Unsaved note");
+    expect(editor).toHaveFocus();
+    expect(backend.reloadReview).not.toHaveBeenCalled();
+  });
+
   it("renders the commit, tree, text diff, and binary placeholder", async () => {
     setup();
     expect(await screen.findByText("5 commits against origin/main")).toBeInTheDocument();

@@ -2,13 +2,14 @@ import { useLayoutEffect, useRef } from "preact/hooks";
 import { focusPane, paneOf, type PaneName } from "./panes";
 import type { ReviewView } from "./windowChrome/model";
 
-export type FocusOwner = "panes" | "comment" | "find" | "picker" | "help";
+export type FocusOwner = "panes" | "comment" | "find" | "picker" | "help" | "reload";
 
 const owners: Record<Exclude<FocusOwner, "panes">, string> = {
   comment: "[role='group'][aria-label^='Comment on ']",
   find: "[role='search']",
   picker: "[role='dialog'][aria-label='Choose commits']",
   help: "[role='dialog'][aria-label='Keyboard shortcuts']",
+  reload: "[role='dialog'][aria-label='Reload review']",
 };
 
 export function usePaneFocus(view: ReviewView, owner: FocusOwner, enabled: boolean): void {

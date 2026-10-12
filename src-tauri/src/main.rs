@@ -38,6 +38,24 @@ fn get_initial_view(state: State<'_, AppState>) -> ReviewView {
 }
 
 #[tauri::command]
+async fn reload_review(state: State<'_, AppState>) -> Result<Arc<ReviewData>, String> {
+    let repository = state.repository.clone();
+    let requested_base = state.requested_base.clone();
+    let review = tauri::async_runtime::spawn_blocking(move || {
+        load_initial_review(repository, requested_base.as_deref())
+    })
+    .await
+    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())?;
+    let review = Arc::new(review);
+    *state
+        .data
+        .lock()
+        .map_err(|_| "review data lock was poisoned".to_owned())? = Arc::clone(&review);
+    Ok(review)
+}
+
+#[tauri::command]
 fn select_commits(
     commit_ids: Vec<String>,
     state: State<'_, AppState>,
@@ -188,6 +206,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             get_review,
             get_initial_view,
+            reload_review,
             select_commits,
             get_history,
             get_history_files,

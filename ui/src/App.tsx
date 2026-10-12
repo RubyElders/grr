@@ -10,6 +10,7 @@ import { CommitMessagePanel } from "./components/CommitMessagePanel";
 import { ReviewWorkspace } from "./components/ReviewWorkspace";
 import { FindPopover } from "./components/FindPopover";
 import { ShortcutHelp } from "./components/ShortcutHelp";
+import { ReloadDialog } from "./components/ReloadDialog";
 import { WindowTitlebar } from "./components/WindowTitlebar";
 import { adjacentMatch, findCodeMatches } from "./codeSearch";
 import { commitNavigationTarget } from "./commitPresentation";
@@ -28,6 +29,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   const [commitSelectorOpen, setCommitSelectorOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+  const [reloadOpen, setReloadOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [view, setView] = useState<ReviewView>("changes");
   const [historyMounted, setHistoryMounted] = useState(false);
@@ -47,6 +49,17 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   const viewKey = state.data ? `${reviewViewKey(state.data)}:files:${state.filter.trim().toLocaleLowerCase()}` : "";
 
   const comments = useMemo(() => orderedComments(state), [state.data, state.drafts]);
+  const reload = useCallback(async () => {
+    if (await scope.reload()) {
+      setReloadOpen(false);
+      setCommitSelectorOpen(false);
+      setFileNavigation(null);
+    }
+  }, [scope.reload]);
+  const requestReload = useCallback(() => {
+    if (comments.length > 0 || state.openLineId !== null) setReloadOpen(true);
+    else void reload();
+  }, [comments.length, state.openLineId, reload]);
   const findMatches = useMemo(
     () => findCodeMatches(files, findQuery),
     [findQuery, files],
@@ -84,7 +97,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
     });
   }, [backend]);
 
-  usePaneFocus(view, shortcutHelpOpen ? "help" : commitSelectorOpen ? "picker"
+  usePaneFocus(view, reloadOpen ? "reload" : shortcutHelpOpen ? "help" : commitSelectorOpen ? "picker"
     : state.openLineId !== null ? "comment" : findOpen ? "find" : "panes", data !== null);
 
   const showView = useCallback((next: ReviewView) => {
@@ -148,6 +161,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   );
 
   useReviewShortcuts({
+    reloadOpen, requestReload, closeReload: () => { if (!scope.reloading) setReloadOpen(false); },
     state: scope.pending ? { ...state, phase: "selecting" } : state, view, commentCount: comments.length, commitSelectorOpen, findOpen, shortcutHelpOpen,
     showView, setCommitSelectorOpen, setFindOpen, setShortcutHelpOpen, setSidebarOpen,
     cancelReview, moveFind, navigateCommits, navigateFiles, submit,
@@ -210,7 +224,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
         hasMore={scope.hasMore}
         error={scope.historyError}
         view={view}
-        keyboardEnabled={!shortcutHelpOpen && state.openLineId === null && !findOpen}
+        keyboardEnabled={!reloadOpen && !scope.reloading && !shortcutHelpOpen && state.openLineId === null && !findOpen}
         selectionLocked={scope.selectionLocked}
         hasChanges={data.files.length > 0 && scope.disabledReason === null}
         openDisabledReason={openDisabledReason}
@@ -239,7 +253,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
           files={files}
           loading={scope.pending}
           error={data.files.length === 0 ? state.error : null}
-          readOnly={scope.disabledReason !== null}
+          readOnly={scope.pending || scope.disabledReason !== null}
           emptyLabel={state.filter.trim() ? "No matching files" : scope.commitFilter.trim() && scope.selectedIds.length === 0 ? "No matching commits" : undefined}
           activeFileId={activeFileId}
           showSourceCommits={data.selectedCommitIds.length > 1}
@@ -278,6 +292,9 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
         onShare={(copyToClipboard) => void submit("share", copyToClipboard)}
       />
       {shortcutHelpOpen ? <ShortcutHelp onClose={() => setShortcutHelpOpen(false)} /> : null}
+      {reloadOpen ? <ReloadDialog count={comments.length} editing={state.openLineId !== null}
+        busy={scope.reloading} error={state.error}
+        onCancel={() => setReloadOpen(false)} onReload={() => void reload()} /> : null}
     </div>
   );
 }

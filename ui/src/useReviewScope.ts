@@ -19,6 +19,8 @@ export function useReviewScope(backend: ReviewBackend, historyEnabled: boolean) 
   const [commitFilter, setCommitFilter] = useState("");
   const [choice, setChoice] = useState<string[] | null>(null);
   const [failedKey, setFailedKey] = useState<string | null>(null);
+  const [reloading, setReloading] = useState(false);
+  const reloadBusy = useRef(false);
   const loadedKey = useRef("");
   const serverKey = useRef("");
   const selectionQueue = useRef<Promise<unknown>>(Promise.resolve());
@@ -70,7 +72,7 @@ export function useReviewScope(backend: ReviewBackend, historyEnabled: boolean) 
   const selectedIds = useMemo(() => ids ?? baseReview?.commits.map((commit) => commit.id) ?? [], [ids, baseReview]);
   const reviewable = ids === null || (ids.length > 0 && ids.every((id) => baseReview?.commits.some((commit) => commit.id === id)));
   const unresolved = baseReview !== null && (key !== loadedKey.current || (reviewable && key !== serverKey.current));
-  const pending = unresolved && failedKey !== key;
+  const pending = reloading || (unresolved && failedKey !== key);
   const disabledReason = ids?.length === 0 ? "No commits selected"
     : !reviewable ? `Only commits after ${baseReview?.comparison.baseRef} can be reviewed`
       : failedKey === key ? "Could not load selected commits" : null;
@@ -123,7 +125,31 @@ export function useReviewScope(backend: ReviewBackend, historyEnabled: boolean) 
     return () => { current = false; clearTimeout(timer); };
   }, [backend, baseReview, key]);
 
-  const selectionLocked = state.openLineId !== null || Object.keys(state.drafts).length > 0 || state.phase === "submitting";
+  const reload = useCallback(async () => {
+    if (reloadBusy.current || state.phase !== "ready" || pending) return false;
+    reloadBusy.current = true;
+    setReloading(true);
+    try {
+      const review = await backend.reloadReview();
+      const ids = review.selectedCommitIds.length === 0 ? null : review.selectedCommitIds;
+      loadedKey.current = scopeKey(ids);
+      serverKey.current = loadedKey.current;
+      setFailedKey(null);
+      setChoice(ids);
+      setCommitFilter("");
+      setBaseReview({ ...review, files: [] });
+      dispatch({ type: "selection-loaded", data: { ...review, files: filesInTreeOrder(review.files) } });
+      if (historyStarted.current) await loadHistory(0);
+      return true;
+    } catch (error) {
+      dispatch({ type: "submit-failed", error: errorMessage(error) });
+      return false;
+    } finally {
+      reloadBusy.current = false;
+      setReloading(false);
+    }
+  }, [backend, state.phase, pending, loadHistory]);
+  const selectionLocked = reloading || state.openLineId !== null || Object.keys(state.drafts).length > 0 || state.phase === "submitting";
   const selectCommits = useCallback((commitIds: string[]) => {
     if (!selectionLocked) setChoice(commitIds.length === 0 ? null : commitIds);
   }, [selectionLocked]);
@@ -150,7 +176,7 @@ export function useReviewScope(backend: ReviewBackend, historyEnabled: boolean) 
   }, [state.data, baseReview, query, visibleCommits, commits, key, unresolved]);
 
   return {
-    state, dispatch, data, baseReview, initialView, pending, disabledReason, selectionLocked,
+    state, dispatch, data, baseReview, initialView, pending, disabledReason, selectionLocked, reload, reloading,
     selectedIds, selectCommits, selectHistory, commitFilter, filterCommits,
     commits, visibleCommits, headRef, hasMore, historyLoading, historyError,
     loadMore: () => loadHistory(commits.length),
