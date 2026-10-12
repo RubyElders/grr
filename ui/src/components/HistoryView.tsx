@@ -17,6 +17,7 @@ import styles from "./HistoryView.module.css";
 const PAGE_SIZE = 200;
 const LANE_WIDTH = 14;
 const ROW_HEIGHT = 28;
+const BASE_MARKER_HEIGHT = 20;
 const LANE_COLORS = ["var(--blue)", "var(--green)", "#8250df", "#bf8700", "var(--red)", "#1b7c83"];
 const NO_DRAFTS = {};
 const NO_MATCHES: CodeMatch[] = [];
@@ -290,7 +291,9 @@ export function HistoryView(props: HistoryViewProps) {
     divider.addEventListener("pointerup", stop);
   };
 
-  const mergeBaseId = props.review.comparison.mergeBaseId;
+  const worktreeOnly = (props.review.selectedCommitIds.length === 1 && props.review.selectedCommitIds[0] === WORKTREE_COMMIT_ID)
+    || props.review.commits.every((commit) => commit.id === WORKTREE_COMMIT_ID);
+  const mergeBaseId = worktreeOnly ? props.review.comparison.headId : props.review.comparison.mergeBaseId;
   return (
     <section
       ref={root}
@@ -322,7 +325,7 @@ export function HistoryView(props: HistoryViewProps) {
               graphWidth={graphWidth}
               selected={selectedSet.has(commit.id)}
               outside={!inReview.has(commit.id)}
-              baseRef={commit.id === mergeBaseId ? props.review.comparison.baseRef : null}
+              baseRef={commit.id === mergeBaseId ? worktreeOnly ? "HEAD" : props.review.comparison.baseRef : null}
               onClick={onRowClick}
               onOpen={onRowOpen}
             />
@@ -417,7 +420,14 @@ interface CommitRowProps {
 const CommitRow = memo(function CommitRow({ commit, index, graphRow, graphWidth, selected, outside, baseRef, onClick, onOpen }: CommitRowProps) {
   return (
     <Fragment>
-      {baseRef === null ? null : <div class={styles.base} role="presentation"><span>base: {baseRef}</span></div>}
+      {baseRef === null ? null : (
+        <div class={styles.base} role="separator" aria-label={`Review base ${baseRef}`} aria-orientation="horizontal" style={{ gridTemplateColumns: `${graphWidth}px minmax(0, 1fr)` }}>
+          {graphRow ? <svg class={styles.graph} width={graphWidth} height={BASE_MARKER_HEIGHT} aria-hidden="true">
+            {graphRow.before.map((lane, index) => lane === null ? null : <path key={index} d={`M${index * LANE_WIDTH + LANE_WIDTH / 2 + 3} 0V${BASE_MARKER_HEIGHT}`} stroke={LANE_COLORS[index % LANE_COLORS.length]} />)}
+          </svg> : <span />}
+          <span class={styles.baseLabel}>base: {baseRef}</span>
+        </div>
+      )}
       <div
         role="option"
         data-commit-id={commit.id}

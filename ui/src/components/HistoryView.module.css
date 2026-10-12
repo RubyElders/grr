@@ -23,8 +23,9 @@
 .moreLines { flex: none; padding: 0 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); background: var(--canvas); font-size: 11px; font-weight: 600; line-height: 14px; letter-spacing: 1px; }
 .author, .date { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
 .hash { color: var(--muted); font-size: 12px; }
-.base { display: flex; align-items: center; gap: 8px; padding: 2px var(--shell-inset); color: var(--muted); font-size: 11px; }
-.base::before, .base::after { content: ""; flex: 1; border-top: 1px dashed var(--border); }
+.base { height: 20px; display: grid; align-items: center; color: var(--muted); font-size: 11px; }
+.baseLabel { display: flex; align-items: center; gap: 8px; padding: 0 var(--shell-inset) 0 12px; }
+.baseLabel::before, .baseLabel::after { content: ""; flex: 1; border-top: 1px dashed var(--border); }
 .notice { padding: 10px var(--shell-inset); color: var(--muted); font-size: 13px; }
 .more { margin: 8px var(--shell-inset) 12px; padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px; color: var(--fg); background: var(--canvas); font: inherit; font-size: 13px; cursor: pointer; }
 

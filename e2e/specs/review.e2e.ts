@@ -445,6 +445,40 @@ describe("grr review window", () => {
     expect(await browser.execute(() => Boolean(document.querySelector("button[title='src/review.rs']")))).toBe(true);
     await setInputValue("input[aria-label='Filter files']", "");
 
+    await pressShortcut("c");
+    await clickElement("button[aria-label='Show only Uncommitted changes']");
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "Uncommitted changes",
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "worktree selection did not load before checking the boundary" });
+    await pressShortcut("v");
+    await browser.waitUntil(async () => await browser.execute(
+      () => Boolean(document.querySelector("section[aria-label='History'] [role='separator'][aria-label='Review base HEAD']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "worktree review did not show its HEAD boundary" });
+    const boundary = await browser.execute(() => {
+      const marker = document.querySelector("section[aria-label='History'] [role='separator'][aria-label='Review base HEAD']")!;
+      const gutter = marker.querySelector("svg")!.getBoundingClientRect();
+      const before = marker.previousElementSibling!.querySelector("svg")!.getBoundingClientRect();
+      const after = marker.nextElementSibling!.querySelector("svg")!.getBoundingClientRect();
+      return {
+        incomingGap: gutter.top - before.bottom,
+        outgoingGap: after.top - gutter.bottom,
+        labelLeft: marker.lastElementChild!.getBoundingClientRect().left - gutter.right,
+        path: marker.querySelector("path")?.getAttribute("d"),
+      };
+    });
+    expect(Math.abs(boundary.incomingGap)).toBeLessThanOrEqual(1);
+    expect(Math.abs(boundary.outgoingGap)).toBeLessThanOrEqual(1);
+    expect(boundary.labelLeft).toBeGreaterThanOrEqual(0);
+    expect(boundary.path).toBe("M10 0V20");
+    writeFileSync("e2e-results/history-base.png", Buffer.from(await browser.takeScreenshot(), "base64"));
+    await pressShortcut("v");
+    await pressShortcut("c");
+    await clickButton("Show all");
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "5 commits against main"
+        && Boolean(document.querySelector("[data-view='changes'] button[aria-label*='src/review.rs R2']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "full review did not return after checking the boundary" });
+
     await clickElement("button[aria-label*='src/review.rs R2']");
     await browser.waitUntil(async () => await browser.execute(
       () => document.activeElement?.matches("textarea[aria-label='Review comment']") ?? false,
