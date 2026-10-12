@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-10-12
+
+### Added
+
+- Browse commit history with a graph, branch references, commit selection and full messages.
+- Open Changes with `grr diff` or History with `grr log`, choose a base revision or `--merge-base`, and open another repository with `-C`.
+- Switch between Changes and History with `v`, including a native view switch on macOS.
+- Move between panes with Tab and Shift+Tab, and search the focused commit list, file list or diff.
+- Reload changes from Git with `Ctrl+R` or `Cmd+R`. Confirm before discarding queued or open comments; cancelling or a failed reload keeps them intact.
+
+### Changed
+
+- Share commit selection and filters between Changes and History. Commit filtering updates the file list, and file filtering updates the diff and code search.
+- Show the diff edge to edge instead of separate inset file cards.
+- Update development dependencies and run CI once per change instead of duplicating branch and pull request runs.
+
+### Fixed
+
+- Keep focus in the active pane after saving or cancelling an inline comment and when switching views.
+- Keep file jumps aligned near the end of large diffs.
+- Continue history graph lanes through the review base separator, and hide the separator when there are no changes to review.
+
 ## 0.5.0 - 2026-10-08
 
 ### Added
