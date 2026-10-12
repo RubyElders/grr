@@ -21,12 +21,12 @@ const history: HistoryCommit[] = [
   { id: baseId, shortId: baseId.slice(0, 8), parentId: null, summary: "Base commit", message: "Base commit", author: "Base Author", authoredAt: 1_700_000_000, parentIds: [], refs: ["origin/main"] },
 ];
 
-function setup(initialView: "changes" | "history" = "changes") {
+function setup(initialView: "changes" | "history" = "changes", data = review, historyCommits = history) {
   const backend: ReviewBackend = {
-    getReview: vi.fn().mockResolvedValue(review),
+    getReview: vi.fn().mockResolvedValue(data),
     getInitialView: vi.fn().mockResolvedValue(initialView),
     selectCommits: vi.fn().mockResolvedValue(review),
-    getHistory: vi.fn().mockResolvedValue({ headRef: "main", commits: history, hasMore: false }),
+    getHistory: vi.fn().mockResolvedValue({ headRef: "main", commits: historyCommits, hasMore: false }),
     getHistoryFiles: vi.fn().mockResolvedValue(review.files),
     finishReview: vi.fn(),
     cancelReview: vi.fn().mockResolvedValue(undefined),
@@ -57,6 +57,41 @@ describe("HistoryView", () => {
     await user.click(screen.getByRole("button", { name: "Changes" }));
     await waitFor(() => expect(editor).toHaveFocus());
     expect(editor).toHaveValue("Keep my unsaved note.");
+  });
+
+  it("draws graph lanes through the base separator", async () => {
+    const { user } = setup();
+    const list = await openHistory(user);
+    const marker = await within(list).findByRole("separator", { name: "Review base origin/main" });
+    expect(marker.querySelector("svg")).toHaveAttribute("height", "20");
+    expect(marker.querySelector("path")).toHaveAttribute("d", "M10 0V20");
+    expect(marker.nextElementSibling).toHaveAttribute("data-commit-id", baseId);
+    expect(marker.querySelector("svg circle")).toBeNull();
+  });
+
+  it("continues every active branch through the base separator", async () => {
+    const rows = [
+      { ...history[0]!, parentIds: [review.comparison.headId, baseId] },
+      { ...history[1]!, parentIds: ["older"] },
+      { ...history[history.length - 1]!, parentIds: ["older"] },
+      { ...history[history.length - 1]!, id: "older", parentIds: [] },
+    ];
+    setup("history", review, rows);
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    const marker = await within(list).findByRole("separator", { name: "Review base origin/main" });
+    expect([...marker.querySelectorAll("path")].map((path) => path.getAttribute("d"))).toEqual(["M10 0V20", "M24 0V20"]);
+  });
+
+  it.each([true, false])("marks HEAD for a worktree-only selection without a merge base (only virtual commit: %s)", async (onlyVirtual) => {
+    const worktree = { ...history[0]!, parentIds: [review.comparison.headId] };
+    const head = { ...history[1]!, id: review.comparison.headId, parentIds: [] };
+    const data = { ...review, commits: onlyVirtual ? [review.commits[0]!] : review.commits, selectedCommitIds: ["WORKTREE"], comparison: { ...review.comparison, mergeBaseId: null } };
+    setup("history", data, [worktree, head]);
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    const marker = await within(list).findByRole("separator", { name: "Review base HEAD" });
+    expect(marker.previousElementSibling).toHaveAttribute("data-commit-id", "WORKTREE");
+    expect(marker.nextElementSibling).toHaveAttribute("data-commit-id", review.comparison.headId);
+    expect(marker.querySelector("path")).toHaveAttribute("d", "M10 0V20");
   });
 
   it("lists history with refs and the base marker and shows the selected commit read-only", async () => {
