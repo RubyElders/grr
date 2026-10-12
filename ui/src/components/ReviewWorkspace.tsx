@@ -26,6 +26,7 @@ interface ReviewWorkspaceProps {
   view: ReviewView;
   keyboardEnabled: boolean;
   selectionLocked: boolean;
+  hasChanges: boolean;
   openDisabledReason: string | null;
   children: ComponentChildren;
   onFilter(value: string): void;
@@ -145,7 +146,9 @@ export function ReviewWorkspace(props: ReviewWorkspaceProps) {
   };
 
   const worktreeOnly = selected.length === 1 && selected[0] === WORKTREE_COMMIT_ID;
-  const mergeBaseId = worktreeOnly ? props.review.comparison.headId : props.review.comparison.mergeBaseId;
+  const mergeBaseId = props.hasChanges
+    ? worktreeOnly ? props.review.comparison.headId : props.review.comparison.mergeBaseId
+    : null;
   return (
     <section ref={root} data-view={props.view} class={`${styles.workspace} ${props.view === "changes" ? styles.changes : ""}`}
       aria-label={props.view === "changes" ? "Changes" : "History"}

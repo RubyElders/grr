@@ -212,6 +212,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
         view={view}
         keyboardEnabled={!shortcutHelpOpen && state.openLineId === null && !findOpen}
         selectionLocked={scope.selectionLocked}
+        hasChanges={data.files.length > 0 && scope.disabledReason === null}
         openDisabledReason={openDisabledReason}
         onFilter={scope.filterCommits}
         onSelect={scope.selectHistory}

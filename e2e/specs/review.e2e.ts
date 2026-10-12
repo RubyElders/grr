@@ -490,6 +490,9 @@ describe("grr review window", () => {
     await setInputValue("input[aria-label='Filter files']", "review.rs");
     writeFileSync("e2e-results/review-cascade.png", Buffer.from(await browser.takeScreenshot(), "base64"));
     await pressShortcut("v");
+    await browser.waitUntil(async () => await browser.execute(() =>
+      document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "Return the correct answer",
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "Changes did not open after checking the shared filters" });
     const shared = await browser.execute(() => ({
       diffCount: document.querySelectorAll("main[aria-label='Commit diff']").length,
       files: document.querySelectorAll("main[aria-label='Commit diff'] article").length,
@@ -498,6 +501,9 @@ describe("grr review window", () => {
     }));
     expect(shared).toEqual({ diffCount: 1, files: 1, filter: "review.rs", commit: "Return the correct answer" });
     await pressShortcut("v");
+    await browser.waitUntil(async () => await browser.execute(() =>
+      document.querySelector<HTMLInputElement>("input[aria-label='Filter commits']")?.value === "Return the correct answer",
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "History did not reopen with the shared commit filter" });
     expect(await browser.execute(() => document.querySelector<HTMLInputElement>("input[aria-label='Filter commits']")?.value)).toBe("Return the correct answer");
     await setInputValue("input[aria-label='Filter commits']", "");
     await browser.waitUntil(async () => await browser.execute(() =>
