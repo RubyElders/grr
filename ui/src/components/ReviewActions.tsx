@@ -7,11 +7,12 @@ interface ReviewActionsProps {
   draftCount: number;
   submitting: boolean;
   error: string | null;
+  disabledReason?: string | null;
   onApprove(copyToClipboard: boolean): void;
   onShare(copyToClipboard: boolean): void;
 }
 
-export function ReviewActions({ repositoryRoot, draftCount, submitting, error, onApprove, onShare }: ReviewActionsProps) {
+export function ReviewActions({ repositoryRoot, draftCount, submitting, error, disabledReason, onApprove, onShare }: ReviewActionsProps) {
   const [copyMode, setCopyMode] = useState(false);
   useLayoutEffect(() => {
     const update = (event: KeyboardEvent) => setCopyMode(shortcutModifiersActive(event, "copyPrimaryAction"));
@@ -38,8 +39,8 @@ export function ReviewActions({ repositoryRoot, draftCount, submitting, error, o
         )}
       </div>
       <div class={styles.buttons}>
-        <button title={actionShortcut} class={styles.approve} disabled={submitting || draftCount > 0} onClick={() => onApprove(copyMode)}>{copyMode ? "Approve and copy" : "Approve"}</button>
-        <button title={actionShortcut} class={styles.share} disabled={submitting || draftCount === 0} onClick={() => onShare(copyMode)}>{copyMode ? "Share and copy" : "Share comments"} ({draftCount})</button>
+        <button title={disabledReason ?? actionShortcut} class={styles.approve} disabled={submitting || Boolean(disabledReason) || draftCount > 0} onClick={() => onApprove(copyMode)}>{copyMode ? "Approve and copy" : "Approve"}</button>
+        <button title={disabledReason ?? actionShortcut} class={styles.share} disabled={submitting || Boolean(disabledReason) || draftCount === 0} onClick={() => onShare(copyMode)}>{copyMode ? "Share and copy" : "Share comments"} ({draftCount})</button>
       </div>
     </footer>
   );

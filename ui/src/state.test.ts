@@ -81,4 +81,18 @@ describe("review state", () => {
     expect(state.drafts).toEqual({});
     expect(state.data?.selectedCommitIds).toEqual([data.commits[0]!.id]);
   });
+
+  it("keeps the active file inside the filtered scope", () => {
+    let state = reviewReducer(initialState, { type: "loaded", data });
+    state = reviewReducer(state, { type: "filter", value: "reference" });
+    expect(state.activeFileId).toBe("f1");
+    expect(reviewReducer(state, { type: "visible-file", fileId: "f0" })).toBe(state);
+    expect(reviewReducer(state, { type: "activate-file", fileId: "f0" })).toBe(state);
+    state = reviewReducer(state, { type: "filter", value: "missing-file" });
+    expect(state.activeFileId).toBeNull();
+    state = reviewReducer(state, { type: "selection-loaded", data });
+    expect(state.activeFileId).toBeNull();
+    state = reviewReducer(state, { type: "filter", value: "" });
+    expect(state.activeFileId).toBe("f0");
+  });
 });

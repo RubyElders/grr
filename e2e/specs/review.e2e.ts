@@ -28,7 +28,8 @@ describe("grr review window", () => {
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true, cancelable: true }));
     });
     await browser.waitUntil(async () => await browser.execute(
-      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "5 commits against main",
+      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "5 commits against main"
+        && !document.querySelector("main[aria-label='Commit diff'] [role='status']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "grouped comparison did not open from the virtual commit" });
     const diffInsets = await browser.execute(() => {
       const pane = document.querySelector<HTMLElement>("main[aria-label='Commit diff']");
@@ -287,6 +288,7 @@ describe("grr review window", () => {
     await clickElement("button[aria-label='Show only Return the correct answer']");
     await browser.waitUntil(async () => await browser.execute(
       () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "Return the correct answer"
+        && !document.querySelector("main[aria-label='Commit diff'] [role='status']")
         && !document.querySelector("article [title*='Return the correct answer']")
         && document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop === 0,
     ), { timeout: 5_000, interval: 50, timeoutMsg: "single-commit diff did not load" });
@@ -310,12 +312,14 @@ describe("grr review window", () => {
     await pressShortcut("ArrowLeft");
     await browser.waitUntil(async () => await browser.execute(
       () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "Update AI subgroup answer"
+        && !document.querySelector("main[aria-label='Commit diff'] [role='status']")
         && !document.querySelector("article [title*='Update AI subgroup answer']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "newer commit arrow did not load its neighbor" });
     await pressShortcut("c");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
       (expectedScrollTop) => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "5 commits against main"
+        && !document.querySelector("main[aria-label='Commit diff'] [role='status']")
         && !document.querySelector("article [title*='Return the correct answer']")
         && Math.abs((document.querySelector<HTMLElement>("main[aria-label='Commit diff']")?.scrollTop ?? -1) - expectedScrollTop) <= 1,
       allScrollPosition,
@@ -325,12 +329,14 @@ describe("grr review window", () => {
     await clickElement("button[aria-label='Show only Uncommitted changes']");
     await browser.waitUntil(async () => await browser.execute(
       () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "Uncommitted changes"
+        && !document.querySelector("main[aria-label='Commit diff'] [role='status']")
         && !document.querySelector("article [title='worktree · Uncommitted changes']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "virtual worktree commit did not load" });
     await pressShortcut("c");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
-      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "5 commits against main",
+      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "5 commits against main"
+        && !document.querySelector("main[aria-label='Commit diff'] [role='status']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "full diff did not return after worktree review" });
 
     for (const step of [
@@ -341,7 +347,8 @@ describe("grr review window", () => {
     ]) {
       await pressShortcut(step.key);
       await browser.waitUntil(async () => await browser.execute(
-        (title) => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === title,
+        (title) => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === title
+          && !document.querySelector("main[aria-label='Commit diff'] [role='status']"),
         step.title,
       ), { timeout: 5_000, interval: 50, timeoutMsg: `${step.key} did not navigate to ${step.title}` });
     }
@@ -448,7 +455,8 @@ describe("grr review window", () => {
     await pressShortcut("c");
     await clickElement("button[aria-label='Show only Uncommitted changes']");
     await browser.waitUntil(async () => await browser.execute(
-      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "Uncommitted changes",
+      () => document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle === "Uncommitted changes"
+        && !document.querySelector("main[aria-label='Commit diff'] [role='status']"),
     ), { timeout: 5_000, interval: 50, timeoutMsg: "worktree selection did not load before checking the boundary" });
     await pressShortcut("v");
     await browser.waitUntil(async () => await browser.execute(
@@ -471,6 +479,31 @@ describe("grr review window", () => {
     expect(boundary.labelLeft).toBeGreaterThanOrEqual(0);
     expect(boundary.path).toBe("M10 0V20");
     writeFileSync("e2e-results/history-base.png", Buffer.from(await browser.takeScreenshot(), "base64"));
+    await setInputValue("input[aria-label='Filter commits']", "Return the correct answer");
+    await browser.waitUntil(async () => await browser.execute(() =>
+      document.querySelectorAll("nav[aria-label='File tree'] [data-file-id]").length === 1
+        && document.querySelectorAll("main[aria-label='Commit diff'] article").length === 1
+        && Boolean(document.querySelector("button[title='src/review.rs']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "commit filtering did not cascade to the tree and diff" });
+    await setInputValue("input[aria-label='Filter files']", "missing-file");
+    expect(await browser.execute(() => document.querySelector("main[aria-label='Commit diff'] article") === null)).toBe(true);
+    await setInputValue("input[aria-label='Filter files']", "review.rs");
+    writeFileSync("e2e-results/review-cascade.png", Buffer.from(await browser.takeScreenshot(), "base64"));
+    await pressShortcut("v");
+    const shared = await browser.execute(() => ({
+      diffCount: document.querySelectorAll("main[aria-label='Commit diff']").length,
+      files: document.querySelectorAll("main[aria-label='Commit diff'] article").length,
+      filter: document.querySelector<HTMLInputElement>("input[aria-label='Filter files']")?.value,
+      commit: document.querySelector<HTMLElement>("section[aria-label='Commit message']")?.dataset.commitTitle,
+    }));
+    expect(shared).toEqual({ diffCount: 1, files: 1, filter: "review.rs", commit: "Return the correct answer" });
+    await pressShortcut("v");
+    expect(await browser.execute(() => document.querySelector<HTMLInputElement>("input[aria-label='Filter commits']")?.value)).toBe("Return the correct answer");
+    await setInputValue("input[aria-label='Filter commits']", "");
+    await browser.waitUntil(async () => await browser.execute(() =>
+      !document.querySelector("main[aria-label='Commit diff'] [role='status']"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "comparison did not return after clearing the commit filter" });
+    await setInputValue("input[aria-label='Filter files']", "");
     await pressShortcut("v");
     await pressShortcut("c");
     await clickButton("Show all");

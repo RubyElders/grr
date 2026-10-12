@@ -30,6 +30,7 @@ export function useReviewShortcuts({
 }: ReviewShortcutContext): void {
   useLayoutEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
       const dismiss = matchesShortcut(event, "dismiss");
       const closeWindow = matchesShortcut(event, "closeWindow");
       if (shortcutHelpOpen) {
@@ -56,9 +57,9 @@ export function useReviewShortcuts({
       }
 
       const pane = paneOf(event.target);
-      const changesScope = document.querySelector("[data-view='changes']");
+      const changesScope = document.querySelector(`[data-view='${view}']`);
       const nextPane = matchesShortcut(event, "nextPane");
-      if (changes && (nextPane || matchesShortcut(event, "previousPane"))
+      if ((nextPane || matchesShortcut(event, "previousPane"))
         && state.openLineId === null
         && !commitSelectorOpen
         && !(event.target instanceof Element && event.target.closest("[role='search']"))) {
@@ -66,7 +67,7 @@ export function useReviewShortcuts({
         cyclePane(changesScope, pane, nextPane ? 1 : -1);
         return;
       }
-      if (changes && findNative(event) && pane === "files" && state.phase === "ready") {
+      if (findNative(event) && pane === "files" && state.phase === "ready") {
         event.preventDefault();
         focusPaneFilter(changesScope, "files");
         return;
@@ -86,7 +87,8 @@ export function useReviewShortcuts({
         && !findOpen
         && !isTextEntryTarget(event.target);
       const findFunction = matchesShortcut(event, "find", "function");
-      const openFind = changes && (findNative(event) || (!findOpen && findFunction));
+      const openFind = (findNative(event) || (!findOpen && findFunction)
+        || (!changes && pane !== "commits" && matchesShortcut(event, "historyFilter", "slash") && !isTextEntryTarget(event.target)));
       const findInput = event.target instanceof HTMLElement && event.target.matches("[data-find-input]");
       const nextMatch = findOpen
         && matchesShortcut(event, "nextMatch")
@@ -126,8 +128,8 @@ export function useReviewShortcuts({
       const previousFile = matchesShortcut(event, "previousFile") || matchesShortcut(event, "previousDiffFile");
       const nextFile = matchesShortcut(event, "nextFile") || matchesShortcut(event, "nextDiffFile");
       const arrowStep = matchesShortcut(event, "previousFile", "arrow") || matchesShortcut(event, "nextFile", "arrow");
-      const stepFile = changes
-        && (previousFile || nextFile)
+      const stepFile = (previousFile || nextFile)
+        && (pane !== "commits" || matchesShortcut(event, "previousDiffFile") || matchesShortcut(event, "nextDiffFile"))
         && !(arrowStep && pane === "diff")
         && !commitSelectorOpen
         && !findOpen
@@ -171,8 +173,7 @@ export function useReviewShortcuts({
         return;
       }
       if (pageDiff) {
-        const pane = [...document.querySelectorAll<HTMLElement>("main[aria-label='Commit diff']")]
-          .find((element) => (element.closest("section[aria-label='History']") !== null) === !changes);
+        const pane = changesScope?.querySelector<HTMLElement>("main[aria-label='Commit diff']");
         pane?.scrollBy({
           top: (pageUp ? -1 : 1) * Math.max(1, pane.clientHeight - 48),
           behavior: "smooth",

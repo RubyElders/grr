@@ -12,7 +12,6 @@
 
 .content { position: relative; display: grid; grid-template-columns: minmax(240px, 330px) minmax(0, 1fr); min-width: 0; min-height: 0; overflow: hidden; }
 .content.sidebarHidden { grid-template-columns: minmax(0, 1fr); }
-.hiddenView { display: none; }
 .historyTitle { min-width: 0; display: grid; justify-items: center; line-height: 1.2; }
 .historyTitle strong { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .historyTitle span { color: var(--muted); font-size: 12px; }

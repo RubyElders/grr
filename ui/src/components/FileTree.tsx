@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef } from "preact/hooks";
 import type { FileDiff } from "../types";
-import { baseName, buildFileTree, filteredFiles, type FileTreeNode } from "../tree";
+import { baseName, buildFileTree, type FileTreeNode } from "../tree";
 import { clearFilterOnEscape } from "../panes";
 import { Icon } from "./Icon";
 import styles from "./FileTree.module.css";
 
 interface FileTreeProps {
   files: FileDiff[];
+  totalFileCount: number;
   showSourceCommits: boolean;
   filter: string;
   activeFileId: string | null;
@@ -18,7 +19,7 @@ interface FileTreeProps {
 
 export function FileTree(props: FileTreeProps) {
   const tree = useRef<HTMLElement>(null);
-  const visible = useMemo(() => filteredFiles(props.files, props.filter), [props.files, props.filter]);
+  const visible = props.files;
   const root = useMemo(() => buildFileTree(visible), [visible]);
   useEffect(() => {
     if (!props.activeFileId) return;
@@ -38,7 +39,7 @@ export function FileTree(props: FileTreeProps) {
           onKeyDown={(event) => clearFilterOnEscape(event, () => props.onFilter(""))}
         />
       </div>
-      <div class={styles.count}>{visible.length} of {props.files.length} files</div>
+      <div class={styles.count}>{visible.length} of {props.totalFileCount} files</div>
       <nav ref={tree} class={styles.tree} aria-label="File tree">
         {visible.length === 0 ? <p class={styles.empty}>No matching files</p> : null}
         {root.directories.map((node) => <DirectoryNode key={node.path} node={node} depth={0} {...props} />)}

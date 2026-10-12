@@ -1,0 +1,166 @@
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "preact/hooks";
+import type { ReviewBackend } from "./backend";
+import { initialState, reviewReducer } from "./state";
+import { filesInTreeOrder } from "./tree";
+import type { HistoryCommit, ReviewData } from "./types";
+import type { ReviewView } from "./windowChrome/model";
+
+const PAGE_SIZE = 200;
+
+export function useReviewScope(backend: ReviewBackend, historyEnabled: boolean) {
+  const [state, dispatch] = useReducer(reviewReducer, initialState);
+  const [baseReview, setBaseReview] = useState<ReviewData | null>(null);
+  const [initialView, setInitialView] = useState<ReviewView>("changes");
+  const [commits, setCommits] = useState<HistoryCommit[]>([]);
+  const [headRef, setHeadRef] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [commitFilter, setCommitFilter] = useState("");
+  const [choice, setChoice] = useState<string[] | null>(null);
+  const [failedKey, setFailedKey] = useState<string | null>(null);
+  const loadedKey = useRef("");
+  const serverKey = useRef("");
+  const selectionQueue = useRef<Promise<unknown>>(Promise.resolve());
+  const historyStarted = useRef(false);
+
+  useEffect(() => {
+    let current = true;
+    Promise.all([backend.getReview(), backend.getInitialView()]).then(([review, view]) => {
+      if (!current) return;
+      const ids = review.selectedCommitIds.length === 0 ? null : review.selectedCommitIds;
+      loadedKey.current = scopeKey(ids);
+      serverKey.current = loadedKey.current;
+      setBaseReview({ ...review, files: [] });
+      setChoice(ids);
+      setInitialView(view);
+      dispatch({ type: "loaded", data: { ...review, files: filesInTreeOrder(review.files) } });
+    }, (error: unknown) => {
+      if (current) dispatch({ type: "failed", error: errorMessage(error) });
+    });
+    return () => { current = false; };
+  }, [backend]);
+
+  const loadHistory = useCallback((offset: number) => {
+    setHistoryLoading(true);
+    return backend.getHistory(offset, PAGE_SIZE).then((page) => {
+      setCommits((previous) => offset === 0 ? page.commits : [...previous, ...page.commits]);
+      setHeadRef(page.headRef);
+      setHasMore(page.hasMore);
+      setHistoryError(null);
+    }, (error: unknown) => setHistoryError(errorMessage(error)))
+      .finally(() => setHistoryLoading(false));
+  }, [backend]);
+
+  useEffect(() => {
+    if ((!historyEnabled && initialView !== "history") || historyStarted.current) return;
+    historyStarted.current = true;
+    void loadHistory(0);
+  }, [historyEnabled, initialView, loadHistory]);
+
+  const query = commitFilter.trim().toLocaleLowerCase();
+  const visibleCommits = useMemo(() => query === "" ? commits : commits.filter((commit) =>
+    [commit.message, commit.author, commit.id, ...commit.refs].some((value) => value.toLocaleLowerCase().includes(query)),
+  ), [commits, query]);
+  const ids = useMemo(() => choice === null
+    ? query === "" ? null : visibleCommits.map((commit) => commit.id)
+    : query === "" ? choice : choice.filter((id) => visibleCommits.some((commit) => commit.id === id)),
+  [choice, query, visibleCommits]);
+  const key = scopeKey(ids);
+  const selectedIds = useMemo(() => ids ?? baseReview?.commits.map((commit) => commit.id) ?? [], [ids, baseReview]);
+  const reviewable = ids === null || (ids.length > 0 && ids.every((id) => baseReview?.commits.some((commit) => commit.id === id)));
+  const unresolved = baseReview !== null && (key !== loadedKey.current || (reviewable && key !== serverKey.current));
+  const pending = unresolved && failedKey !== key;
+  const disabledReason = ids?.length === 0 ? "No commits selected"
+    : !reviewable ? `Only commits after ${baseReview?.comparison.baseRef} can be reviewed`
+      : failedKey === key ? "Could not load selected commits" : null;
+
+  useEffect(() => {
+    if (!baseReview) return;
+    if (key === loadedKey.current && (!reviewable || key === serverKey.current)) {
+      dispatch({ type: "selection-cancelled" });
+      return;
+    }
+    let current = true;
+    setFailedKey(null);
+    dispatch({ type: "selection-started" });
+    const timer = setTimeout(async () => {
+      try {
+        let review: ReviewData;
+        if (ids === null || reviewable) {
+          const request = selectionQueue.current.then(() => {
+            if (!current) return null;
+            serverKey.current = key;
+            return backend.selectCommits(ids ?? []);
+          });
+          selectionQueue.current = request.catch(() => undefined);
+          const loaded = await request;
+          if (!loaded) return;
+          review = loaded;
+        } else if (ids.length === 0) {
+          review = { ...baseReview, selectedCommitIds: [], commits: [], files: [] };
+        } else {
+          review = {
+            ...baseReview,
+            commits: [...baseReview.commits, ...commits.filter((commit) => ids.includes(commit.id)
+              && !baseReview.commits.some((known) => known.id === commit.id))],
+            selectedCommitIds: ids,
+            files: await backend.getHistoryFiles(ids),
+          };
+        }
+        if (!current) return;
+        loadedKey.current = key;
+        dispatch({ type: "selection-loaded", data: {
+          ...review, selectedCommitIds: ids ?? [], files: filesInTreeOrder(review.files),
+        } });
+      } catch (error) {
+        if (current) {
+          setFailedKey(key);
+          dispatch({ type: "submit-failed", error: errorMessage(error) });
+        }
+      }
+    }, 150);
+    return () => { current = false; clearTimeout(timer); };
+  }, [backend, baseReview, key]);
+
+  const selectionLocked = state.openLineId !== null || Object.keys(state.drafts).length > 0 || state.phase === "submitting";
+  const selectCommits = useCallback((commitIds: string[]) => {
+    if (!selectionLocked) setChoice(commitIds.length === 0 ? null : commitIds);
+  }, [selectionLocked]);
+  const selectHistory = useCallback((commitIds: string[]) => {
+    if (!selectionLocked) setChoice(commitIds);
+  }, [selectionLocked]);
+  const filterCommits = useCallback((value: string) => {
+    if (selectionLocked) return;
+    setCommitFilter(value);
+    setChoice(null);
+  }, [selectionLocked]);
+
+  const data = useMemo(() => {
+    if (!state.data || !baseReview) return null;
+    const available = query === "" ? baseReview.commits : visibleCommits;
+    const selected = commits.filter((commit) => selectedIds.includes(commit.id)
+      && !available.some((known) => known.id === commit.id));
+    return {
+      ...state.data,
+      commits: [...available, ...selected],
+      selectedCommitIds: ids ?? [],
+      files: unresolved ? [] : state.data.files,
+    };
+  }, [state.data, baseReview, query, visibleCommits, commits, key, unresolved]);
+
+  return {
+    state, dispatch, data, baseReview, initialView, pending, disabledReason, selectionLocked,
+    selectedIds, selectCommits, selectHistory, commitFilter, filterCommits,
+    commits, visibleCommits, headRef, hasMore, historyLoading, historyError,
+    loadMore: () => loadHistory(commits.length),
+  };
+}
+
+function scopeKey(ids: string[] | null): string {
+  return ids === null ? "comparison" : `commits:${[...new Set(ids)].sort().join(",")}`;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}

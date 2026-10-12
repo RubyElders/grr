@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "preact/hooks";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "preact/hooks";
 import type { ReviewBackend } from "./backend";
 import { tauriBackend } from "./backend";
-import { reviewReducer, initialState, orderedComments, submissionFor } from "./state";
+import { orderedComments, submissionFor } from "./state";
 import { FileTree } from "./components/FileTree";
 import { DiffView } from "./components/DiffView";
 import { ReviewActions } from "./components/ReviewActions";
 import { CommitSelector } from "./components/CommitSelector";
 import { CommitMessagePanel } from "./components/CommitMessagePanel";
-import { HistoryView } from "./components/HistoryView";
+import { ReviewWorkspace } from "./components/ReviewWorkspace";
 import { FindPopover } from "./components/FindPopover";
 import { ShortcutHelp } from "./components/ShortcutHelp";
 import { WindowTitlebar } from "./components/WindowTitlebar";
@@ -16,54 +16,48 @@ import { commitNavigationTarget } from "./commitPresentation";
 import { reviewViewKey } from "./scrollPosition";
 import { useReviewShortcuts } from "./useReviewShortcuts";
 import { usePaneFocus } from "./usePaneFocus";
-import { filesInTreeOrder } from "./tree";
+import { filteredFiles } from "./tree";
+import { useReviewScope } from "./useReviewScope";
 import { useWindowChrome } from "./windowChrome/useWindowChrome";
 import { windowChromeCapabilities, type ReviewView, type WindowChromeKind } from "./windowChrome/model";
-import type { ReviewData } from "./types";
 import styles from "./App.module.css";
 
 export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { backend?: ReviewBackend; chromeMode?: WindowChromeKind }) {
   const capabilities = windowChromeCapabilities(chromeMode);
   const nativeChrome = capabilities.nativeHeader;
-  const [state, dispatch] = useReducer(reviewReducer, initialState);
   const [commitSelectorOpen, setCommitSelectorOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [view, setView] = useState<ReviewView>("changes");
   const [historyMounted, setHistoryMounted] = useState(false);
-  const [historyRef, setHistoryRef] = useState<string | null>(null);
   const [findQuery, setFindQuery] = useState("");
   const [activeFindIndex, setActiveFindIndex] = useState(-1);
   const [fileNavigation, setFileNavigation] = useState<{ fileId: string; requestId: number; viewKey: string } | null>(null);
-  useEffect(() => {
-    let mounted = true;
-    Promise.all([backend.getReview(), backend.getInitialView()]).then(
-      ([data, initialView]) => {
-        if (!mounted) return;
-        if (initialView === "history") {
-          setHistoryMounted(true);
-          setView("history");
-        }
-        dispatch({ type: "loaded", data: orderReviewFiles(data) });
-      },
-      (error: unknown) => mounted && dispatch({ type: "failed", error: errorMessage(error) }),
-    );
-    return () => { mounted = false; };
-  }, [backend]);
+  const scope = useReviewScope(backend, historyMounted);
+  const { state, dispatch, data } = scope;
+  useLayoutEffect(() => {
+    if (scope.initialView === "history") {
+      setHistoryMounted(true);
+      setView("history");
+    }
+  }, [scope.initialView]);
+  const files = useMemo(() => filteredFiles(data?.files ?? [], state.filter), [data?.files, state.filter]);
+  const activeFileId = files.some((file) => file.id === state.activeFileId) ? state.activeFileId : files[0]?.id ?? null;
+  const viewKey = state.data ? `${reviewViewKey(state.data)}:files:${state.filter.trim().toLocaleLowerCase()}` : "";
 
   const comments = useMemo(() => orderedComments(state), [state.data, state.drafts]);
   const findMatches = useMemo(
-    () => findCodeMatches(state.data?.files ?? [], findQuery),
-    [findQuery, state.data?.files],
+    () => findCodeMatches(files, findQuery),
+    [findQuery, files],
   );
   const updateFindQuery = useCallback((query: string) => {
     setFindQuery(query);
-    setActiveFindIndex(findCodeMatches(state.data?.files ?? [], query).length > 0 ? 0 : -1);
-  }, [state.data?.files]);
+    setActiveFindIndex(findCodeMatches(files, query).length > 0 ? 0 : -1);
+  }, [files]);
   useEffect(() => {
-    setActiveFindIndex(findCodeMatches(state.data?.files ?? [], findQuery).length > 0 ? 0 : -1);
-  }, [state.data?.files]);
+    setActiveFindIndex(findCodeMatches(files, findQuery).length > 0 ? 0 : -1);
+  }, [files]);
   useEffect(() => {
     if (!findOpen) return;
     const match = findMatches[activeFindIndex];
@@ -76,72 +70,62 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
     setActiveFindIndex((current) => adjacentMatch(current, findMatches.length, direction));
   }, [findMatches.length]);
   const submit = useCallback(async (outcome: "approve" | "share", copyToClipboard = false) => {
+    if (scope.pending || scope.disabledReason !== null) return;
     dispatch({ type: "submitting" });
     try {
       await backend.finishReview(submissionFor(state, outcome), copyToClipboard);
     } catch (error) {
       dispatch({ type: "submit-failed", error: errorMessage(error) });
     }
-  }, [backend, state]);
+  }, [backend, state, scope.pending, scope.disabledReason]);
   const cancelReview = useCallback(() => {
     void backend.cancelReview().catch((error: unknown) => {
       dispatch({ type: "submit-failed", error: errorMessage(error) });
     });
   }, [backend]);
 
-  const changesScope = useRef<HTMLDivElement>(null);
-  usePaneFocus(view, shortcutHelpOpen ? "help" : view === "history" ? "panes" : commitSelectorOpen ? "picker"
-    : state.openLineId !== null ? "comment" : findOpen ? "find" : "panes", state.data !== null);
+  usePaneFocus(view, shortcutHelpOpen ? "help" : commitSelectorOpen ? "picker"
+    : state.openLineId !== null ? "comment" : findOpen ? "find" : "panes", data !== null);
 
   const showView = useCallback((next: ReviewView) => {
     if (next === "history") {
       setCommitSelectorOpen(false);
-      setFindOpen(false);
       setHistoryMounted(true);
     }
     setView(next);
   }, []);
 
-  const selectCommits = useCallback(async (commitIds: string[]) => {
+  const selectCommits = useCallback((commitIds: string[]) => {
     setFileNavigation(null);
-    dispatch({ type: "selection-started" });
-    try {
-      const data = await backend.selectCommits(commitIds);
-      dispatch({ type: "selection-loaded", data: orderReviewFiles(data) });
-    } catch (error) {
-      dispatch({ type: "submit-failed", error: errorMessage(error) });
-    }
-  }, [backend]);
+    scope.selectCommits(commitIds);
+  }, [scope.selectCommits]);
 
   const navigateCommits = useCallback((direction: "newer" | "older") => {
-    if (!state.data) return;
-    const target = commitNavigationTarget(state.data, direction);
+    if (!data) return;
+    const target = commitNavigationTarget(data, direction);
     if (target) void selectCommits(target.selectedCommitIds);
-  }, [selectCommits, state.data]);
+  }, [selectCommits, data]);
 
   const selectFile = useCallback((fileId: string) => {
+    if (!files.some((file) => file.id === fileId)) return;
     dispatch({ type: "activate-file", fileId });
-    if (!state.data) return;
-    const viewKey = reviewViewKey(state.data);
     setFileNavigation((previous) => ({ fileId, requestId: (previous?.requestId ?? 0) + 1, viewKey }));
-  }, [state.data]);
+  }, [files, viewKey]);
 
   const navigateFiles = useCallback((direction: "previous" | "next") => {
-    if (!state.data || state.data.files.length === 0) return;
-    const current = state.data.files.findIndex((file) => file.id === state.activeFileId);
-    const targetIndex = current < 0
-      ? direction === "next" ? 0 : state.data.files.length - 1
+    const current = files.findIndex((file) => file.id === activeFileId);
+    const targetIndex = current < 0 ? direction === "next" ? 0 : files.length - 1
       : current + (direction === "next" ? 1 : -1);
-    const target = state.data.files[targetIndex];
+    const target = files[targetIndex];
     if (target) selectFile(target.id);
-  }, [selectFile, state.activeFileId, state.data]);
+  }, [selectFile, activeFileId, files]);
 
   useWindowChrome(
     chromeMode,
-    state.data,
-    comments.length > 0 || state.phase !== "ready",
+    data,
+    comments.length > 0 || scope.pending || state.phase !== "ready",
     view,
-    historyRef,
+    scope.headRef,
     (action) => {
       if ((action === "changes" || action === "history") && state.phase !== "loading") showView(action);
       if (action === "sidebar" && state.phase === "ready") setSidebarOpen((open) => !open);
@@ -164,7 +148,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   );
 
   useReviewShortcuts({
-    state, view, commentCount: comments.length, commitSelectorOpen, findOpen, shortcutHelpOpen,
+    state: scope.pending ? { ...state, phase: "selecting" } : state, view, commentCount: comments.length, commitSelectorOpen, findOpen, shortcutHelpOpen,
     showView, setCommitSelectorOpen, setFindOpen, setShortcutHelpOpen, setSidebarOpen,
     cancelReview, moveFind, navigateCommits, navigateFiles, submit,
   });
@@ -175,7 +159,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
       <div class={styles.center} role="status">Loading commit diff…</div>
     </div>
   );
-  if (state.phase === "error" || !state.data) return (
+  if (state.phase === "error" || !data || !scope.baseReview) return (
     <div class={styles.app} data-window-chrome={chromeMode}>
       <div class={styles.headerArea}>{nativeChrome ? null : <WindowTitlebar capabilities={capabilities} onClose={cancelReview}><strong class={styles.windowTitle}>grr</strong></WindowTitlebar>}</div>
       <div class={styles.center}><div class={styles.fatal} role="alert"><h1>Could not load review</h1><p>{state.error}</p></div></div>
@@ -183,7 +167,7 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   );
 
   const commitSelector = <CommitSelector
-    data={state.data}
+    data={data}
     open={commitSelectorOpen}
     loading={state.phase === "selecting"}
     disabled={comments.length > 0 || state.phase === "submitting"}
@@ -192,12 +176,10 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
     onSelect={(commitIds) => void selectCommits(commitIds)}
   />;
 
-  const openDisabledReason = comments.length > 0
-    ? "Share or discard draft comments before opening other commits"
-    : state.phase !== "ready" ? "Wait for the current action to finish" : null;
+  const openDisabledReason = scope.disabledReason;
   const historyTitle = (
     <div class={styles.historyTitle}>
-      <strong>{historyRef ?? "History"}</strong>
+      <strong>{scope.headRef ?? "History"}</strong>
       <span>History</span>
     </div>
   );
@@ -216,30 +198,34 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
         >
           {view === "changes" ? commitSelector : historyTitle}
         </WindowTitlebar>}
-        {view === "changes" ? <CommitMessagePanel data={state.data} /> : null}
+        {view === "changes" ? <CommitMessagePanel data={data} /> : null}
       </div>
-      {historyMounted ? (
-        <HistoryView
-          backend={backend}
-          review={state.data}
-          hidden={view !== "history"}
-          keyboardEnabled={!shortcutHelpOpen}
-          sidebarOpen={sidebarOpen}
-          openDisabledReason={openDisabledReason}
-          onHeadRef={setHistoryRef}
-          onOpen={(commitIds) => {
-            showView("changes");
-            void selectCommits(commitIds);
-          }}
-        />
-      ) : null}
-      <div ref={changesScope} data-view="changes" class={`${styles.content} ${sidebarOpen ? "" : styles.sidebarHidden} ${view === "changes" ? "" : styles.hiddenView}`}>
+      <ReviewWorkspace
+        review={scope.baseReview}
+        commits={scope.commits}
+        visibleCommits={scope.visibleCommits}
+        selectedIds={scope.selectedIds}
+        filter={scope.commitFilter}
+        loading={scope.historyLoading}
+        hasMore={scope.hasMore}
+        error={scope.historyError}
+        view={view}
+        keyboardEnabled={!shortcutHelpOpen && state.openLineId === null && !findOpen}
+        selectionLocked={scope.selectionLocked}
+        openDisabledReason={openDisabledReason}
+        onFilter={scope.filterCommits}
+        onSelect={scope.selectHistory}
+        onLoadMore={() => void scope.loadMore()}
+        onOpen={() => showView("changes")}
+      >
+      <div class={`${styles.content} ${sidebarOpen ? "" : styles.sidebarHidden}`}>
         {sidebarOpen ? (
           <FileTree
-            files={state.data.files}
-            showSourceCommits={state.data.selectedCommitIds.length > 1}
+            files={files}
+            totalFileCount={data.files.length}
+            showSourceCommits={data.selectedCommitIds.length > 1}
             filter={state.filter}
-            activeFileId={state.activeFileId}
+            activeFileId={activeFileId}
             collapsedDirectories={state.collapsedDirectories}
             onFilter={(value) => dispatch({ type: "filter", value })}
             onToggleDirectory={(path) => dispatch({ type: "toggle-directory", path })}
@@ -247,11 +233,15 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
           />
         ) : null}
         <DiffView
-          fileNavigation={fileNavigation?.viewKey === reviewViewKey(state.data) ? fileNavigation : null}
-          viewKey={reviewViewKey(state.data)}
-          files={state.data.files}
-          activeFileId={state.activeFileId}
-          showSourceCommits={state.data.selectedCommitIds.length > 1}
+          fileNavigation={fileNavigation?.viewKey === viewKey ? fileNavigation : null}
+          viewKey={viewKey}
+          files={files}
+          loading={scope.pending}
+          error={data.files.length === 0 ? state.error : null}
+          readOnly={scope.disabledReason !== null}
+          emptyLabel={state.filter.trim() ? "No matching files" : scope.commitFilter.trim() && scope.selectedIds.length === 0 ? "No matching commits" : undefined}
+          activeFileId={activeFileId}
+          showSourceCommits={data.selectedCommitIds.length > 1}
           collapsedFiles={state.collapsedFiles}
           openLineId={state.openLineId}
           drafts={state.drafts}
@@ -276,10 +266,12 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
           />
         ) : null}
       </div>
+      </ReviewWorkspace>
       <ReviewActions
-        repositoryRoot={state.data.repositoryRoot}
+        repositoryRoot={data.repositoryRoot}
         draftCount={comments.length}
-        submitting={state.phase === "submitting" || state.phase === "selecting"}
+        submitting={scope.pending || state.phase === "submitting" || state.phase === "selecting"}
+        disabledReason={scope.disabledReason}
         error={state.error}
         onApprove={(copyToClipboard) => void submit("approve", copyToClipboard)}
         onShare={(copyToClipboard) => void submit("share", copyToClipboard)}
@@ -291,8 +283,4 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function orderReviewFiles(data: ReviewData): ReviewData {
-  return { ...data, files: filesInTreeOrder(data.files) };
 }
