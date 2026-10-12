@@ -15,7 +15,7 @@ import { adjacentMatch, findCodeMatches } from "./codeSearch";
 import { commitNavigationTarget } from "./commitPresentation";
 import { reviewViewKey } from "./scrollPosition";
 import { useReviewShortcuts } from "./useReviewShortcuts";
-import { focusFirstPane, focusPane } from "./panes";
+import { usePaneFocus } from "./usePaneFocus";
 import { filesInTreeOrder } from "./tree";
 import { useWindowChrome } from "./windowChrome/useWindowChrome";
 import { windowChromeCapabilities, type ReviewView, type WindowChromeKind } from "./windowChrome/model";
@@ -90,16 +90,8 @@ export function ReviewApp({ backend = tauriBackend, chromeMode = "html" }: { bac
   }, [backend]);
 
   const changesScope = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (view === "changes") focusFirstPane(changesScope.current);
-  }, [view]);
-  useEffect(() => {
-    const focused = document.activeElement;
-    if (view === "changes" && (focused === null || focused === document.body)) focusFirstPane(changesScope.current);
-  }, [state.phase, sidebarOpen]);
-  useEffect(() => {
-    if (!findOpen && document.activeElement === document.body) focusPane(changesScope.current, "diff");
-  }, [findOpen]);
+  usePaneFocus(view, shortcutHelpOpen ? "help" : view === "history" ? "panes" : commitSelectorOpen ? "picker"
+    : state.openLineId !== null ? "comment" : findOpen ? "find" : "panes", state.data !== null);
 
   const showView = useCallback((next: ReviewView) => {
     if (next === "history") {

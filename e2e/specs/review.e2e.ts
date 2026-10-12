@@ -446,6 +446,16 @@ describe("grr review window", () => {
     await setInputValue("input[aria-label='Filter files']", "");
 
     await clickElement("button[aria-label*='src/review.rs R2']");
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.activeElement?.matches("textarea[aria-label='Review comment']") ?? false,
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "comment editor did not receive focus" });
+    await browser.execute(() => {
+      document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true, cancelable: true }));
+    });
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.activeElement === document.querySelector("[data-view='changes'] [data-pane='diff']"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "Escape did not restore diff focus" });
+    await clickElement("button[aria-label*='src/review.rs R2']");
     await setInputValue("textarea[aria-label='Review comment']", "Please add a focused unit test.");
     await browser.execute(() => {
       const editor = document.querySelector<HTMLTextAreaElement>("textarea[aria-label='Review comment']");
@@ -458,6 +468,9 @@ describe("grr review window", () => {
       }));
     });
 
+    await browser.waitUntil(async () => await browser.execute(
+      () => document.activeElement === document.querySelector("[data-view='changes'] [data-pane='diff']"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "saving the comment did not restore diff focus" });
     const result = await browser.execute(() => {
       const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>("button"));
       return {
