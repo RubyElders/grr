@@ -42,6 +42,313 @@ fn commit_file<'repo>(
 }
 
 #[test]
+fn combines_selected_commits_and_worktree_changes_for_the_same_file() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let base = commit_file(&repository, "shared.txt", b"base\n", "base");
+    let commit = commit_file(&repository, "shared.txt", b"committed\n", "change file");
+    fs::write(directory.path().join("shared.txt"), b"worktree\n").unwrap();
+    let index_before = fs::read(repository.path().join("index")).unwrap();
+    for (ids, old, new) in [
+        (vec![], "base", "worktree"),
+        (vec![commit.id().to_string()], "base", "committed"),
+        (vec![WORKTREE_COMMIT_ID.to_owned()], "committed", "worktree"),
+        (
+            vec![commit.id().to_string(), WORKTREE_COMMIT_ID.to_owned()],
+            "base",
+            "worktree",
+        ),
+        (
+            vec![WORKTREE_COMMIT_ID.to_owned(), commit.id().to_string()],
+            "base",
+            "worktree",
+        ),
+        (
+            vec![
+                commit.id().to_string(),
+                WORKTREE_COMMIT_ID.to_owned(),
+                commit.id().to_string(),
+            ],
+            "base",
+            "worktree",
+        ),
+    ] {
+        let review =
+            load_review_selection(directory.path(), Some(&base.id().to_string()), &ids).unwrap();
+        assert_eq!(review.files.len(), 1, "selection {ids:?}");
+        if ids.len() > 1 {
+            let historical = load_history_files(directory.path(), &ids).unwrap();
+            assert_eq!(historical, review.files);
+        }
+        let file = &review.files[0];
+        assert_eq!(file.display_path, "shared.txt");
+        let lines = &file.hunks[0].lines;
+        assert!(
+            lines
+                .iter()
+                .any(|line| line.kind == grr::LineKind::Deletion && line.text.trim() == old)
+        );
+        assert!(
+            lines
+                .iter()
+                .any(|line| line.kind == grr::LineKind::Addition && line.text.trim() == new)
+        );
+    }
+    assert_eq!(
+        fs::read(repository.path().join("index")).unwrap(),
+        index_before
+    );
+    assert_eq!(repository.head().unwrap().target().unwrap(), commit.id());
+}
+
+#[test]
+fn selected_changes_that_cancel_each_other_leave_no_file() {
+    for added in [false, true] {
+        let directory = tempfile::tempdir().unwrap();
+        let repository = Repository::init(directory.path()).unwrap();
+        let base = commit_file(&repository, "base.txt", b"base\n", "base");
+        if !added {
+            commit_file(&repository, "shared.txt", b"original\n", "original");
+        }
+        let commit = commit_file(&repository, "shared.txt", b"changed\n", "change file");
+        if added {
+            fs::remove_file(directory.path().join("shared.txt")).unwrap();
+        } else {
+            fs::write(directory.path().join("shared.txt"), b"original\n").unwrap();
+        }
+        let review = load_review_selection(
+            directory.path(),
+            Some(&base.id().to_string()),
+            &[commit.id().to_string(), WORKTREE_COMMIT_ID.to_owned()],
+        )
+        .unwrap();
+        assert!(
+            review.files.is_empty(),
+            "added: {added}, files: {:?}",
+            review.files
+        );
+        if !added {
+            let restored = commit_file(&repository, "shared.txt", b"original\n", "restore file");
+            let review = load_review_selection(
+                directory.path(),
+                Some(&base.id().to_string()),
+                &[commit.id().to_string(), restored.id().to_string()],
+            )
+            .unwrap();
+            assert!(review.files.is_empty());
+        }
+    }
+}
+
+#[test]
+fn combines_multiple_real_commits_with_staged_and_unstaged_changes() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let base = commit_file(&repository, "shared.txt", b"base\n", "base");
+    let first = commit_file(&repository, "shared.txt", b"first\n", "first");
+    commit_file(&repository, "excluded.txt", b"excluded\n", "excluded");
+    let last = commit_file(&repository, "shared.txt", b"last\n", "last");
+    fs::write(directory.path().join("shared.txt"), b"staged\n").unwrap();
+    let mut index = repository.index().unwrap();
+    index.add_path(Path::new("shared.txt")).unwrap();
+    index.write().unwrap();
+    fs::write(directory.path().join("shared.txt"), b"unstaged\n").unwrap();
+    fs::write(directory.path().join("new.txt"), b"untracked\n").unwrap();
+    for virtual_selected in [false, true] {
+        let mut ids = vec![last.id().to_string(), first.id().to_string()];
+        if virtual_selected {
+            ids.push(WORKTREE_COMMIT_ID.to_owned());
+        }
+        let review =
+            load_review_selection(directory.path(), Some(&base.id().to_string()), &ids).unwrap();
+        assert_eq!(review.files.len(), if virtual_selected { 2 } else { 1 });
+        assert!(
+            !review
+                .files
+                .iter()
+                .any(|file| file.display_path == "excluded.txt")
+        );
+        let file = review
+            .files
+            .iter()
+            .find(|file| file.display_path == "shared.txt")
+            .unwrap();
+        assert!(file.source_commit.is_none());
+        assert_eq!(file.deletions, 1);
+        assert_eq!(file.additions, 1);
+        assert!(
+            file.hunks[0]
+                .lines
+                .iter()
+                .any(|line| line.text.trim() == if virtual_selected { "unstaged" } else { "last" })
+        );
+    }
+}
+
+#[test]
+fn combines_deletion_and_worktree_recreation_as_a_modification() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let base = commit_file(&repository, "shared.txt", b"base\n", "base");
+    fs::remove_file(directory.path().join("shared.txt")).unwrap();
+    let mut index = repository.index().unwrap();
+    index.remove_path(Path::new("shared.txt")).unwrap();
+    index.write().unwrap();
+    let commit = commit_file(&repository, "kept.txt", b"kept\n", "delete file");
+    fs::write(directory.path().join("shared.txt"), b"recreated\n").unwrap();
+    let review = load_review_selection(
+        directory.path(),
+        Some(&base.id().to_string()),
+        &[commit.id().to_string(), WORKTREE_COMMIT_ID.to_owned()],
+    )
+    .unwrap();
+    let file = review
+        .files
+        .iter()
+        .find(|file| file.display_path == "shared.txt")
+        .unwrap();
+    assert_eq!(file.status, FileStatus::Modified);
+    assert_eq!(file.additions, 1);
+    assert_eq!(file.deletions, 1);
+    let recreated = commit_file(&repository, "shared.txt", b"recreated\n", "recreate file");
+    let review = load_review_selection(
+        directory.path(),
+        Some(&base.id().to_string()),
+        &[commit.id().to_string(), recreated.id().to_string()],
+    )
+    .unwrap();
+    let file = review
+        .files
+        .iter()
+        .find(|file| file.display_path == "shared.txt")
+        .unwrap();
+    assert_eq!(file.status, FileStatus::Modified);
+    assert_eq!(file.additions, 1);
+    assert_eq!(file.deletions, 1);
+}
+
+#[test]
+fn combined_selection_preserves_renames_binary_changes_and_literal_paths() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let contents = "unchanged line\n".repeat(20);
+    commit_file(&repository, "old.txt", contents.as_bytes(), "old path");
+    let base = commit_file(&repository, "data[1].bin", b"\0base", "base binary");
+    let commit = commit_file(&repository, "data[1].bin", b"\0committed", "binary change");
+    fs::write(directory.path().join("data[1].bin"), b"\0worktree").unwrap();
+    fs::rename(
+        directory.path().join("old.txt"),
+        directory.path().join("new.txt"),
+    )
+    .unwrap();
+    fs::write(
+        directory.path().join("new.txt"),
+        format!("{contents}added line\n"),
+    )
+    .unwrap();
+    let review = load_review_selection(
+        directory.path(),
+        Some(&base.id().to_string()),
+        &[commit.id().to_string(), WORKTREE_COMMIT_ID.to_owned()],
+    )
+    .unwrap();
+    assert_eq!(review.files.len(), 2);
+    let binary = review
+        .files
+        .iter()
+        .find(|file| file.display_path == "data[1].bin")
+        .unwrap();
+    assert!(binary.binary);
+    assert_eq!(
+        binary.old_oid,
+        repository.blob(b"\0base").unwrap().to_string()
+    );
+    assert!(binary.source_commit.is_none());
+    let moved = review
+        .files
+        .iter()
+        .find(|file| file.display_path == "new.txt")
+        .unwrap();
+    assert_eq!(moved.status, FileStatus::Renamed);
+    assert_eq!(moved.old_path.as_deref(), Some("old.txt"));
+    assert_eq!(moved.source_commit.as_ref().unwrap().id, WORKTREE_COMMIT_ID);
+}
+
+#[test]
+fn combined_selection_includes_force_staged_ignored_files_but_not_other_ignored_files() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let base = commit_file(&repository, ".gitignore", b"*.log\n", "ignore logs");
+    let commit = commit_file(&repository, "file.txt", b"committed\n", "commit");
+    fs::write(directory.path().join("included.log"), b"staged\n").unwrap();
+    fs::write(directory.path().join("ignored.log"), b"ignored\n").unwrap();
+    let mut index = repository.index().unwrap();
+    index.add_path(Path::new("included.log")).unwrap();
+    index.write().unwrap();
+    let before = fs::read(repository.path().join("index")).unwrap();
+    let review = load_review_selection(
+        directory.path(),
+        Some(&base.id().to_string()),
+        &[commit.id().to_string(), WORKTREE_COMMIT_ID.to_owned()],
+    )
+    .unwrap();
+    assert_eq!(review.files.len(), 2);
+    assert!(
+        review
+            .files
+            .iter()
+            .any(|file| file.display_path == "included.log")
+    );
+    let included = review
+        .files
+        .iter()
+        .find(|file| file.display_path == "included.log")
+        .unwrap();
+    assert_eq!(included.status, FileStatus::Added);
+    assert_eq!(included.additions, 1);
+    assert!(
+        !review
+            .files
+            .iter()
+            .any(|file| file.display_path == "ignored.log")
+    );
+    assert_eq!(fs::read(repository.path().join("index")).unwrap(), before);
+}
+
+#[test]
+fn virtual_selection_does_not_replace_an_older_selected_commit_with_head_contents() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let base = commit_file(&repository, "file.txt", b"base\n", "base");
+    let selected = commit_file(&repository, "file.txt", b"selected\n", "selected");
+    commit_file(&repository, "file.txt", b"excluded\n", "excluded");
+    fs::write(directory.path().join("note.txt"), b"worktree\n").unwrap();
+    let review = load_review_selection(
+        directory.path(),
+        Some(&base.id().to_string()),
+        &[selected.id().to_string(), WORKTREE_COMMIT_ID.to_owned()],
+    )
+    .unwrap();
+    let file = review
+        .files
+        .iter()
+        .find(|file| file.display_path == "file.txt")
+        .unwrap();
+    assert!(
+        file.hunks[0]
+            .lines
+            .iter()
+            .any(|line| line.kind == grr::LineKind::Addition && line.text.trim() == "selected")
+    );
+    assert!(
+        !file.hunks[0]
+            .lines
+            .iter()
+            .any(|line| line.text.trim() == "excluded")
+    );
+}
+
+#[test]
 fn loads_root_commit_as_an_addition() {
     let directory = tempfile::tempdir().unwrap();
     let repository = Repository::init(directory.path()).unwrap();

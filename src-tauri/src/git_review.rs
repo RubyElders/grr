@@ -116,6 +116,34 @@ pub fn load_history_files(
     commit_ids: &[String],
 ) -> Result<Vec<FileDiff>, ReviewLoadError> {
     let repository = Repository::discover(path)?;
+    let selected: HashSet<_> = commit_ids.iter().map(String::as_str).collect();
+    if selected.len() > 1 {
+        let head = repository.head()?.peel_to_commit()?;
+        let mut summaries = Vec::with_capacity(selected.len());
+        let mut walk = repository.revwalk()?;
+        walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
+        for id in &selected {
+            if *id == WORKTREE_COMMIT_ID {
+                summaries.push(worktree_summary(&head));
+            } else {
+                let oid = git2::Oid::from_str(id).map_err(|_| {
+                    ReviewLoadError::InvalidSelection(format!("unknown commit {id}"))
+                })?;
+                repository.find_commit(oid)?;
+                walk.push(oid)?;
+            }
+        }
+        for oid in walk {
+            let commit = repository.find_commit(oid?)?;
+            if selected.contains(commit.id().to_string().as_str()) {
+                summaries.push(commit_summary(&commit)?);
+                if summaries.len() == selected.len() {
+                    break;
+                }
+            }
+        }
+        return combined_selection_files(&repository, &head.tree()?, &summaries, &selected);
+    }
     let mut files = Vec::new();
     for (section_index, id) in commit_ids.iter().rev().enumerate() {
         let prefix = format!("h{section_index}");
@@ -241,6 +269,8 @@ fn load_review_impl(
         } else {
             diff_tree_files(&repository, old_tree.as_ref(), &head_tree, "all", None)?
         };
+    } else if selected.len() > 1 {
+        files = combined_selection_files(&repository, &head_tree, &commits, &selected)?;
     } else {
         for (section_index, summary) in commits
             .iter()
@@ -281,6 +311,162 @@ fn load_review_impl(
         selected_commit_ids,
         files,
     })
+}
+
+fn combined_selection_files(
+    repository: &Repository,
+    head_tree: &Tree<'_>,
+    commits: &[CommitSummary],
+    selected: &HashSet<&str>,
+) -> Result<Vec<FileDiff>, ReviewLoadError> {
+    type TreeRange = (Option<git2::Oid>, Option<git2::Oid>);
+    let mut options = diff_options();
+    options
+        .include_untracked(true)
+        .include_ignored(true)
+        .show_untracked_content(true);
+    let mut combined = repository.diff_tree_to_tree(None, None, Some(&mut options))?;
+    let mut sources: HashMap<String, HashSet<&str>> = HashMap::new();
+    let mut ranges: HashMap<Vec<u8>, TreeRange> = HashMap::new();
+    for summary in commits
+        .iter()
+        .rev()
+        .filter(|commit| selected.contains(commit.id.as_str()))
+    {
+        let (diff, old_id, new_id) = if summary.id == WORKTREE_COMMIT_ID {
+            (
+                worktree_diff(repository, Some(head_tree))?,
+                Some(head_tree.id()),
+                None,
+            )
+        } else {
+            let commit = repository.find_commit(git2::Oid::from_str(&summary.id)?)?;
+            let parent = commit.parent(0).ok();
+            let old_tree = parent.as_ref().map(Commit::tree).transpose()?;
+            let tree = commit.tree()?;
+            let diff = repository.diff_tree_to_tree(
+                old_tree.as_ref(),
+                Some(&tree),
+                Some(&mut diff_options()),
+            )?;
+            (diff, old_tree.as_ref().map(Tree::id), Some(tree.id()))
+        };
+        for delta in diff.deltas() {
+            for path in [delta.old_file().path_bytes(), delta.new_file().path_bytes()]
+                .into_iter()
+                .flatten()
+            {
+                sources
+                    .entry(escape_path(path))
+                    .or_default()
+                    .insert(&summary.id);
+                ranges
+                    .entry(path.to_vec())
+                    .and_modify(|range| range.1 = new_id)
+                    .or_insert((old_id, new_id));
+            }
+        }
+    }
+    let mut groups: HashMap<TreeRange, Vec<Vec<u8>>> = HashMap::new();
+    for (path, range) in ranges {
+        groups.entry(range).or_default().push(path);
+    }
+    let mut groups: Vec<_> = groups.into_iter().collect();
+    groups.sort_by_key(|((old_id, new_id), _)| (new_id.is_none(), *old_id, *new_id));
+    let mut files = Vec::new();
+    for (group_index, ((old_id, new_id), paths)) in groups.into_iter().enumerate() {
+        let old_tree = old_id.map(|id| repository.find_tree(id)).transpose()?;
+        let mut options = diff_options();
+        options
+            .disable_pathspec_match(true)
+            .include_untracked(true)
+            .include_ignored(true)
+            .recurse_untracked_dirs(true)
+            .show_untracked_content(true);
+        for path in paths {
+            options.pathspec(path);
+        }
+        if let Some(new_id) = new_id {
+            let mut diff = repository.diff_tree_to_tree(
+                old_tree.as_ref(),
+                Some(&repository.find_tree(new_id)?),
+                Some(&mut options),
+            )?;
+            let parsed = parse_diff(&mut diff, &format!("selection:g{group_index}"), None)?;
+            let deleted: Vec<_> = diff
+                .deltas()
+                .filter(|delta| delta.status() == Delta::Deleted)
+                .filter_map(|delta| delta.old_file().path_bytes().map(<[u8]>::to_vec))
+                .collect();
+            if !deleted.is_empty() {
+                let mut options = diff_options();
+                options.disable_pathspec_match(true);
+                for path in deleted {
+                    options.pathspec(path);
+                }
+                combined.merge(&repository.diff_tree_to_tree(
+                    old_tree.as_ref(),
+                    None,
+                    Some(&mut options),
+                )?)?;
+            }
+            files.extend(
+                parsed
+                    .into_iter()
+                    .filter(|file| file.status != FileStatus::Deleted),
+            );
+        } else {
+            let mut diff =
+                repository.diff_tree_to_workdir(old_tree.as_ref(), Some(&mut options))?;
+            let ignored: Vec<_> = diff
+                .deltas()
+                .filter(|delta| delta.status() == Delta::Ignored)
+                .filter_map(|delta| delta.new_file().path_bytes().map(<[u8]>::to_vec))
+                .collect();
+            if !ignored.is_empty() {
+                options.include_ignored(false);
+                diff = repository.diff_tree_to_workdir(old_tree.as_ref(), Some(&mut options))?;
+                let mut options = diff_options();
+                options
+                    .disable_pathspec_match(true)
+                    .include_untracked(true)
+                    .show_untracked_content(true);
+                for path in ignored {
+                    options.pathspec(path);
+                }
+                let staged = repository
+                    .diff_tree_to_workdir_with_index(old_tree.as_ref(), Some(&mut options))?;
+                diff.merge(&staged)?;
+            }
+            combined.merge(&diff)?;
+        }
+    }
+    files.extend(parse_diff(&mut combined, "selection:worktree", None)?);
+    files.retain(|file| {
+        file.old_path != file.new_path
+            || file.old_mode != file.new_mode
+            || file.old_oid != file.new_oid
+    });
+    for file in &mut files {
+        let ids: HashSet<_> = [file.old_path.as_ref(), file.new_path.as_ref()]
+            .into_iter()
+            .flatten()
+            .filter_map(|path| sources.get(path))
+            .flat_map(|ids| ids.iter().copied())
+            .collect();
+        if ids.len() == 1 {
+            let summary = commits
+                .iter()
+                .find(|commit| ids.contains(commit.id.as_str()))
+                .unwrap();
+            file.source_commit = Some(FileSourceCommit {
+                id: summary.id.clone(),
+                short_id: summary.short_id.clone(),
+                summary: summary.summary.clone(),
+            });
+        }
+    }
+    Ok(files)
 }
 
 struct ResolvedBase {
@@ -462,13 +648,20 @@ fn diff_worktree_files(
     id_prefix: &str,
     source_commit: Option<CommitSummary>,
 ) -> Result<Vec<FileDiff>, ReviewLoadError> {
+    let mut diff = worktree_diff(repository, old_tree)?;
+    parse_diff(&mut diff, id_prefix, source_commit)
+}
+
+fn worktree_diff<'repo>(
+    repository: &'repo Repository,
+    old_tree: Option<&Tree<'_>>,
+) -> Result<Diff<'repo>, ReviewLoadError> {
     let mut options = diff_options();
     options
         .include_untracked(true)
         .recurse_untracked_dirs(true)
         .show_untracked_content(true);
-    let mut diff = repository.diff_tree_to_workdir_with_index(old_tree, Some(&mut options))?;
-    parse_diff(&mut diff, id_prefix, source_commit)
+    Ok(repository.diff_tree_to_workdir_with_index(old_tree, Some(&mut options))?)
 }
 
 fn parse_diff(
