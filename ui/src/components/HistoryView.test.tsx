@@ -41,6 +41,24 @@ async function openHistory(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("HistoryView", () => {
+  it("keeps focus in the visible view while a Changes editor is preserved", async () => {
+    const { user } = setup();
+    await screen.findByText("5 commits against origin/main");
+    screen.getByRole("main", { name: "Commit diff" }).focus();
+    await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R27/ }));
+    const editor = screen.getByRole("textbox", { name: "Review comment" });
+    await user.type(editor, "Keep my unsaved note.");
+    await openHistory(user);
+    const historyScope = screen.getByRole("region", { name: "History" });
+    await within(historyScope).findByRole("main", { name: "Commit diff" });
+    await waitFor(() => expect(historyScope.querySelector("[data-pane='commits']")).toHaveFocus());
+    await user.keyboard("{Tab}{Tab}");
+    expect(historyScope.querySelector("[data-pane='diff']")).toHaveFocus();
+    await user.click(screen.getByRole("button", { name: "Changes" }));
+    await waitFor(() => expect(editor).toHaveFocus());
+    expect(editor).toHaveValue("Keep my unsaved note.");
+  });
+
   it("lists history with refs and the base marker and shows the selected commit read-only", async () => {
     const { backend, user } = setup();
     const list = await openHistory(user);

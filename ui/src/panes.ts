@@ -4,7 +4,8 @@ export type PaneName = "commits" | "files" | "diff";
 
 export function paneOf(target: EventTarget | null): PaneName | null {
   if (!(target instanceof Element)) return null;
-  return (target.closest<HTMLElement>("[data-pane]")?.dataset.pane as PaneName | undefined) ?? null;
+  const name = target.closest<HTMLElement>("[data-pane]")?.dataset.pane;
+  return name === "commits" || name === "files" || name === "diff" ? name : null;
 }
 
 export function focusPane(scope: ParentNode | null, name: PaneName): boolean {

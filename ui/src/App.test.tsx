@@ -573,6 +573,48 @@ describe("ReviewApp", () => {
     expect(backend.cancelReview).not.toHaveBeenCalled();
   });
 
+  it.each(["Escape", "Ctrl+Enter", "Cancel", "Save comment"])("restores diff focus after closing a comment with %s", async (action) => {
+    const { backend, user } = setup();
+    await screen.findByText("5 commits against origin/main");
+    const diff = screen.getByRole("main", { name: "Commit diff" });
+    diff.focus();
+    await user.click(screen.getByRole("button", { name: /Add comment on engine\/GraphicsPage\.cpp R27/ }));
+    const editor = screen.getByRole("textbox", { name: "Review comment" });
+    await waitFor(() => expect(editor).toHaveFocus());
+    diff.focus();
+    expect(editor).toHaveFocus();
+    await user.type(editor, "Please check this.");
+    if (action === "Escape") await user.keyboard("{Escape}");
+    else if (action === "Ctrl+Enter") await user.keyboard("{Control>}{Enter}{/Control}");
+    else await user.click(screen.getByRole("button", { name: action }));
+    await waitFor(() => expect(diff).toHaveFocus());
+    expect(screen.queryByRole("textbox", { name: "Review comment" })).not.toBeInTheDocument();
+    expect(backend.finishReview).not.toHaveBeenCalled();
+    expect(backend.cancelReview).not.toHaveBeenCalled();
+    await user.keyboard("{Tab}");
+    expect(screen.getByRole("complementary", { name: "Changed files" })).toHaveFocus();
+  });
+
+  it("keeps focus in a pane when controls are clicked, focused, or removed", async () => {
+    const { user } = setup();
+    await screen.findByText("5 commits against origin/main");
+    const diff = screen.getByRole("main", { name: "Commit diff" });
+    diff.scrollTo = vi.fn();
+    const files = screen.getByRole("complementary", { name: "Changed files" });
+    await user.click(screen.getByTitle("tests/rendering/reference.png"));
+    expect(files).toHaveFocus();
+    diff.focus();
+    screen.getByRole("button", { name: "Approve" }).focus();
+    expect(diff).toHaveFocus();
+    diff.blur();
+    await waitFor(() => expect(diff).toHaveFocus());
+    files.focus();
+    await user.click(screen.getByRole("button", { name: "Hide file sidebar" }));
+    await waitFor(() => expect(diff).toHaveFocus());
+    await user.keyboard("{Tab}");
+    expect(diff).toHaveFocus();
+  });
+
   it.each([
     ["Escape", {}],
     ["Control+W", { key: "w", ctrlKey: true }],

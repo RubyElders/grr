@@ -294,6 +294,7 @@ export function HistoryView(props: HistoryViewProps) {
   return (
     <section
       ref={root}
+      data-view="history"
       class={`${styles.history} ${props.hidden ? styles.hidden : ""}`}
       aria-label="History"
       style={listHeight === null ? undefined : { gridTemplateRows: `${listHeight}px auto auto minmax(0, 1fr)` }}
