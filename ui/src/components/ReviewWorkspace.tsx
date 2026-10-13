@@ -27,7 +27,6 @@ interface ReviewWorkspaceProps {
   view: ReviewView;
   keyboardEnabled: boolean;
   selectionLocked: boolean;
-  hasChanges: boolean;
   openDisabledReason: string | null;
   children: ComponentChildren;
   onFilter(value: string): void;
@@ -146,10 +145,11 @@ export function ReviewWorkspace(props: ReviewWorkspaceProps) {
     divider.addEventListener("pointerup", stop);
   };
 
-  const worktreeOnly = selected.length === 1 && selected[0] === WORKTREE_COMMIT_ID;
-  const mergeBaseId = props.hasChanges
-    ? worktreeOnly ? props.review.comparison.headId : props.review.comparison.mergeBaseId
+  const worktreeOnly = props.review.commits.length === 1 && props.review.commits[0]!.id === WORKTREE_COMMIT_ID;
+  const mergeBaseId = props.review.commits.length > 0
+    ? props.review.comparison.mergeBaseId ?? (worktreeOnly ? props.review.comparison.headId : null)
     : null;
+  const baseRef = props.review.comparison.mergeBaseId === null && worktreeOnly ? "HEAD" : props.review.comparison.baseRef;
   return (
     <section ref={root} data-view={props.view} class={`${styles.workspace} ${props.view === "changes" ? styles.changes : ""}`}
       aria-label={props.view === "changes" ? "Changes" : "History"}
@@ -166,7 +166,7 @@ export function ReviewWorkspace(props: ReviewWorkspaceProps) {
           <div ref={list} class={styles.list} role="listbox" aria-label="Commits" aria-multiselectable="true">
             {visible.map((commit, index) => <CommitRow key={commit.id} commit={commit} index={index}
               graphRow={graph ? graph[index]! : null} graphWidth={graphWidth} selected={selectedSet.has(commit.id)}
-              outside={!inReview.has(commit.id)} baseRef={commit.id === mergeBaseId ? worktreeOnly ? "HEAD" : props.review.comparison.baseRef : null}
+              outside={!inReview.has(commit.id)} baseRef={commit.id === mergeBaseId ? baseRef : null}
               onClick={onRowClick} onOpen={onRowOpen} />)}
             {props.error ? <div class={styles.notice} role="alert">{props.error}</div> : null}
             {props.loading ? <div class={styles.notice} role="status">Loading history...</div> : null}

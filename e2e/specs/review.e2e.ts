@@ -460,10 +460,10 @@ describe("grr review window", () => {
     ), { timeout: 5_000, interval: 50, timeoutMsg: "worktree selection did not load before checking the boundary" });
     await pressShortcut("v");
     await browser.waitUntil(async () => await browser.execute(
-      () => Boolean(document.querySelector("section[aria-label='History'] [role='separator'][aria-label='Review base HEAD']")),
-    ), { timeout: 5_000, interval: 50, timeoutMsg: "worktree review did not show its HEAD boundary" });
+      () => Boolean(document.querySelector("section[aria-label='History'] [role='separator'][aria-label='Review base main']")),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "worktree selection did not preserve the branch boundary" });
     const boundary = await browser.execute(() => {
-      const marker = document.querySelector("section[aria-label='History'] [role='separator'][aria-label='Review base HEAD']")!;
+      const marker = document.querySelector("section[aria-label='History'] [role='separator'][aria-label='Review base main']")!;
       const gutter = marker.querySelector("svg")!.getBoundingClientRect();
       const before = marker.previousElementSibling!.querySelector("svg")!.getBoundingClientRect();
       const after = marker.nextElementSibling!.querySelector("svg")!.getBoundingClientRect();
@@ -472,12 +472,25 @@ describe("grr review window", () => {
         outgoingGap: after.top - gutter.bottom,
         labelLeft: marker.lastElementChild!.getBoundingClientRect().left - gutter.right,
         path: marker.querySelector("path")?.getAttribute("d"),
+        baseId: (marker.nextElementSibling as HTMLElement).dataset.commitId,
+        above: [...document.querySelectorAll("section[aria-label='History'] [role='option']")]
+          .filter((row) => row.compareDocumentPosition(marker) & Node.DOCUMENT_POSITION_FOLLOWING).length,
       };
     });
     expect(Math.abs(boundary.incomingGap)).toBeLessThanOrEqual(1);
     expect(Math.abs(boundary.outgoingGap)).toBeLessThanOrEqual(1);
     expect(boundary.labelLeft).toBeGreaterThanOrEqual(0);
     expect(boundary.path).toBe("M10 0V20");
+    expect(boundary.above).toBe(5);
+    await browser.execute(() => document.querySelectorAll<HTMLElement>("section[aria-label='History'] [role='option']")[1]!.click());
+    await browser.waitUntil(async () => await browser.execute((baseId) => {
+      const selected = document.querySelector<HTMLElement>("section[aria-label='History'] [role='option'][aria-selected='true']");
+      const marker = document.querySelector("section[aria-label='History'] [aria-label='Review base main']");
+      return selected?.dataset.commitId !== "WORKTREE"
+        && selected?.textContent?.includes("Document the fixture")
+        && (marker?.nextElementSibling as HTMLElement)?.dataset.commitId === baseId
+        && !document.querySelector("main[aria-label='Commit diff'] [role='status']");
+    }, boundary.baseId), { timeout: 5_000, interval: 50, timeoutMsg: "commit selection moved the review boundary" });
     writeFileSync("e2e-results/history-base.png", Buffer.from(await browser.takeScreenshot(), "base64"));
     await setInputValue("input[aria-label='Filter commits']", "Return the correct answer");
     await browser.waitUntil(async () => await browser.execute(() =>

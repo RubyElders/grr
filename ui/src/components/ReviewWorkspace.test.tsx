@@ -52,14 +52,45 @@ describe("Review workspace", () => {
     expect(screen.getByText("No changed files")).toBeInTheDocument();
   });
 
-  it("does not mark a boundary for a selected commit with no changes", async () => {
+  it("keeps the review boundary for a selected commit with no changes", async () => {
     const { backend, user } = setup();
     const list = await openHistory(user);
     vi.mocked(backend.selectCommits).mockResolvedValue({ ...review, files: [] });
     await user.click(await within(list).findByText("Improve graphics options"));
-    await waitFor(() => expect(within(list).queryByRole("separator")).not.toBeInTheDocument());
     await screen.findByText("No changed files");
-    expect(within(list).queryByRole("separator")).not.toBeInTheDocument();
+    expect(within(list).getByRole("separator", { name: "Review base origin/main" }).nextElementSibling)
+      .toHaveAttribute("data-commit-id", baseId);
+  });
+
+  it("keeps every review commit above the same boundary while moving between selections", async () => {
+    const { backend, user } = setup("history", { ...review, selectedCommitIds: ["WORKTREE"] });
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    const marker = await within(list).findByRole("separator", { name: "Review base origin/main" });
+    const assertBoundary = () => {
+      expect(within(list).getByRole("separator", { name: "Review base origin/main" })).toBe(marker);
+      expect(marker.nextElementSibling).toHaveAttribute("data-commit-id", baseId);
+      for (const commit of review.commits) {
+        const row = list.querySelector(`[data-commit-id="${commit.id}"]`)!;
+        expect(row.compareDocumentPosition(marker) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      }
+      expect(within(list).queryByText("base: HEAD")).not.toBeInTheDocument();
+    };
+    assertBoundary();
+    await user.click(within(list).getByText(review.commits[1]!.summary));
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([review.commits[1]!.id]));
+    assertBoundary();
+    await user.click(within(list).getByText("Uncommitted changes"));
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
+    assertBoundary();
+    await user.keyboard("{ArrowDown}");
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([review.commits[1]!.id]));
+    assertBoundary();
+    await user.keyboard("{ArrowUp}");
+    await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith(["WORKTREE"]));
+    assertBoundary();
+    await user.click(within(list).getByText("Base commit"));
+    await waitFor(() => expect(backend.getHistoryFiles).toHaveBeenCalledWith([baseId]));
+    assertBoundary();
   });
 
   it("preserves the same focused editor when changing layouts", async () => {
@@ -102,16 +133,26 @@ describe("Review workspace", () => {
     expect([...marker.querySelectorAll("path")].map((path) => path.getAttribute("d"))).toEqual(["M10 0V20", "M24 0V20"]);
   });
 
-  it.each([true, false])("marks HEAD for a worktree-only selection without a merge base (only virtual commit: %s)", async (onlyVirtual) => {
+  it("marks HEAD when the repository review contains only the worktree and has no merge base", async () => {
     const worktree = { ...history[0]!, parentIds: [review.comparison.headId] };
     const head = { ...history[1]!, id: review.comparison.headId, parentIds: [] };
-    const data = { ...review, commits: onlyVirtual ? [review.commits[0]!] : review.commits, selectedCommitIds: ["WORKTREE"], comparison: { ...review.comparison, mergeBaseId: null } };
-    setup("history", data, [worktree, head]);
+    const data = { ...review, commits: [review.commits[0]!], selectedCommitIds: ["WORKTREE"], comparison: { ...review.comparison, mergeBaseId: null } };
+    const { backend, user } = setup("history", data, [worktree, head]);
     const list = await screen.findByRole("listbox", { name: "Commits" });
     const marker = await within(list).findByRole("separator", { name: "Review base HEAD" });
     expect(marker.previousElementSibling).toHaveAttribute("data-commit-id", "WORKTREE");
     expect(marker.nextElementSibling).toHaveAttribute("data-commit-id", review.comparison.headId);
     expect(marker.querySelector("path")).toHaveAttribute("d", "M10 0V20");
+    await user.click(within(list).getByText(head.summary));
+    await waitFor(() => expect(backend.getHistoryFiles).toHaveBeenCalledWith([head.id]));
+    expect(within(list).getByRole("separator", { name: "Review base HEAD" })).toBe(marker);
+  });
+
+  it("does not invent a HEAD boundary when real review commits have no merge base", async () => {
+    setup("history", { ...review, selectedCommitIds: ["WORKTREE"], comparison: { ...review.comparison, mergeBaseId: null } });
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    await within(list).findByText("Uncommitted changes");
+    expect(within(list).queryByRole("separator")).not.toBeInTheDocument();
   });
 
   it("lists history with refs and the base marker while sharing the active review", async () => {
