@@ -34,10 +34,15 @@ describe("combined commit selection", () => {
         label.querySelector<HTMLInputElement>("input")!.click();
       });
       await browser.waitUntil(async () => await browser.execute(() =>
-        [...document.querySelectorAll("button")].some((button) => button.textContent?.trim() === "Show (2)"),
+        [...document.querySelectorAll("button")].some((button) => button.textContent?.trim() === "Show (5)"),
       ), { timeout: 5_000, interval: 50 });
       await browser.execute(() => [...document.querySelectorAll<HTMLButtonElement>("button")]
-        .find((button) => button.textContent?.trim() === "Show (2)")!.click());
+        .find((button) => button.textContent?.trim() === "Show (5)")!.click());
+      await browser.waitUntil(async () => await browser.execute(() =>
+        !document.querySelector("main [role='status']")
+          && Boolean(document.querySelector("nav button[title='src/review.rs']")),
+      ), { timeout: 10_000, interval: 50 });
+      await browser.execute(() => document.querySelector<HTMLButtonElement>("nav button[title='src/review.rs']")!.click());
       await browser.waitUntil(async () => await browser.execute(() => {
         const cards = [...document.querySelectorAll("main article")].filter((card) => card.querySelector("header")?.textContent?.includes("src/review.rs"));
         return !document.querySelector("main [role='status']")

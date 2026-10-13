@@ -10,7 +10,7 @@ const history: HistoryCommit[] = review.commits.map((commit) => ({ ...commit, pa
 const older: HistoryCommit = { ...history[1]!, id: "older", summary: "Older commit", message: "Older commit", author: "Base Author", refs: ["main"] };
 const fileFor = (id: string) => ({ ...review.files[0]!, id, displayPath: `src/${id}.rs` });
 
-async function setup(data = review) {
+async function setup(data = review, historyCommits = [...history, older]) {
   const backend: ReviewBackend = {
     getReview: vi.fn().mockResolvedValue(data),
     reloadReview: vi.fn().mockResolvedValue(data),
@@ -18,18 +18,58 @@ async function setup(data = review) {
     selectCommits: vi.fn().mockImplementation(async (ids: string[]) => ({
       ...review, selectedCommitIds: ids, files: ids.length === 0 ? review.files : ids.map(fileFor),
     })),
-    getHistory: vi.fn().mockResolvedValue({ headRef: "main", commits: [...history, older], hasMore: false }),
+    getHistory: vi.fn().mockResolvedValue({ headRef: "main", commits: historyCommits, hasMore: false }),
     getHistoryFiles: vi.fn().mockImplementation(async (ids: string[]) => ids.map(fileFor)),
     finishReview: vi.fn(),
     cancelReview: vi.fn(),
   };
   const hook = renderHook(() => useReviewScope(backend, true));
   await waitFor(() => expect(hook.result.current.state.phase).toBe("ready"));
-  await waitFor(() => expect(hook.result.current.commits).toHaveLength(history.length + 1));
+  await waitFor(() => expect(hook.result.current.commits).toHaveLength(historyCommits.length));
   return { ...hook, backend };
 }
 
 describe("review scope", () => {
+  it("shares a filled range across history selection, files and the commit picker", async () => {
+    const { result, backend } = await setup();
+    const ids = review.commits.slice(1, 4).map((commit) => commit.id);
+    act(() => result.current.selectHistory([ids[2]!, ids[0]!]));
+    await waitFor(() => expect(result.current.pending).toBe(false));
+    expect(result.current.selectedIds).toEqual(ids);
+    expect(result.current.data?.selectedCommitIds).toEqual(ids);
+    expect(result.current.data?.files.map((file) => file.id)).toEqual(ids);
+    expect(backend.selectCommits).toHaveBeenCalledWith(ids);
+  });
+
+  it("keeps intervening commits visible when a filter matches only the endpoints", async () => {
+    const filteredHistory = history.map((commit, index) => ({
+      ...commit, message: index === 1 || index === 3 ? "batch endpoint" : commit.message,
+    }));
+    const { result } = await setup(review, [...filteredHistory, older]);
+    act(() => result.current.filterCommits("batch endpoint"));
+    const ids = review.commits.slice(1, 4).map((commit) => commit.id);
+    expect(result.current.visibleCommits.map((commit) => commit.id)).toEqual(ids);
+    await waitFor(() => expect(result.current.pending).toBe(false));
+    expect(result.current.data?.commits.map((commit) => commit.id)).toEqual(ids);
+    expect(result.current.data?.files.map((file) => file.id)).toEqual(ids);
+  });
+
+  it("rejects incompatible histories without loading files or allowing approval", async () => {
+    const { result, backend } = await setup();
+    act(() => result.current.selectHistory(["WORKTREE", "older"]));
+    expect(result.current.pending).toBe(false);
+    expect(result.current.disabledReason).toContain("first-parent");
+    expect(result.current.data?.files).toEqual([]);
+    expect(backend.selectCommits).not.toHaveBeenCalled();
+    expect(backend.getHistoryFiles).not.toHaveBeenCalled();
+    act(() => result.current.selectCommits([]));
+    expect(result.current.state.error).toBeNull();
+    expect(result.current.data?.files).toEqual(review.files);
+    act(() => result.current.selectHistory([review.commits[1]!.id]));
+    await waitFor(() => expect(result.current.pending).toBe(false));
+    expect(result.current.state.error).toBeNull();
+  });
+
   it("reloads files and history while keeping the file filter", async () => {
     const { result, backend } = await setup();
     const updated = { ...review, selectedCommitIds: ["WORKTREE"], files: [fileFor("fresh")] };

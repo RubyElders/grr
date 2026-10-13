@@ -4,6 +4,7 @@ import { initialState, reviewReducer } from "./state";
 import { filesInTreeOrder } from "./tree";
 import type { HistoryCommit, ReviewData } from "./types";
 import type { ReviewView } from "./windowChrome/model";
+import { consecutiveCommitIds } from "./commitRange";
 
 const PAGE_SIZE = 200;
 
@@ -61,24 +62,39 @@ export function useReviewScope(backend: ReviewBackend, historyEnabled: boolean) 
   }, [historyEnabled, initialView, loadHistory]);
 
   const query = commitFilter.trim().toLocaleLowerCase();
-  const visibleCommits = useMemo(() => query === "" ? commits : commits.filter((commit) =>
+  const matchingCommits = useMemo(() => query === "" ? commits : commits.filter((commit) =>
     [commit.message, commit.author, commit.id, ...commit.refs].some((value) => value.toLocaleLowerCase().includes(query)),
   ), [commits, query]);
-  const ids = useMemo(() => choice === null
-    ? query === "" ? null : visibleCommits.map((commit) => commit.id)
-    : query === "" ? choice : choice.filter((id) => visibleCommits.some((commit) => commit.id === id)),
-  [choice, query, visibleCommits]);
+  const range = useMemo(() => {
+    const requested = choice === null
+      ? query === "" ? null : matchingCommits.map((commit) => commit.id)
+      : query === "" ? choice : choice.filter((id) => matchingCommits.some((commit) => commit.id === id));
+    if (requested === null) return { ids: null, error: null };
+    const catalog = commits.length > 0 ? commits : baseReview?.commits ?? [];
+    try {
+      return { ids: consecutiveCommitIds(catalog, requested), error: null };
+    } catch (error) {
+      return { ids: requested, error: errorMessage(error) };
+    }
+  }, [choice, query, matchingCommits, commits, baseReview]);
+  const ids = range.ids;
+  const visibleCommits = useMemo(() => query === "" || range.error ? matchingCommits
+    : commits.filter((commit) => ids?.includes(commit.id)), [query, range.error, matchingCommits, commits, ids]);
   const key = scopeKey(ids);
   const selectedIds = useMemo(() => ids ?? baseReview?.commits.map((commit) => commit.id) ?? [], [ids, baseReview]);
   const reviewable = ids === null || (ids.length > 0 && ids.every((id) => baseReview?.commits.some((commit) => commit.id === id)));
   const unresolved = baseReview !== null && (key !== loadedKey.current || (reviewable && key !== serverKey.current));
-  const pending = reloading || (unresolved && failedKey !== key);
-  const disabledReason = ids?.length === 0 ? "No commits selected"
+  const pending = reloading || (unresolved && failedKey !== key && !range.error);
+  const disabledReason = range.error ?? (ids?.length === 0 ? "No commits selected"
     : !reviewable ? `Only commits after ${baseReview?.comparison.baseRef} can be reviewed`
-      : failedKey === key ? "Could not load selected commits" : null;
+      : failedKey === key ? "Could not load selected commits" : null);
 
   useEffect(() => {
     if (!baseReview) return;
+    if (range.error) {
+      dispatch({ type: "submit-failed", error: range.error });
+      return;
+    }
     if (key === loadedKey.current && (!reviewable || key === serverKey.current)) {
       dispatch({ type: "selection-cancelled" });
       return;
@@ -123,7 +139,7 @@ export function useReviewScope(backend: ReviewBackend, historyEnabled: boolean) 
       }
     }, 150);
     return () => { current = false; clearTimeout(timer); };
-  }, [backend, baseReview, key]);
+  }, [backend, baseReview, key, range.error]);
 
   const reload = useCallback(async () => {
     if (reloadBusy.current || state.phase !== "ready" || pending) return false;

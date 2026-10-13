@@ -60,7 +60,7 @@ export function reviewReducer(state: ReviewState, action: ReviewAction): ReviewS
     case "selection-started":
       return { ...state, phase: "selecting", error: null, openLineId: null };
     case "selection-cancelled":
-      return state.phase === "selecting" ? { ...state, phase: "ready", error: null } : state;
+      return state.phase === "selecting" || state.error !== null ? { ...state, phase: "ready", error: null } : state;
     case "selection-loaded":
       return {
         ...state,

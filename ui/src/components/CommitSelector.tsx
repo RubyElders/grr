@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "preact/hooks";
 import { commitContext, commitNavigationTarget, commitSummaryContext, fullMessageBody, hasGroupedCommitView, type CommitContext } from "../commitPresentation";
 import { WORKTREE_COMMIT_ID, type CommitSummary, type ReviewData } from "../types";
 import { matchesShortcut } from "../shortcuts";
+import { toggleCommitRange } from "../commitRange";
 import { Icon } from "./Icon";
 import styles from "./CommitSelector.module.css";
 
@@ -24,10 +25,12 @@ export function CommitSelector(props: CommitSelectorProps) {
   const selectionPosition = rowOffset + props.data.commits.length;
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set(props.data.selectedCommitIds));
   const [activePosition, setActivePosition] = useState(rowOffset);
+  const [rangeError, setRangeError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!props.open) return;
     setChecked(new Set(props.data.selectedCommitIds));
+    setRangeError(null);
     const selectedIndex = props.data.selectedCommitIds.length === 1
       ? props.data.commits.findIndex((commit) => commit.id === props.data.selectedCommitIds[0])
       : -1;
@@ -93,11 +96,12 @@ export function CommitSelector(props: CommitSelectorProps) {
   const titlebar = props.placement === "titlebar";
 
   const toggle = (id: string) => {
-    setChecked((current) => {
-      const next = new Set(current);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+    try {
+      setChecked(new Set(toggleCommitRange(props.data.commits, [...checked], id)));
+      setRangeError(null);
+    } catch (error) {
+      setRangeError(error instanceof Error ? error.message : String(error));
+    }
   };
   const apply = (ids: string[]) => {
     props.onOpenChange(false);
@@ -181,7 +185,7 @@ export function CommitSelector(props: CommitSelectorProps) {
             ))}
           </div>
           <footer class={styles.footer}>
-            <span>{checked.size === 0 ? "Select commits, or show the full branch diff." : `${checked.size} selected`}</span>
+            <span>{rangeError ?? (checked.size === 0 ? "Select range endpoints, or show the full branch diff." : `${checked.size} selected - intervening commits included`)}</span>
             <button
               class={`${styles.primary} ${activePosition === selectionPosition ? styles.activeAction : ""}`}
               data-commit-position={selectionPosition}
