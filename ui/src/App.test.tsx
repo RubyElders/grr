@@ -222,7 +222,7 @@ describe("ReviewApp", () => {
     expect(screen.queryByRole("button", { name: "Show all" })).not.toBeInTheDocument();
   });
 
-  it("selects arbitrary commits, one commit, or the full branch diff", async () => {
+  it("selects a consecutive range, one commit, or the full branch diff", async () => {
     const { backend, user } = setup();
     await screen.findByText("5 commits against origin/main");
     const trigger = screen.getByTitle("Choose commits to review");
@@ -232,9 +232,11 @@ describe("ReviewApp", () => {
     expect(within(picker).getAllByRole("checkbox")).toHaveLength(5);
     await user.click(within(picker).getByRole("checkbox", { name: /Add graphics labels/ }));
     await user.click(within(picker).getByRole("checkbox", { name: /Prepare graphics page/ }));
-    await user.click(within(picker).getByRole("button", { name: "Show (2)" }));
+    expect(within(picker).getByRole("checkbox", { name: /Cover rendering options/ })).toBeChecked();
+    await user.click(within(picker).getByRole("button", { name: "Show (3)" }));
     await waitFor(() => expect(backend.selectCommits).toHaveBeenLastCalledWith([
       "1111111111111111111111111111111111111111",
+      "2222222222222222222222222222222222222222",
       "3333333333333333333333333333333333333333",
     ]));
 

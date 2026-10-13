@@ -146,7 +146,7 @@ fn combines_multiple_real_commits_with_staged_and_unstaged_changes() {
     let repository = Repository::init(directory.path()).unwrap();
     let base = commit_file(&repository, "shared.txt", b"base\n", "base");
     let first = commit_file(&repository, "shared.txt", b"first\n", "first");
-    commit_file(&repository, "excluded.txt", b"excluded\n", "excluded");
+    let middle = commit_file(&repository, "excluded.txt", b"excluded\n", "excluded");
     let last = commit_file(&repository, "shared.txt", b"last\n", "last");
     fs::write(directory.path().join("shared.txt"), b"staged\n").unwrap();
     let mut index = repository.index().unwrap();
@@ -161,9 +161,18 @@ fn combines_multiple_real_commits_with_staged_and_unstaged_changes() {
         }
         let review =
             load_review_selection(directory.path(), Some(&base.id().to_string()), &ids).unwrap();
-        assert_eq!(review.files.len(), if virtual_selected { 2 } else { 1 });
+        let mut expected = vec![
+            last.id().to_string(),
+            middle.id().to_string(),
+            first.id().to_string(),
+        ];
+        if virtual_selected {
+            expected.insert(0, WORKTREE_COMMIT_ID.to_owned());
+        }
+        assert_eq!(review.selected_commit_ids, expected);
+        assert_eq!(review.files.len(), if virtual_selected { 3 } else { 2 });
         assert!(
-            !review
+            review
                 .files
                 .iter()
                 .any(|file| file.display_path == "excluded.txt")
@@ -271,7 +280,7 @@ fn combined_selection_preserves_renames_binary_changes_and_literal_paths() {
         .unwrap();
     assert_eq!(moved.status, FileStatus::Renamed);
     assert_eq!(moved.old_path.as_deref(), Some("old.txt"));
-    assert_eq!(moved.source_commit.as_ref().unwrap().id, WORKTREE_COMMIT_ID);
+    assert!(moved.source_commit.is_none());
 }
 
 #[test]
@@ -316,7 +325,7 @@ fn combined_selection_includes_force_staged_ignored_files_but_not_other_ignored_
 }
 
 #[test]
-fn virtual_selection_does_not_replace_an_older_selected_commit_with_head_contents() {
+fn virtual_range_includes_intervening_commits_through_head() {
     let directory = tempfile::tempdir().unwrap();
     let repository = Repository::init(directory.path()).unwrap();
     let base = commit_file(&repository, "file.txt", b"base\n", "base");
@@ -338,13 +347,13 @@ fn virtual_selection_does_not_replace_an_older_selected_commit_with_head_content
         file.hunks[0]
             .lines
             .iter()
-            .any(|line| line.kind == grr::LineKind::Addition && line.text.trim() == "selected")
+            .any(|line| line.kind == grr::LineKind::Addition && line.text.trim() == "excluded")
     );
     assert!(
         !file.hunks[0]
             .lines
             .iter()
-            .any(|line| line.text.trim() == "excluded")
+            .any(|line| line.text.trim() == "selected")
     );
 }
 
@@ -498,6 +507,52 @@ fn uses_first_parent_for_merge_commit() {
     assert_eq!(review.commit.id, merge_id.to_string());
     assert_eq!(review.commit.parent_id, Some(first_parent.id().to_string()));
     assert!(review.files.is_empty());
+}
+
+#[test]
+fn rejects_ranges_crossing_merge_parent_histories() {
+    let directory = tempfile::tempdir().unwrap();
+    let repository = Repository::init(directory.path()).unwrap();
+    let root = commit_file(&repository, "file.txt", b"base\n", "root");
+    let first = commit_file(&repository, "file.txt", b"first\n", "first");
+    let signature = Signature::now("Test User", "test@example.com").unwrap();
+    let side = repository
+        .commit(
+            None,
+            &signature,
+            &signature,
+            "side",
+            &root.tree().unwrap(),
+            &[&root],
+        )
+        .unwrap();
+    let side = repository.find_commit(side).unwrap();
+    let merge = repository
+        .commit(
+            Some("HEAD"),
+            &signature,
+            &signature,
+            "merge",
+            &first.tree().unwrap(),
+            &[&first, &side],
+        )
+        .unwrap();
+    let files = load_history_files(
+        directory.path(),
+        &[merge.to_string(), first.id().to_string()],
+    )
+    .unwrap();
+    assert_eq!(files.len(), 1);
+    for ids in [
+        vec![merge.to_string(), side.id().to_string()],
+        vec![side.id().to_string(), merge.to_string()],
+        vec![WORKTREE_COMMIT_ID.to_owned(), side.id().to_string()],
+    ] {
+        assert!(matches!(
+            load_history_files(directory.path(), &ids),
+            Err(ReviewLoadError::InvalidSelection(_))
+        ));
+    }
 }
 
 #[test]
@@ -685,7 +740,7 @@ fn omits_the_virtual_commit_for_a_clean_worktree() {
 }
 
 #[test]
-fn loads_and_selects_one_hundred_commits_with_compact_file_attribution() {
+fn loads_one_hundred_commits_as_one_snapshot_diff() {
     let directory = tempfile::tempdir().unwrap();
     let repository = Repository::init(directory.path()).unwrap();
     let root = commit_file(&repository, "base.txt", b"base\n", "base");
@@ -714,14 +769,10 @@ fn loads_and_selects_one_hundred_commits_with_compact_file_attribution() {
         selected
             .files
             .iter()
-            .all(|file| file.source_commit.is_some())
+            .all(|file| file.source_commit.is_none())
     );
     let encoded = serde_json::to_value(selected).unwrap();
-    let attribution = encoded["files"][0]["sourceCommit"].as_object().unwrap();
-    assert_eq!(attribution.len(), 3);
-    assert!(attribution.contains_key("id"));
-    assert!(attribution.contains_key("shortId"));
-    assert!(attribution.contains_key("summary"));
+    assert!(encoded["files"][0]["sourceCommit"].is_null());
 }
 
 #[test]
@@ -793,7 +844,7 @@ fn loads_history_files_without_a_base_comparison() {
         .map(|file| file.display_path.as_str())
         .collect::<Vec<_>>();
     assert_eq!(paths, ["a.txt", "b.txt", "c.txt"]);
-    assert!(range.iter().all(|file| file.source_commit.is_some()));
+    assert!(range.iter().all(|file| file.source_commit.is_none()));
 
     assert!(load_history_files(directory.path(), &["nope".to_owned()]).is_err());
 }

@@ -5,6 +5,7 @@ import { fullMessageBody, summarizeCommitAuthors } from "../commitPresentation";
 import { historyGraph, type GraphRow } from "../historyGraph";
 import { clearFilterOnEscape, focusPaneFilter, paneOf } from "../panes";
 import { matchesShortcut, shortcutTitle } from "../shortcuts";
+import { toggleRangeEndpoint } from "../commitRange";
 import { WORKTREE_COMMIT_ID, type HistoryCommit, type ReviewData } from "../types";
 import type { ReviewView } from "../windowChrome/model";
 import styles from "./ReviewWorkspace.module.css";
@@ -59,12 +60,12 @@ export function ReviewWorkspace(props: ReviewWorkspaceProps) {
     if (!commit || props.selectionLocked) return;
     setCursor(commit.id);
     if (mode === "range") {
-      props.onSelect(rangeSelection(visible, anchor, index));
+      props.onSelect([visible[anchor]?.id ?? commit.id, commit.id]);
       return;
     }
     setAnchor(index);
     props.onSelect(mode === "toggle"
-      ? selected.includes(commit.id) ? selected.filter((id) => id !== commit.id) : [...selected, commit.id]
+      ? toggleRangeEndpoint(selected, commit.id)
       : [commit.id]);
   }, [anchor, visible, selected, props.onSelect, props.selectionLocked]);
 
@@ -311,12 +312,6 @@ function curve(x1: number, y1: number, x2: number, y2: number): string {
   if (x1 === x2) return `M${x1} ${y1}V${y2}`;
   const mid = (y1 + y2) / 2;
   return `M${x1} ${y1}C${x1} ${mid} ${x2} ${mid} ${x2} ${y2}`;
-}
-
-function rangeSelection(commits: HistoryCommit[], anchor: number, focus: number): string[] {
-  const [from, to] = anchor < focus ? [anchor, focus] : [focus, anchor];
-  const focused = commits[focus]!.id;
-  return [...commits.slice(from, to + 1).map((commit) => commit.id).filter((id) => id !== focused), focused];
 }
 
 function formatDate(seconds: number): string {
