@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+## 0.6.1 - 2026-10-13
+
+### Changed
+
+- Select consecutive commit ranges, automatically including commits between the endpoints. Ranges ending at uncommitted changes include intervening commits through HEAD.
+- Keep the expanded range shared across commit filters, the file list and the diff. Reject selections across different first-parent histories.
+
+### Fixed
+
+- Show each file once when selected commits and uncommitted changes touch the same file, using a combined snapshot diff.
+- Omit changes that cancel each other out while preserving renames, binary changes and force-staged ignored files.
+
 ## 0.6.0 - 2026-10-12
 
 ### Added
