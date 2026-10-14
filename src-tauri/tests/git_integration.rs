@@ -7,6 +7,14 @@ use grr::{
     load_initial_review, load_review, load_review_selection,
 };
 
+fn init_standalone_repository(path: &Path) -> Repository {
+    Repository::init_opts(
+        path,
+        git2::RepositoryInitOptions::new().initial_head("feature"),
+    )
+    .unwrap()
+}
+
 fn commit_file<'repo>(
     repository: &'repo Repository,
     relative_path: &str,
@@ -44,7 +52,7 @@ fn commit_file<'repo>(
 #[test]
 fn combines_selected_commits_and_worktree_changes_for_the_same_file() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let base = commit_file(&repository, "shared.txt", b"base\n", "base");
     let commit = commit_file(&repository, "shared.txt", b"committed\n", "change file");
     fs::write(directory.path().join("shared.txt"), b"worktree\n").unwrap();
@@ -105,7 +113,7 @@ fn combines_selected_commits_and_worktree_changes_for_the_same_file() {
 fn selected_changes_that_cancel_each_other_leave_no_file() {
     for added in [false, true] {
         let directory = tempfile::tempdir().unwrap();
-        let repository = Repository::init(directory.path()).unwrap();
+        let repository = init_standalone_repository(directory.path());
         let base = commit_file(&repository, "base.txt", b"base\n", "base");
         if !added {
             commit_file(&repository, "shared.txt", b"original\n", "original");
@@ -143,7 +151,7 @@ fn selected_changes_that_cancel_each_other_leave_no_file() {
 #[test]
 fn combines_multiple_real_commits_with_staged_and_unstaged_changes() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let base = commit_file(&repository, "shared.txt", b"base\n", "base");
     let first = commit_file(&repository, "shared.txt", b"first\n", "first");
     let middle = commit_file(&repository, "excluded.txt", b"excluded\n", "excluded");
@@ -197,7 +205,7 @@ fn combines_multiple_real_commits_with_staged_and_unstaged_changes() {
 #[test]
 fn combines_deletion_and_worktree_recreation_as_a_modification() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let base = commit_file(&repository, "shared.txt", b"base\n", "base");
     fs::remove_file(directory.path().join("shared.txt")).unwrap();
     let mut index = repository.index().unwrap();
@@ -239,7 +247,7 @@ fn combines_deletion_and_worktree_recreation_as_a_modification() {
 #[test]
 fn combined_selection_preserves_renames_binary_changes_and_literal_paths() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let contents = "unchanged line\n".repeat(20);
     commit_file(&repository, "old.txt", contents.as_bytes(), "old path");
     let base = commit_file(&repository, "data[1].bin", b"\0base", "base binary");
@@ -286,7 +294,7 @@ fn combined_selection_preserves_renames_binary_changes_and_literal_paths() {
 #[test]
 fn combined_selection_includes_force_staged_ignored_files_but_not_other_ignored_files() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let base = commit_file(&repository, ".gitignore", b"*.log\n", "ignore logs");
     let commit = commit_file(&repository, "file.txt", b"committed\n", "commit");
     fs::write(directory.path().join("included.log"), b"staged\n").unwrap();
@@ -327,7 +335,7 @@ fn combined_selection_includes_force_staged_ignored_files_but_not_other_ignored_
 #[test]
 fn virtual_range_includes_intervening_commits_through_head() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let base = commit_file(&repository, "file.txt", b"base\n", "base");
     let selected = commit_file(&repository, "file.txt", b"selected\n", "selected");
     commit_file(&repository, "file.txt", b"excluded\n", "excluded");
@@ -358,9 +366,9 @@ fn virtual_range_includes_intervening_commits_through_head() {
 }
 
 #[test]
-fn loads_root_commit_as_an_addition() {
+fn loads_a_standalone_root_commit_as_an_addition() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     commit_file(
         &repository,
         "src/main.rs",
@@ -384,7 +392,7 @@ fn loads_root_commit_as_an_addition() {
 #[test]
 fn discovers_from_nested_path_and_reports_structured_lines() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     commit_file(&repository, "src/lib.rs", b"one\ntwo\n", "base");
     commit_file(
         &repository,
@@ -413,7 +421,7 @@ fn discovers_from_nested_path_and_reports_structured_lines() {
 #[test]
 fn detects_renames_and_binary_files() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     commit_file(&repository, "old.txt", b"same content\n", "base");
 
     fs::rename(
@@ -464,7 +472,7 @@ fn detects_renames_and_binary_files() {
 #[test]
 fn detects_an_unstaged_file_move() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     commit_file(&repository, "old.txt", b"same content\n", "base");
 
     fs::rename(
@@ -487,7 +495,7 @@ fn detects_an_unstaged_file_move() {
 #[test]
 fn uses_first_parent_for_merge_commit() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let root = commit_file(&repository, "a.txt", b"a\n", "root");
     let first_parent = commit_file(&repository, "a.txt", b"b\n", "first parent");
     let tree = first_parent.tree().unwrap();
@@ -512,7 +520,7 @@ fn uses_first_parent_for_merge_commit() {
 #[test]
 fn rejects_ranges_crossing_merge_parent_histories() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let root = commit_file(&repository, "file.txt", b"base\n", "root");
     let first = commit_file(&repository, "file.txt", b"first\n", "first");
     let signature = Signature::now("Test User", "test@example.com").unwrap();
@@ -558,7 +566,7 @@ fn rejects_ranges_crossing_merge_parent_histories() {
 #[test]
 fn reports_unborn_repository() {
     let directory = tempfile::tempdir().unwrap();
-    Repository::init(directory.path()).unwrap();
+    init_standalone_repository(directory.path());
     let error = load_review(directory.path()).unwrap_err();
     assert!(matches!(error, ReviewLoadError::NoHead));
     assert_eq!(error.to_string(), "the repository has no commit at HEAD");
@@ -570,6 +578,68 @@ fn reports_a_missing_repository() {
     let error = load_review(directory.path()).unwrap_err();
     assert!(matches!(error, ReviewLoadError::Git(_)));
     assert!(error.to_string().starts_with("Git repository error: "));
+}
+
+#[test]
+fn keeps_a_remote_base_at_head_instead_of_falling_back_to_an_older_branch() {
+    for reference in ["HEAD", "main", "master"] {
+        for dirty in [false, true] {
+            let directory = tempfile::tempdir().unwrap();
+            let repository = Repository::init_opts(
+                directory.path(),
+                git2::RepositoryInitOptions::new().initial_head("develop"),
+            )
+            .unwrap();
+            let root = commit_file(&repository, "file.txt", b"base\n", "old base");
+            let head = commit_file(&repository, "file.txt", b"current\n", "current base");
+            repository
+                .reference("refs/remotes/origin/master", root.id(), true, "old default")
+                .unwrap();
+            if reference == "HEAD" {
+                repository
+                    .reference(
+                        "refs/remotes/origin/develop",
+                        head.id(),
+                        true,
+                        "remote base",
+                    )
+                    .unwrap();
+                repository
+                    .reference_symbolic(
+                        "refs/remotes/origin/HEAD",
+                        "refs/remotes/origin/develop",
+                        true,
+                        "default branch",
+                    )
+                    .unwrap();
+            } else {
+                repository
+                    .reference(
+                        &format!("refs/remotes/origin/{reference}"),
+                        head.id(),
+                        true,
+                        "remote base",
+                    )
+                    .unwrap();
+            }
+            if dirty {
+                fs::write(directory.path().join("file.txt"), b"uncommitted\n").unwrap();
+            }
+            let review = load_initial_review(directory.path(), None).unwrap();
+            assert_eq!(review.comparison.base_ref, format!("origin/{reference}"));
+            assert_eq!(review.comparison.merge_base_id, Some(head.id().to_string()));
+            assert_eq!(review.commits.len(), usize::from(dirty));
+            assert_eq!(review.files.len(), usize::from(dirty));
+            if dirty {
+                assert_eq!(review.selected_commit_ids, [WORKTREE_COMMIT_ID]);
+            }
+            let history = load_history(directory.path(), 0, 200).unwrap();
+            assert_eq!(
+                history.commits[usize::from(dirty)].commit.id,
+                head.id().to_string()
+            );
+        }
+    }
 }
 
 #[test]
@@ -648,7 +718,7 @@ fn detects_base_branch_and_loads_cumulative_or_selected_commits() {
 #[test]
 fn exposes_staged_unstaged_deleted_and_untracked_changes_as_a_virtual_commit() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let head = commit_file(&repository, "tracked.txt", b"old tracked\n", "base");
     commit_file(
         &repository,
@@ -728,7 +798,7 @@ fn exposes_staged_unstaged_deleted_and_untracked_changes_as_a_virtual_commit() {
 #[test]
 fn omits_the_virtual_commit_for_a_clean_worktree() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     commit_file(&repository, "clean.txt", b"clean\n", "clean");
     let review = load_review(directory.path()).unwrap();
     assert!(
@@ -742,7 +812,7 @@ fn omits_the_virtual_commit_for_a_clean_worktree() {
 #[test]
 fn loads_one_hundred_commits_as_one_snapshot_diff() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let root = commit_file(&repository, "base.txt", b"base\n", "base");
     let base = root.id().to_string();
     let mut commit_ids = Vec::new();
@@ -786,7 +856,7 @@ fn canonical_frontend_fixture_matches_rust_contract() {
 #[test]
 fn pages_history_with_refs_and_the_worktree_entry() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let first = commit_file(&repository, "a.txt", b"one\n", "First");
     repository
         .tag_lightweight("v1", first.as_object(), false)
@@ -820,7 +890,7 @@ fn pages_history_with_refs_and_the_worktree_entry() {
 #[test]
 fn loads_history_files_without_a_base_comparison() {
     let directory = tempfile::tempdir().unwrap();
-    let repository = Repository::init(directory.path()).unwrap();
+    let repository = init_standalone_repository(directory.path());
     let first = commit_file(&repository, "a.txt", b"one\n", "First")
         .id()
         .to_string();

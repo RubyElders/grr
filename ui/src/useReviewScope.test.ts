@@ -30,6 +30,21 @@ async function setup(data = review, historyCommits = [...history, older]) {
 }
 
 describe("review scope", () => {
+  it("refreshes the boundary only on reload and ignores an obsolete history page", async () => {
+    const { result, backend } = await setup();
+    let finishPage!: (page: Awaited<ReturnType<ReviewBackend["getHistory"]>>) => void;
+    vi.mocked(backend.getHistory).mockImplementationOnce(() => new Promise((resolve) => { finishPage = resolve; }));
+    act(() => { void result.current.loadMore(); });
+    const fresh = { ...review, comparison: { ...review.comparison, baseRef: "new-base", mergeBaseId: history[2]!.id } };
+    vi.mocked(backend.reloadReview).mockResolvedValue(fresh);
+    vi.mocked(backend.getHistory).mockResolvedValueOnce({ headRef: "new-branch", commits: [history[0]!], hasMore: false });
+    await act(async () => { expect(await result.current.reload()).toBe(true); });
+    expect(result.current.baseReview?.comparison).toEqual(fresh.comparison);
+    await act(async () => finishPage({ headRef: "obsolete", commits: [older], hasMore: false }));
+    expect(result.current.commits.map((commit) => commit.id)).toEqual(["WORKTREE"]);
+    expect(result.current.headRef).toBe("new-branch");
+  });
+
   it("shares a filled range across history selection, files and the commit picker", async () => {
     const { result, backend } = await setup();
     const ids = review.commits.slice(1, 4).map((commit) => commit.id);

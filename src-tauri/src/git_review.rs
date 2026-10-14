@@ -51,7 +51,7 @@ pub fn load_initial_review(
     path: impl AsRef<Path>,
     requested_base: Option<&str>,
 ) -> Result<ReviewData, ReviewLoadError> {
-    load_review_impl(path, requested_base, &[], true)
+    load_review_impl(path, requested_base, &[], true, None)
 }
 
 pub fn load_review_selection(
@@ -59,13 +59,39 @@ pub fn load_review_selection(
     requested_base: Option<&str>,
     selected_commit_ids: &[String],
 ) -> Result<ReviewData, ReviewLoadError> {
-    load_review_impl(path, requested_base, selected_commit_ids, false)
+    load_review_impl(path, requested_base, selected_commit_ids, false, None)
+}
+
+pub fn load_review_snapshot_selection(
+    path: impl AsRef<Path>,
+    snapshot: &ReviewData,
+    selected_commit_ids: &[String],
+) -> Result<ReviewData, ReviewLoadError> {
+    load_review_impl(path, None, selected_commit_ids, false, Some(snapshot))
 }
 
 pub fn load_history(
     path: impl AsRef<Path>,
     offset: usize,
     limit: usize,
+) -> Result<HistoryPage, ReviewLoadError> {
+    load_history_impl(path, offset, limit, None)
+}
+
+pub fn load_review_history(
+    path: impl AsRef<Path>,
+    snapshot: &ReviewData,
+    offset: usize,
+    limit: usize,
+) -> Result<HistoryPage, ReviewLoadError> {
+    load_history_impl(path, offset, limit, Some(snapshot))
+}
+
+fn load_history_impl(
+    path: impl AsRef<Path>,
+    offset: usize,
+    limit: usize,
+    snapshot: Option<&ReviewData>,
 ) -> Result<HistoryPage, ReviewLoadError> {
     let repository = Repository::discover(path)?;
     let head_reference = repository.head().map_err(|_| ReviewLoadError::NoHead)?;
@@ -75,14 +101,25 @@ pub fn load_history(
         head_reference.shorthand().unwrap_or("HEAD").to_owned()
     };
     let head = head_reference.peel_to_commit()?;
+    check_snapshot_head(&head, snapshot)?;
     let refs = commit_refs(&repository)?;
 
     let mut commits = Vec::with_capacity(limit);
     let mut skip = offset;
-    if !diff_worktree_files(&repository, Some(&head.tree()?), "worktree", None)?.is_empty() {
+    let virtual_commit = match snapshot {
+        Some(review) => review
+            .commits
+            .iter()
+            .find(|commit| commit.id == WORKTREE_COMMIT_ID)
+            .cloned(),
+        None => (!diff_worktree_files(&repository, Some(&head.tree()?), "worktree", None)?
+            .is_empty())
+        .then(|| worktree_summary(&head)),
+    };
+    if let Some(commit) = virtual_commit {
         if skip == 0 {
             commits.push(HistoryCommit {
-                commit: worktree_summary(&head),
+                commit,
                 parent_ids: vec![head.id().to_string()],
                 refs: Vec::new(),
             });
@@ -94,8 +131,15 @@ pub fn load_history(
     let mut walk = repository.revwalk()?;
     walk.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
     walk.push(head.id())?;
+    let mut older = repository.revwalk()?;
+    older.set_sorting(Sort::TOPOLOGICAL | Sort::TIME)?;
+    if let Some(base) = snapshot.and_then(|review| review.comparison.merge_base_id.as_deref()) {
+        let base = git2::Oid::from_str(base)?;
+        walk.hide(base)?;
+        older.push(base)?;
+    }
     let mut has_more = false;
-    for id in walk.skip(skip) {
+    for id in walk.chain(older).skip(skip) {
         if commits.len() == limit {
             has_more = true;
             break;
@@ -118,7 +162,26 @@ pub fn load_history_files(
     path: impl AsRef<Path>,
     commit_ids: &[String],
 ) -> Result<Vec<FileDiff>, ReviewLoadError> {
+    load_history_files_impl(path, commit_ids, None)
+}
+
+pub fn load_review_history_files(
+    path: impl AsRef<Path>,
+    snapshot: &ReviewData,
+    commit_ids: &[String],
+) -> Result<Vec<FileDiff>, ReviewLoadError> {
+    load_history_files_impl(path, commit_ids, Some(snapshot))
+}
+
+fn load_history_files_impl(
+    path: impl AsRef<Path>,
+    commit_ids: &[String],
+    snapshot: Option<&ReviewData>,
+) -> Result<Vec<FileDiff>, ReviewLoadError> {
     let repository = Repository::discover(path)?;
+    if snapshot.is_some() {
+        check_snapshot_head(&repository.head()?.peel_to_commit()?, snapshot)?;
+    }
     let ids = consecutive_ids(&repository, commit_ids)?;
     let mut files = range_files(&repository, &ids)?;
     if ids.len() == 1 {
@@ -151,6 +214,7 @@ fn load_review_impl(
     requested_base: Option<&str>,
     requested_commit_ids: &[String],
     prefer_worktree: bool,
+    snapshot: Option<&ReviewData>,
 ) -> Result<ReviewData, ReviewLoadError> {
     let repository = Repository::discover(path)?;
     let head = repository
@@ -165,8 +229,29 @@ fn load_review_impl(
             }
         })?
         .peel_to_commit()?;
-    let base = resolve_base(&repository, &head, requested_base)?;
-    let mut commits = commits_since(&repository, &head, base.merge_base_id)?;
+    check_snapshot_head(&head, snapshot)?;
+    let base = match snapshot {
+        Some(review) => ResolvedBase {
+            label: review.comparison.base_ref.clone(),
+            base_id: review
+                .comparison
+                .base_id
+                .as_deref()
+                .map(git2::Oid::from_str)
+                .transpose()?,
+            merge_base_id: review
+                .comparison
+                .merge_base_id
+                .as_deref()
+                .map(git2::Oid::from_str)
+                .transpose()?,
+        },
+        None => resolve_base(&repository, &head, requested_base)?,
+    };
+    let mut commits = match snapshot {
+        Some(review) => review.commits.clone(),
+        None => commits_since(&repository, &head, base.merge_base_id)?,
+    };
     let head_tree = head.tree()?;
     let worktree_summary = worktree_summary(&head);
     let worktree_files = diff_worktree_files(
@@ -176,7 +261,7 @@ fn load_review_impl(
         Some(worktree_summary.clone()),
     )?;
     let has_worktree_changes = !worktree_files.is_empty();
-    if has_worktree_changes {
+    if has_worktree_changes && snapshot.is_none() {
         commits.insert(0, worktree_summary);
     }
     let selected_commit_ids = if prefer_worktree && has_worktree_changes {
@@ -208,7 +293,7 @@ fn load_review_impl(
             .map(|id| repository.find_commit(id))
             .transpose()?;
         let old_tree = merge_base.as_ref().map(Commit::tree).transpose()?;
-        if has_worktree_changes {
+        if commits.iter().any(|commit| commit.id == WORKTREE_COMMIT_ID) {
             diff_worktree_files(&repository, old_tree.as_ref(), "all", None)?
         } else {
             diff_tree_files(&repository, old_tree.as_ref(), &head_tree, "all", None)?
@@ -244,6 +329,18 @@ struct ResolvedBase {
     label: String,
     base_id: Option<git2::Oid>,
     merge_base_id: Option<git2::Oid>,
+}
+
+fn check_snapshot_head(
+    head: &Commit<'_>,
+    snapshot: Option<&ReviewData>,
+) -> Result<(), ReviewLoadError> {
+    if snapshot.is_some_and(|review| review.comparison.head_id != head.id().to_string()) {
+        return Err(ReviewLoadError::InvalidSelection(
+            "Repository HEAD changed; reload the review".to_owned(),
+        ));
+    }
+    Ok(())
 }
 
 fn resolve_base(
@@ -303,19 +400,14 @@ fn resolve_base(
         else {
             continue;
         };
-        if commit.id() == head.id() {
-            continue;
-        }
         let Ok(merge_base) = repository.merge_base(commit.id(), head.id()) else {
             continue;
         };
-        if merge_base != head.id() {
-            return Ok(ResolvedBase {
-                label: short_ref_name(&name),
-                base_id: Some(commit.id()),
-                merge_base_id: Some(merge_base),
-            });
-        }
+        return Ok(ResolvedBase {
+            label: short_ref_name(&name),
+            base_id: Some(commit.id()),
+            merge_base_id: Some(merge_base),
+        });
     }
 
     let parent = head.parent_id(0).ok();
