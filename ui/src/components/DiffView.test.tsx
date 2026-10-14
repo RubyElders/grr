@@ -15,6 +15,48 @@ const callbacks = {
 };
 
 describe("DiffView scroll positions", () => {
+  it("keeps each requested file selected when scrolling is clamped at the bottom", () => {
+    const visible = vi.fn();
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => { frames.push(callback); return frames.length; });
+    try {
+      const shortFiles = Array.from({ length: 4 }, (_, index) => ({ ...files[0]!, id: `short-${index}` }));
+      const props = {
+        viewKey: "short-files", files: shortFiles, activeFileId: shortFiles[0]!.id,
+        showSourceCommits: false, collapsedFiles: new Set<string>(), openLineId: null,
+        drafts: {}, searchMatches: [], activeSearchMatchIndex: -1,
+      };
+      const view = render(<DiffView {...props} {...callbacks} onVisibleFile={visible} />);
+      const pane = screen.getByRole("main", { name: "Commit diff" });
+      Object.defineProperty(pane, "clientHeight", { configurable: true, value: 300 });
+      Object.defineProperty(pane, "scrollHeight", { configurable: true, value: 400 });
+      pane.getBoundingClientRect = () => ({ top: 0 }) as DOMRect;
+      pane.querySelectorAll<HTMLElement>("article").forEach((card, index) => {
+        card.getBoundingClientRect = () => ({ top: index * 100 - pane.scrollTop }) as DOMRect;
+      });
+      pane.scrollTo = vi.fn((options?: ScrollToOptions | number) => {
+        if (typeof options === "object") pane.scrollTop = Math.min(options.top!, 100);
+      });
+      for (const index of [1, 2, 3, 2, 1]) {
+        view.rerender(<DiffView {...props} {...callbacks} onVisibleFile={visible}
+          fileNavigation={{ fileId: shortFiles[index]!.id, requestId: visible.mock.calls.length + 1 }} />);
+        fireEvent.scroll(pane);
+        act(() => frames.shift()!(0));
+        expect(visible).toHaveBeenLastCalledWith(shortFiles[index]!.id);
+      }
+      pane.scrollTop = 0;
+      fireEvent.scroll(pane);
+      act(() => frames.shift()!(0));
+      expect(visible).toHaveBeenLastCalledWith(shortFiles[0]!.id);
+      pane.scrollTop = 100;
+      fireEvent.scroll(pane);
+      act(() => frames.shift()!(0));
+      expect(visible).toHaveBeenLastCalledWith(shortFiles[3]!.id);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it("does not interrupt scrolling when an observer update leaves layout unchanged", async () => {
     let notify: IntersectionObserverCallback = () => undefined;
     vi.stubGlobal("IntersectionObserver", class {
