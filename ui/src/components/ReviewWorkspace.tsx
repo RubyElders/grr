@@ -6,6 +6,7 @@ import { historyGraph, type GraphRow } from "../historyGraph";
 import { clearFilterOnEscape, focusPaneFilter, paneOf } from "../panes";
 import { matchesShortcut, shortcutTitle } from "../shortcuts";
 import { toggleRangeEndpoint } from "../commitRange";
+import { reviewBoundary } from "../reviewBoundary";
 import { WORKTREE_COMMIT_ID, type HistoryCommit, type ReviewData } from "../types";
 import type { ReviewView } from "../windowChrome/model";
 import styles from "./ReviewWorkspace.module.css";
@@ -145,11 +146,11 @@ export function ReviewWorkspace(props: ReviewWorkspaceProps) {
     divider.addEventListener("pointerup", stop);
   };
 
-  const worktreeOnly = props.review.commits.length === 1 && props.review.commits[0]!.id === WORKTREE_COMMIT_ID;
-  const mergeBaseId = props.review.commits.length > 0
-    ? props.review.comparison.mergeBaseId ?? (worktreeOnly ? props.review.comparison.headId : null)
-    : null;
-  const baseRef = props.review.comparison.mergeBaseId === null && worktreeOnly ? "HEAD" : props.review.comparison.baseRef;
+  const boundary = reviewBoundary(props.review, props.commits, visible);
+  const baseLanes = boundary?.index === null || boundary === null ? []
+    : graph?.[boundary.index]?.before ?? graph?.at(-1)?.after ?? [];
+  const baseMarker = boundary?.index == null ? null
+    : <ReviewBase label={boundary.label} lanes={baseLanes} graphWidth={graphWidth} />;
   return (
     <section ref={root} data-view={props.view} class={`${styles.workspace} ${props.view === "changes" ? styles.changes : ""}`}
       aria-label={props.view === "changes" ? "Changes" : "History"}
@@ -164,10 +165,17 @@ export function ReviewWorkspace(props: ReviewWorkspaceProps) {
             <span class={styles.count}>{query === "" ? `${props.commits.length}${props.hasMore ? "+" : ""} commits` : `${visible.length} of ${props.commits.length} commits`}</span>
           </div>
           <div ref={list} class={styles.list} role="listbox" aria-label="Commits" aria-multiselectable="true">
-            {visible.map((commit, index) => <CommitRow key={commit.id} commit={commit} index={index}
+            {visible.map((commit, index) => <Fragment key={commit.id}>
+              {boundary?.index === index ? baseMarker : null}
+              <CommitRow commit={commit} index={index}
               graphRow={graph ? graph[index]! : null} graphWidth={graphWidth} selected={selectedSet.has(commit.id)}
-              outside={!inReview.has(commit.id)} baseRef={commit.id === mergeBaseId ? baseRef : null}
-              onClick={onRowClick} onOpen={onRowOpen} />)}
+              outside={!inReview.has(commit.id)}
+              onClick={onRowClick} onOpen={onRowOpen} />
+            </Fragment>)}
+            {boundary?.index === visible.length ? baseMarker : null}
+            {boundary && boundary.remaining > 0 ? <div class={styles.notice}>
+              base: {boundary.label} ({boundary.remaining} review {boundary.remaining === 1 ? "commit" : "commits"} not loaded)
+            </div> : null}
             {props.error ? <div class={styles.notice} role="alert">{props.error}</div> : null}
             {props.loading ? <div class={styles.notice} role="status">Loading history...</div> : null}
             {!props.loading && props.hasMore ? <button type="button" class={styles.more} onClick={props.onLoadMore}>Load more commits</button> : null}
@@ -189,22 +197,24 @@ interface CommitRowProps {
   graphWidth: number;
   selected: boolean;
   outside: boolean;
-  baseRef: string | null;
   onClick(index: number, event: MouseEvent): void;
   onOpen(id: string): void;
 }
 
-const CommitRow = memo(function CommitRow({ commit, index, graphRow, graphWidth, selected, outside, baseRef, onClick, onOpen }: CommitRowProps) {
+function ReviewBase({ label, lanes, graphWidth }: { label: string; lanes: (string | null)[]; graphWidth: number }) {
+  return (
+    <div class={styles.base} role="separator" aria-label={`Review base ${label}`} aria-orientation="horizontal" style={{ gridTemplateColumns: `${graphWidth}px minmax(0, 1fr)` }}>
+      {graphWidth > 0 ? <svg class={styles.graph} width={graphWidth} height={BASE_MARKER_HEIGHT} aria-hidden="true">
+        {lanes.map((lane, index) => lane === null ? null : <path key={index} d={`M${index * LANE_WIDTH + LANE_WIDTH / 2 + 3} 0V${BASE_MARKER_HEIGHT}`} stroke={LANE_COLORS[index % LANE_COLORS.length]} />)}
+      </svg> : <span />}
+      <span class={styles.baseLabel}>base: {label}</span>
+    </div>
+  );
+}
+
+const CommitRow = memo(function CommitRow({ commit, index, graphRow, graphWidth, selected, outside, onClick, onOpen }: CommitRowProps) {
   return (
     <Fragment>
-      {baseRef === null ? null : (
-        <div class={styles.base} role="separator" aria-label={`Review base ${baseRef}`} aria-orientation="horizontal" style={{ gridTemplateColumns: `${graphWidth}px minmax(0, 1fr)` }}>
-          {graphRow ? <svg class={styles.graph} width={graphWidth} height={BASE_MARKER_HEIGHT} aria-hidden="true">
-            {graphRow.before.map((lane, index) => lane === null ? null : <path key={index} d={`M${index * LANE_WIDTH + LANE_WIDTH / 2 + 3} 0V${BASE_MARKER_HEIGHT}`} stroke={LANE_COLORS[index % LANE_COLORS.length]} />)}
-          </svg> : <span />}
-          <span class={styles.baseLabel}>base: {baseRef}</span>
-        </div>
-      )}
       <div
         role="option"
         data-commit-id={commit.id}

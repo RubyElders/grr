@@ -26,6 +26,7 @@ export function useReviewScope(backend: ReviewBackend, historyEnabled: boolean) 
   const serverKey = useRef("");
   const selectionQueue = useRef<Promise<unknown>>(Promise.resolve());
   const historyStarted = useRef(false);
+  const historyVersion = useRef(0);
 
   useEffect(() => {
     let current = true;
@@ -45,14 +46,19 @@ export function useReviewScope(backend: ReviewBackend, historyEnabled: boolean) 
   }, [backend]);
 
   const loadHistory = useCallback((offset: number) => {
+    const version = offset === 0 ? ++historyVersion.current : historyVersion.current;
     setHistoryLoading(true);
     return backend.getHistory(offset, PAGE_SIZE).then((page) => {
+      if (version !== historyVersion.current) return;
       setCommits((previous) => offset === 0 ? page.commits : [...previous, ...page.commits]);
       setHeadRef(page.headRef);
       setHasMore(page.hasMore);
       setHistoryError(null);
-    }, (error: unknown) => setHistoryError(errorMessage(error)))
-      .finally(() => setHistoryLoading(false));
+    }, (error: unknown) => {
+      if (version === historyVersion.current) setHistoryError(errorMessage(error));
+    }).finally(() => {
+      if (version === historyVersion.current) setHistoryLoading(false);
+    });
   }, [backend]);
 
   useEffect(() => {

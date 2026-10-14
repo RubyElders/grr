@@ -127,7 +127,7 @@ describe("Review workspace", () => {
       { ...history[history.length - 1]!, parentIds: ["older"] },
       { ...history[history.length - 1]!, id: "older", parentIds: [] },
     ];
-    setup("history", review, rows);
+    setup("history", { ...review, commits: review.commits.slice(0, 2) }, rows);
     const list = await screen.findByRole("listbox", { name: "Commits" });
     const marker = await within(list).findByRole("separator", { name: "Review base origin/main" });
     expect([...marker.querySelectorAll("path")].map((path) => path.getAttribute("d"))).toEqual(["M10 0V20", "M24 0V20"]);
@@ -153,6 +153,65 @@ describe("Review workspace", () => {
     const list = await screen.findByRole("listbox", { name: "Commits" });
     await within(list).findByText("Uncommitted changes");
     expect(within(list).queryByRole("separator")).not.toBeInTheDocument();
+  });
+
+  it("shows the remote base beneath uncommitted changes when HEAD is already on that base", async () => {
+    const data = {
+      ...review, commits: [review.commits[0]!], selectedCommitIds: ["WORKTREE"],
+      comparison: { ...review.comparison, baseRef: "origin/HEAD", mergeBaseId: review.comparison.headId },
+    };
+    const head = { ...history[1]!, id: review.comparison.headId, refs: ["origin/develop"] };
+    const { backend, user } = setup("history", data, [history[0]!, head]);
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    const marker = await within(list).findByRole("separator", { name: "Review base origin/HEAD" });
+    expect(marker.previousElementSibling).toHaveAttribute("data-commit-id", "WORKTREE");
+    expect(marker.nextElementSibling).toHaveAttribute("data-commit-id", head.id);
+    await user.click(within(list).getByText(head.summary));
+    await waitFor(() => expect(backend.getHistoryFiles).toHaveBeenCalledWith([head.id]));
+    expect(within(list).getByRole("separator", { name: "Review base origin/HEAD" })).toBe(marker);
+  });
+
+  it("keeps the boundary visible when filtering out the base row or every commit", async () => {
+    const { user } = setup("history");
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    await within(list).findByRole("separator", { name: "Review base origin/main" });
+    const filter = screen.getByRole("searchbox", { name: "Filter commits" });
+    await user.type(filter, "Add graphics");
+    await waitFor(() => expect(within(list).getAllByRole("option")).toHaveLength(1));
+    const marker = within(list).getByRole("separator", { name: "Review base origin/main" });
+    expect(marker.previousElementSibling).toHaveAttribute("data-commit-id", review.commits[2]!.id);
+    await user.clear(filter);
+    await user.type(filter, "Base commit");
+    await waitFor(() => expect(within(list).getAllByRole("option")).toHaveLength(1));
+    expect(within(list).getByRole("separator", { name: "Review base origin/main" }).nextElementSibling)
+      .toHaveAttribute("data-commit-id", baseId);
+    await user.clear(filter);
+    await user.type(filter, "missing-commit");
+    await waitFor(() => expect(within(list).queryAllByRole("option")).toHaveLength(0));
+    expect(within(list).getByRole("separator", { name: "Review base origin/main" })).toBeInTheDocument();
+  });
+
+  it("shows an empty-tree boundary after a standalone root commit", async () => {
+    const root = { ...history[1]!, parentId: null, parentIds: [], refs: [], summary: "Standalone root" };
+    const data = { ...review, commits: [root], selectedCommitIds: [],
+      comparison: { ...review.comparison, mergeBaseId: null, baseId: null, baseRef: "empty tree", headId: root.id } };
+    setup("history", data, [root]);
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    const marker = await within(list).findByRole("separator", { name: "Review base empty tree" });
+    expect(marker.previousElementSibling).toHaveAttribute("data-commit-id", root.id);
+    expect(marker.nextElementSibling).toBeNull();
+  });
+
+  it("shows how many review commits precede an unloaded boundary", async () => {
+    const { backend, user } = setup("history");
+    vi.mocked(backend.getHistory).mockResolvedValueOnce({ headRef: "feature", commits: history.slice(0, 2), hasMore: true })
+      .mockResolvedValueOnce({ headRef: "feature", commits: history.slice(2), hasMore: false });
+    const list = await screen.findByRole("listbox", { name: "Commits" });
+    await within(list).findByText("base: origin/main (3 review commits not loaded)");
+    expect(within(list).queryByRole("separator")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Load more commits" }));
+    const marker = await within(list).findByRole("separator", { name: "Review base origin/main" });
+    expect(marker.nextElementSibling).toHaveAttribute("data-commit-id", baseId);
   });
 
   it("lists history with refs and the base marker while sharing the active review", async () => {

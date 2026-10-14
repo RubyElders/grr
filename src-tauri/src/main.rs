@@ -5,8 +5,9 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 
 use grr::{
-    FileDiff, HistoryPage, ReviewData, SubmittedReview, format_review_result, load_history,
-    load_history_files, load_initial_review, load_review_selection, validate_submission,
+    FileDiff, HistoryPage, ReviewData, SubmittedReview, format_review_result, load_initial_review,
+    load_review_history, load_review_history_files, load_review_snapshot_selection,
+    validate_submission,
 };
 use tauri::{Manager, State, Window};
 
@@ -60,13 +61,10 @@ fn select_commits(
     commit_ids: Vec<String>,
     state: State<'_, AppState>,
 ) -> Result<Arc<ReviewData>, String> {
+    let snapshot = get_review(state.clone())?;
     let review = Arc::new(
-        load_review_selection(
-            &state.repository,
-            state.requested_base.as_deref(),
-            &commit_ids,
-        )
-        .map_err(|error| error.to_string())?,
+        load_review_snapshot_selection(&state.repository, &snapshot, &commit_ids)
+            .map_err(|error| error.to_string())?,
     );
     *state
         .data
@@ -82,10 +80,13 @@ async fn get_history(
     state: State<'_, AppState>,
 ) -> Result<HistoryPage, String> {
     let repository = state.repository.clone();
-    tauri::async_runtime::spawn_blocking(move || load_history(repository, offset, limit))
-        .await
-        .map_err(|error| error.to_string())?
-        .map_err(|error| error.to_string())
+    let snapshot = get_review(state)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        load_review_history(repository, &snapshot, offset, limit)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -94,10 +95,13 @@ async fn get_history_files(
     state: State<'_, AppState>,
 ) -> Result<Vec<FileDiff>, String> {
     let repository = state.repository.clone();
-    tauri::async_runtime::spawn_blocking(move || load_history_files(repository, &commit_ids))
-        .await
-        .map_err(|error| error.to_string())?
-        .map_err(|error| error.to_string())
+    let snapshot = get_review(state)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        load_review_history_files(repository, &snapshot, &commit_ids)
+    })
+    .await
+    .map_err(|error| error.to_string())?
+    .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
