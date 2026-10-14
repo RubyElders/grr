@@ -39,6 +39,7 @@ export function DiffView(props: DiffViewProps) {
   const scrollPositions = useRef<Map<string, { top: number; fileId: string | null; offset: number }>>(new Map());
   const contentHeights = useRef<Map<string, number>>(new Map());
   const pendingAnchor = useRef<{ fileId: string; offset: number; scrollTop: number } | null>(null);
+  const navigationAnchor = useRef<{ fileId: string; top: number } | null>(null);
   const [nearbyFileIds, setNearbyFileIds] = useState<ReadonlySet<string>>(
     () => new Set(props.files.slice(0, 2).map((file) => file.id)),
   );
@@ -65,6 +66,7 @@ export function DiffView(props: DiffViewProps) {
       animationFrame.current = null;
     }
     pendingAnchor.current = null;
+    navigationAnchor.current = null;
     const saved = scrollPositions.current.get(props.viewKey);
     const card = saved?.fileId ? document.getElementById(`file-${saved.fileId}`) : null;
     element.scrollTop = saved && card && element.contains(card)
@@ -147,6 +149,7 @@ export function DiffView(props: DiffViewProps) {
     if (!file || !root.contains(file)) return;
     const top = root.scrollTop + file.getBoundingClientRect().top - root.getBoundingClientRect().top;
     root.scrollTo({ top, behavior: "instant" });
+    navigationAnchor.current = { fileId: navigation.fileId, top: root.scrollTop };
   }, [props.fileNavigation, props.viewKey]);
 
   const updateVisibleFile = () => {
@@ -170,6 +173,12 @@ export function DiffView(props: DiffViewProps) {
       animationFrame.current = null;
       const currentPane = pane.current;
       if (!currentPane) return;
+      const navigation = navigationAnchor.current;
+      if (navigation && currentPane.scrollTop === navigation.top) {
+        props.onVisibleFile(navigation.fileId);
+        return;
+      }
+      navigationAnchor.current = null;
       const files = currentPane.querySelectorAll<HTMLElement>("article[data-file-id]");
       const atScrollEnd = currentPane.scrollTop + currentPane.clientHeight >= currentPane.scrollHeight - 1;
       const fileIndex = fileIndexAtViewportTop(
