@@ -245,6 +245,7 @@ describe("DiffView scroll positions", () => {
     class TestIntersectionObserver implements IntersectionObserver {
       readonly root = null;
       readonly rootMargin = "";
+      readonly scrollMargin = "";
       readonly thresholds = [];
       constructor(callback: IntersectionObserverCallback) {
         notify = callback;
