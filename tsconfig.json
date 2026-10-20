@@ -15,7 +15,7 @@
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
-    "types": ["vitest/globals", "@testing-library/jest-dom"]
+    "types": ["vitest/globals", "@testing-library/jest-dom", "expect-webdriverio"]
   },
   "include": ["ui", "vite.config.ts", "vitest.setup.ts", "e2e"]
 }
