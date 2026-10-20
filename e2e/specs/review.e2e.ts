@@ -517,7 +517,6 @@ describe("grr review window", () => {
     await browser.waitUntil(async () => await browser.execute(() =>
       document.querySelector<HTMLInputElement>("input[aria-label='Filter commits']")?.value === "Return the correct answer",
     ), { timeout: 5_000, interval: 50, timeoutMsg: "History did not reopen with the shared commit filter" });
-    expect(await browser.execute(() => document.querySelector<HTMLInputElement>("input[aria-label='Filter commits']")?.value)).toBe("Return the correct answer");
     await setInputValue("input[aria-label='Filter commits']", "");
     await browser.waitUntil(async () => await browser.execute(() =>
       document.querySelectorAll("[data-view='history'] [role='option'][aria-selected='true']").length === 5
