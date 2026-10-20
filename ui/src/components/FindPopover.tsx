@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "preact/hooks";
+import { useLayoutEffect, useRef } from "preact/hooks";
 import { shortcutTitle } from "../shortcuts";
 import { Icon } from "./Icon";
 import styles from "./FindPopover.module.css";
@@ -15,7 +15,7 @@ interface FindPopoverProps {
 
 export function FindPopover(props: FindPopoverProps) {
   const input = useRef<HTMLInputElement>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     input.current?.focus();
     input.current?.select();
   }, []);
