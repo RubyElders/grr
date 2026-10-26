@@ -29,6 +29,7 @@ pub struct CommitSummary {
     pub summary: String,
     pub message: String,
     pub author: String,
+    pub author_email: String,
     pub authored_at: i64,
 }
 

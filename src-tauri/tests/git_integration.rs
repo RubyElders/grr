@@ -377,6 +377,7 @@ fn loads_a_standalone_root_commit_as_an_addition() {
     );
 
     let review = load_review(directory.path()).unwrap();
+    assert_eq!(review.commit.author_email, "test@example.com");
     assert_eq!(review.commit.summary, "Initial commit");
     assert_eq!(
         review.commit.message,
@@ -871,6 +872,8 @@ fn pages_history_with_refs_and_the_worktree_entry() {
     let page = load_history(directory.path(), 0, 2).unwrap();
     assert!(page.has_more);
     assert_eq!(page.commits[0].commit.id, WORKTREE_COMMIT_ID);
+    assert!(page.commits[0].commit.author_email.is_empty());
+    assert_eq!(page.commits[1].commit.author_email, "test@example.com");
     assert_eq!(page.commits[0].parent_ids, vec![third.to_string()]);
     assert_eq!(page.commits[1].commit.summary, "Third");
     assert!(page.commits[1].refs.contains(&page.head_ref));

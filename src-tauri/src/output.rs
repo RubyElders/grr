@@ -160,6 +160,7 @@ mod tests {
                 summary: "initial".to_owned(),
                 message: "initial".to_owned(),
                 author: "User".to_owned(),
+                author_email: "user@example.com".to_owned(),
                 authored_at: 0,
             },
             files: vec![FileDiff {

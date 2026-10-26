@@ -3,7 +3,7 @@ import { consecutiveCommitIds, toggleCommitRange } from "./commitRange";
 import type { CommitSummary } from "./types";
 
 const commit = (id: string, parentId: string | null): CommitSummary => ({
-  id, parentId, shortId: id, summary: id, message: id, author: "Author", authoredAt: 0,
+  id, parentId, shortId: id, summary: id, message: id, author: "Author", authorEmail: "author@example.com", authoredAt: 0,
 });
 const commits = [commit("WORKTREE", "c"), commit("c", "b"), commit("b", "a"), commit("a", null)];
 

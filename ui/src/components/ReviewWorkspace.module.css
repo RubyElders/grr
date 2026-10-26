@@ -10,7 +10,7 @@
 .commitsPane::after { content: ""; position: absolute; top: 0; right: 0; left: 0; z-index: 5; height: 2px; background: var(--pane-focus); opacity: 0; pointer-events: none; transition: opacity 160ms ease; }
 .commitsPane:focus-within::after { opacity: 1; }
 .list { flex: 1; min-height: 0; overflow: auto; background: var(--bg); user-select: none; }
-.row { height: 28px; display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(80px, 160px) 150px 64px; align-items: center; gap: 12px; padding-right: var(--shell-inset); font-size: 13px; cursor: default; transition: background-color 160ms ease; }
+.row { height: 28px; display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(80px, 140px) minmax(100px, 200px) 150px 64px; align-items: center; gap: 12px; padding-right: var(--shell-inset); font-size: 13px; cursor: default; transition: background-color 160ms ease; }
 .row:hover { background: var(--canvas); }
 .row[aria-selected="true"] { background: var(--blue-muted); }
 .commitsPane:not(:focus-within) .row[aria-selected="true"] { background: var(--selection-inactive); }
@@ -21,7 +21,7 @@
 .summaryText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ref { flex: none; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 0 6px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted); background: var(--canvas); font-size: 11px; line-height: 18px; }
 .moreLines { flex: none; padding: 0 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); background: var(--canvas); font-size: 11px; font-weight: 600; line-height: 14px; letter-spacing: 1px; }
-.author, .date { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
+.author, .email, .date { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); }
 .hash { color: var(--muted); font-size: 12px; }
 .base { height: 20px; display: grid; align-items: center; color: var(--muted); font-size: 11px; }
 .baseLabel { display: flex; align-items: center; gap: 8px; padding: 0 var(--shell-inset) 0 12px; }
@@ -44,5 +44,5 @@
 
 @media (max-width: 900px) {
   .row { grid-template-columns: auto minmax(0, 1fr) 110px 64px; }
-  .author { display: none; }
+  .author, .email { display: none; }
 }
