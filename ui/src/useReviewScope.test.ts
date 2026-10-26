@@ -7,7 +7,7 @@ import type { HistoryCommit, ReviewData } from "./types";
 
 const review = fixture as ReviewData;
 const history: HistoryCommit[] = review.commits.map((commit) => ({ ...commit, parentIds: [], refs: [] }));
-const older: HistoryCommit = { ...history[1]!, id: "older", summary: "Older commit", message: "Older commit", author: "Base Author", refs: ["main"] };
+const older: HistoryCommit = { ...history[1]!, id: "older", summary: "Older commit", message: "Older commit", author: "Base Author", authorEmail: "base@example.com", refs: ["main"] };
 const fileFor = (id: string) => ({ ...review.files[0]!, id, displayPath: `src/${id}.rs` });
 
 async function setup(data = review, historyCommits = [...history, older]) {
@@ -129,9 +129,9 @@ describe("review scope", () => {
     expect(backend.selectCommits).toHaveBeenCalledWith([id]);
   });
 
-  it("loads every matching commit and supports filtering the full message", async () => {
+  it.each(["Local User", "local@example.com"])("loads matching authors and full messages for %s", async (query) => {
     const { result } = await setup();
-    act(() => result.current.filterCommits("Local User"));
+    act(() => result.current.filterCommits(query));
     expect(result.current.selectedIds).toEqual(review.commits.slice(1).map((commit) => commit.id));
     await waitFor(() => expect(result.current.pending).toBe(false));
     expect(result.current.data?.files).toHaveLength(4);

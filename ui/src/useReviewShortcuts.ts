@@ -69,6 +69,16 @@ export function useReviewShortcuts({
         return;
       }
       const changes = view === "changes";
+      if (changes && matchesShortcut(event, "historyMessage")
+        && state.phase === "ready" && state.openLineId === null
+        && !commitSelectorOpen && !findOpen && !isTextEntryTarget(event.target)) {
+        const message = document.querySelector<HTMLButtonElement>("[aria-label='Commit message'] button[aria-expanded]:not(:disabled)");
+        if (message) {
+          event.preventDefault();
+          message.click();
+        }
+        return;
+      }
       if (!changes && matchesShortcut(event, "historyBack") && state.openLineId === null && !event.defaultPrevented && !isTextEntryTarget(event.target)) {
         event.preventDefault();
         showView("changes");

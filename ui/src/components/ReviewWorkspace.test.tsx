@@ -18,7 +18,7 @@ const history: HistoryCommit[] = [
     parentIds: [review.commits[index + 1]?.id ?? baseId],
     refs: index === 1 ? ["main"] : [],
   })),
-  { id: baseId, shortId: baseId.slice(0, 8), parentId: null, summary: "Base commit", message: "Base commit", author: "Base Author", authoredAt: 1_700_000_000, parentIds: [], refs: ["origin/main"] },
+  { id: baseId, shortId: baseId.slice(0, 8), parentId: null, summary: "Base commit", message: "Base commit", author: "Base Author", authorEmail: "base@example.com", authoredAt: 1_700_000_000, parentIds: [], refs: ["origin/main"] },
 ];
 
 function setup(initialView: "changes" | "history" = "changes", data = review, historyCommits = history) {
@@ -42,6 +42,14 @@ async function openHistory(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("Review workspace", () => {
+  it("shows the author email beside the name in history", async () => {
+    const { user } = setup();
+    const list = await openHistory(user);
+    const row = (await within(list).findByText(review.commit.summary)).closest("[role='option']") as HTMLElement;
+    const author = within(row).getByText(review.commit.author);
+    expect(author.nextElementSibling).toHaveTextContent(review.commit.authorEmail);
+  });
+
   it("does not mark a review boundary when HEAD has no review changes", async () => {
     const data = { ...review, commits: [], selectedCommitIds: [], files: [],
       comparison: { ...review.comparison, mergeBaseId: review.comparison.headId } };

@@ -467,6 +467,7 @@ fn commit_summary(commit: &Commit<'_>) -> Result<CommitSummary, git2::Error> {
         },
         summary,
         author: author.name().unwrap_or("Unknown author").to_owned(),
+        author_email: author.email().unwrap_or_default().to_owned(),
         authored_at: author.when().seconds(),
     })
 }
@@ -480,6 +481,7 @@ fn worktree_summary(head: &Commit<'_>) -> CommitSummary {
         message: "Uncommitted changes\n\nStaged, unstaged, and untracked changes relative to HEAD."
             .to_owned(),
         author: "Local working tree".to_owned(),
+        author_email: String::new(),
         authored_at: head.time().seconds(),
     }
 }

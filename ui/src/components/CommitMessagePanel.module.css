@@ -5,5 +5,12 @@
 .message > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chevron { display: inline-flex; flex: none; transform: rotate(-90deg); transition: transform 100ms ease; }
 .chevron.open { transform: rotate(0); }
-.expanded { align-items: flex-start; }
-.expanded .message > span:first-child { max-height: min(180px, 25vh); overflow: auto; white-space: pre-wrap; line-height: 1.45; }
+.expanded { display: block; }
+.expanded .message { width: 100%; color: var(--fg); font-weight: 600; align-items: flex-start; }
+.expanded .message > span:first-child { white-space: pre-wrap; line-height: 1.45; }
+.details { max-height: min(240px, 30vh); overflow: auto; padding-bottom: 12px; }
+.metadata { margin: 0; display: grid; gap: 3px; font-size: 12px; }
+.metadata > div { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 10px; }
+.metadata dt { color: var(--muted); }
+.metadata dd { margin: 0; color: var(--fg); overflow-wrap: anywhere; }
+.body { margin: 12px 0 0; white-space: pre-wrap; line-height: 1.5; color: var(--fg); }

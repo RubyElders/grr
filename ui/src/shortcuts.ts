@@ -108,7 +108,7 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
   shortcut("historyPageDown", "History", "Move a page of commits down", [chord("page", "PageDown")]),
   shortcut("historyOpen", "History", "Open the selection in Changes", [chord("enter", "Enter")]),
   shortcut("historyFilter", "History", "Filter commits or files, or find in the diff", [chord("slash", "/", { shift: "any" }), chord("native", "f", { nativeModifier: true })]),
-  shortcut("historyMessage", "History", "Show or hide the full commit message", [chord("letter", "m")]),
+  shortcut("historyMessage", "Review", "Show or hide the full commit message", [chord("letter", "m")]),
   shortcut("historyBack", "History", "Return to Changes", [chord("escape", "Escape")]),
   shortcut("pageUp", "Navigation", "Page the diff up", [chord("space", " ", { code: "Space", shift: true })]),
   shortcut("pageDown", "Navigation", "Page the diff down", [chord("space", " ", { code: "Space" })]),

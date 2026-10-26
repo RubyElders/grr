@@ -24,6 +24,13 @@ export function FileTree(props: FileTreeProps) {
   useEffect(() => {
     if (!props.activeFileId) return;
     const active = tree.current?.querySelector<HTMLElement>(`[data-file-id="${props.activeFileId}"]`);
+    const sidebar = tree.current?.parentElement;
+    if (active && sidebar && sidebar.clientHeight > 0
+      && active === tree.current?.querySelector("[data-file-id]")
+      && active.getBoundingClientRect().bottom - sidebar.getBoundingClientRect().top + sidebar.scrollTop <= sidebar.clientHeight) {
+      sidebar.scrollTop = 0;
+      return;
+    }
     active?.scrollIntoView?.({ block: "nearest", inline: "nearest" });
   }, [props.activeFileId]);
   return (

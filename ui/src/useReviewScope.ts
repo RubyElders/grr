@@ -69,7 +69,7 @@ export function useReviewScope(backend: ReviewBackend, historyEnabled: boolean) 
 
   const query = commitFilter.trim().toLocaleLowerCase();
   const matchingCommits = useMemo(() => query === "" ? commits : commits.filter((commit) =>
-    [commit.message, commit.author, commit.id, ...commit.refs].some((value) => value.toLocaleLowerCase().includes(query)),
+    [commit.message, commit.author, commit.authorEmail, commit.id, ...commit.refs].some((value) => value.toLocaleLowerCase().includes(query)),
   ), [commits, query]);
   const range = useMemo(() => {
     const requested = choice === null

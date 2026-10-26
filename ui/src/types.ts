@@ -18,6 +18,7 @@ export interface CommitSummary {
   summary: string;
   message: string;
   author: string;
+  authorEmail: string;
   authoredAt: number;
 }
 

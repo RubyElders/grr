@@ -232,7 +232,8 @@ const CommitRow = memo(function CommitRow({ commit, index, graphRow, graphWidth,
           <span class={styles.summaryText}>{commit.summary}</span>
           <MoreLines commit={commit} />
         </span>
-        <span class={styles.author}>{commit.author}</span>
+        <span class={styles.author} title={commit.author}>{commit.author}</span>
+        <span class={styles.email} title={commit.authorEmail}>{commit.authorEmail}</span>
         <span class={styles.date}>{formatDate(commit.authoredAt)}</span>
         <code class={styles.hash}>{commit.id === WORKTREE_COMMIT_ID ? "" : commit.shortId.slice(0, 7)}</code>
       </div>
@@ -265,7 +266,7 @@ function CommitStrip({ commits, messageOpen, openReason, onToggleMessage, onOpen
             <strong class={styles.stripTitle}>{single.summary}</strong>
             <span class={styles.stripMeta}>
               {single.id === WORKTREE_COMMIT_ID ? null : <code>{single.shortId.slice(0, 7)}</code>}
-              <span>{single.author}</span>
+              <span>{single.author}{single.authorEmail ? ` <${single.authorEmail}>` : ""}</span>
               <span>{formatDate(single.authoredAt)}</span>
               {single.parentIds.length > 0 ? <span>parent {single.parentIds.map((id) => id.slice(0, 7)).join(", ")}</span> : null}
               {single.refs.length > 0 ? <span>refs {single.refs.join(", ")}</span> : null}

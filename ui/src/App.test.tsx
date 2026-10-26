@@ -388,6 +388,18 @@ describe("ReviewApp", () => {
     expect(expand).toHaveAttribute("aria-expanded", "false");
     await user.click(expand);
     expect(within(panel).getByRole("button", { name: "Collapse commit message" })).toHaveAttribute("aria-expanded", "true");
+    await user.keyboard("m");
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+    await user.type(screen.getByRole("searchbox", { name: "Filter files" }), "m");
+    expect(expand).toHaveAttribute("aria-expanded", "false");
+    screen.getByRole("main", { name: "Commit diff" }).focus();
+    await user.keyboard("m");
+    expect(expand).toHaveAttribute("aria-expanded", "true");
+    expect(panel).toHaveTextContent(source.commit.summary);
+    expect(panel).toHaveTextContent(`${source.commit.author} <${source.commit.authorEmail}>`);
+    expect(panel).toHaveTextContent(source.commit.id);
+    expect(within(panel).getByText("Date")).toBeInTheDocument();
+    expect(panel.querySelector("time")).toHaveAttribute("datetime", new Date(source.commit.authoredAt * 1000).toISOString());
   });
 
   it("uses the virtual context and disables stepping for aggregate selections", async () => {
