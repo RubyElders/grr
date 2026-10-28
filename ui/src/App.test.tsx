@@ -477,8 +477,6 @@ describe("ReviewApp", () => {
     expect(screen.queryByRole("search", { name: "Find in diff" })).not.toBeInTheDocument();
     await user.keyboard("zzz{Escape}");
     expect(filter.value).toBe("");
-    expect(document.activeElement).toBe(filter);
-    await user.keyboard("{Escape}");
     expect(document.activeElement).toBe(files);
     expect(backend.cancelReview).not.toHaveBeenCalled();
 
@@ -566,6 +564,30 @@ describe("ReviewApp", () => {
 
     expect(screen.queryByTitle(`${sourceCommit.shortId} · ${sourceCommit.summary}`)).not.toBeInTheDocument();
     expect(screen.getByTitle("engine/GraphicsPage.cpp")).toBeInTheDocument();
+  });
+
+  it.each(["Escape", "clear", "cancel"])("restores files after clearing a file search with %s", async (action) => {
+    const { user, backend } = setup();
+    await screen.findByText("5 commits against origin/main");
+    const filter = screen.getByRole("searchbox", { name: "Filter files" });
+    const files = screen.getByRole("complementary", { name: "Changed files" });
+    const tree = screen.getByRole("navigation", { name: "File tree" });
+    const diff = screen.getByRole("main", { name: "Commit diff" });
+    await user.type(filter, "reference");
+    expect(tree.querySelectorAll("[data-file-id]")).toHaveLength(1);
+    expect(diff.querySelectorAll("article")).toHaveLength(1);
+    if (action === "Escape") await user.keyboard("{Escape}");
+    else if (action === "clear") await user.clear(filter);
+    else {
+      (filter as HTMLInputElement).value = "";
+      fireEvent(filter, new Event("search", { bubbles: true }));
+    }
+    expect(filter).toHaveValue("");
+    expect(tree.querySelectorAll("[data-file-id]")).toHaveLength(2);
+    expect(diff.querySelectorAll("article")).toHaveLength(2);
+    if (action === "Escape") expect(files).toHaveFocus();
+    else expect(filter).toHaveFocus();
+    expect(backend.cancelReview).not.toHaveBeenCalled();
   });
 
   it("filters files and collapses directories", async () => {
@@ -909,6 +931,10 @@ describe("ReviewApp", () => {
     expect(screen.getByRole("button", { name: "Previous match" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Next match" })).toBeDisabled();
 
+    (input as HTMLInputElement).value = "";
+    fireEvent(input, new Event("search", { bubbles: true }));
+    expect(screen.getByRole("status")).toHaveTextContent("Type to search");
+    expect(document.querySelector("[data-search-match]")).not.toBeInTheDocument();
     await user.keyboard("{Escape}");
     expect(screen.queryByRole("search", { name: "Find in diff" })).not.toBeInTheDocument();
     expect(document.querySelector("[data-search-match]")).not.toBeInTheDocument();

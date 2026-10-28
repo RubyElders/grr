@@ -38,5 +38,9 @@ export function clearFilterOnEscape(event: KeyboardEvent & { currentTarget: HTML
   event.preventDefault();
   event.stopPropagation();
   if (event.currentTarget.value !== "") onClear();
-  else event.currentTarget.closest<HTMLElement>("[data-pane]")?.focus({ preventScroll: true });
+  event.currentTarget.closest<HTMLElement>("[data-pane]")?.focus({ preventScroll: true });
+}
+
+export function searchInputEvents(onValue: (value: string) => void) {
+  return { onsearch: (event: Event) => onValue((event.currentTarget as HTMLInputElement).value) };
 }
