@@ -3,7 +3,7 @@ import { memo } from "preact/compat";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { fullMessageBody, summarizeCommitAuthors } from "../commitPresentation";
 import { historyGraph, type GraphRow } from "../historyGraph";
-import { clearFilterOnEscape, focusPaneFilter, paneOf } from "../panes";
+import { clearFilterOnEscape, focusPaneFilter, paneOf, searchInputEvents } from "../panes";
 import { matchesShortcut, shortcutTitle } from "../shortcuts";
 import { toggleRangeEndpoint } from "../commitRange";
 import { reviewBoundary } from "../reviewBoundary";
@@ -158,7 +158,7 @@ export function ReviewWorkspace(props: ReviewWorkspaceProps) {
       {props.view !== "history" ? null : <>
         <div class={styles.commitsPane} data-pane="commits" tabIndex={-1}>
           <div class={styles.toolbar}>
-            <input class={styles.filter} type="search" aria-label="Filter commits"
+            <input {...searchInputEvents(props.onFilter)} class={styles.filter} type="search" aria-label="Filter commits"
               placeholder="Filter commits by message, author, hash or ref..." value={props.filter} disabled={props.selectionLocked}
               onInput={(event) => props.onFilter(event.currentTarget.value)}
               onKeyDown={(event) => clearFilterOnEscape(event, () => props.onFilter(""))} />

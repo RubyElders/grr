@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef } from "preact/hooks";
+import { searchInputEvents } from "../panes";
 import { shortcutTitle } from "../shortcuts";
 import { Icon } from "./Icon";
 import styles from "./FindPopover.module.css";
@@ -31,6 +32,7 @@ export function FindPopover(props: FindPopoverProps) {
       <span class={styles.searchIcon}><Icon name="search" /></span>
       <input
         ref={input}
+        {...searchInputEvents(props.onQuery)}
         data-find-input
         type="search"
         aria-label="Find in code"

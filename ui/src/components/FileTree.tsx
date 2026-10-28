@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "preact/hooks";
 import type { FileDiff } from "../types";
 import { baseName, buildFileTree, type FileTreeNode } from "../tree";
-import { clearFilterOnEscape } from "../panes";
+import { clearFilterOnEscape, searchInputEvents } from "../panes";
 import { Icon } from "./Icon";
 import styles from "./FileTree.module.css";
 
@@ -38,6 +38,7 @@ export function FileTree(props: FileTreeProps) {
       <div class={styles.searchBox}>
         <Icon name="search" />
         <input
+          {...searchInputEvents(props.onFilter)}
           aria-label="Filter files"
           type="search"
           placeholder="Filter files…"

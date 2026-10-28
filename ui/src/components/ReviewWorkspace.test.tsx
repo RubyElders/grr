@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from "@testing-library/preact";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/preact";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import fixture from "../__fixtures__/review.json";
@@ -387,7 +387,6 @@ describe("Review workspace", () => {
     expect(within(list).getAllByRole("option")).toHaveLength(1);
     await user.keyboard("{Escape}");
     expect((filter as HTMLInputElement).value).toBe("");
-    await user.keyboard("{Escape}");
     expect(document.activeElement).not.toBe(filter);
     expect(screen.getByRole("button", { name: "History" }).getAttribute("aria-pressed")).toBe("true");
     Reflect.deleteProperty(Element.prototype, "scrollTo");
@@ -420,6 +419,26 @@ describe("Review workspace", () => {
     expect(screen.getByRole("searchbox", { name: "Filter commits" })).toHaveValue("Add graphics");
     expect(screen.getByRole("main", { name: "Commit diff" })).toBe(diff);
     expect(backend.selectCommits).toHaveBeenCalledOnce();
+  });
+
+  it.each(["Escape", "clear", "cancel"])("restores history and files after clearing search with %s", async (action) => {
+    const { backend, user } = setup();
+    const list = await openHistory(user);
+    const filter = screen.getByRole("searchbox", { name: "Filter commits" });
+    await user.type(filter, "missing-commit");
+    await screen.findByText("No matching commits");
+    if (action === "Escape") await user.keyboard("{Escape}");
+    else if (action === "clear") await user.clear(filter);
+    else {
+      (filter as HTMLInputElement).value = "";
+      fireEvent(filter, new Event("search", { bubbles: true }));
+    }
+    expect(filter).toHaveValue("");
+    expect(within(list).getAllByRole("option")).toHaveLength(history.length);
+    await waitFor(() => expect(screen.getByRole("main", { name: "Commit diff" }).querySelectorAll("article")).toHaveLength(review.files.length));
+    expect(screen.getByRole("navigation", { name: "File tree" }).querySelectorAll("[data-file-id]")).toHaveLength(review.files.length);
+    if (action === "Escape") expect(list.closest("[data-pane='commits']")).toHaveFocus();
+    expect(backend.cancelReview).not.toHaveBeenCalled();
   });
 
   it("empties both downstream panes when a commit filter matches nothing", async () => {
