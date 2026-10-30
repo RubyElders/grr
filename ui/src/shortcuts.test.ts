@@ -10,7 +10,7 @@ describe("shortcut registry", () => {
     expect(shortcutTitle("find", true)).toBe("⌘F or F3");
     expect(shortcutTitle("primaryAction", true)).toBe("⌘↩");
     expect(shortcutTitle("copyPrimaryAction", true)).toBe("⌥⌘↩");
-    expect(shortcutTitle("previousMatch", true)).toBe("⇧↩ or ⇧F3 or ⇧⌘G");
+    expect(shortcutTitle("previousMatch", true)).toBe("⇧F3 or ⇧⌘G");
     expect(shortcutTitle("nextFile", true)).toBe("↓ or j");
     expect(shortcutTitle("dismiss", true)).toBe("⎋");
     expect(shortcutTitle("pageUp", true)).toBe("⇧␣");

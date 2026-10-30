@@ -6,6 +6,7 @@ export type ShortcutId =
   | "nextPane"
   | "previousPane"
   | "find"
+  | "searchResults"
   | "nextMatch"
   | "previousMatch"
   | "browseCommits"
@@ -63,13 +64,12 @@ export const SHORTCUTS: readonly ShortcutDefinition[] = [
     chord("native", "f", { nativeModifier: true }),
     chord("function", "F3"),
   ]),
+  shortcut("searchResults", "Search", "Focus search results without clearing the search", [chord("enter", "Enter")]),
   shortcut("nextMatch", "Search", "Go to the next search match", [
-    chord("enter", "Enter"),
     chord("function", "F3"),
     chord("native", "g", { nativeModifier: true }),
   ]),
   shortcut("previousMatch", "Search", "Go to the previous search match", [
-    chord("enter", "Enter", { shift: true }),
     chord("function", "F3", { shift: true }),
     chord("native", "g", { nativeModifier: true, shift: true }),
   ]),

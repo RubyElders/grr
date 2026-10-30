@@ -421,6 +421,24 @@ describe("Review workspace", () => {
     expect(backend.selectCommits).toHaveBeenCalledOnce();
   });
 
+  it("moves from commit search to its results with Enter while keeping the filter", async () => {
+    const { user } = setup();
+    const list = await openHistory(user);
+    const filter = screen.getByRole("searchbox", { name: "Filter commits" });
+    await user.type(filter, "graphics");
+    const selected = within(list).getAllByRole("option", { selected: true });
+    await user.keyboard("{ArrowDown}");
+    expect(filter).toHaveFocus();
+    expect(within(list).getAllByRole("option", { selected: true })).toEqual(selected);
+    await user.keyboard("{Enter}");
+    expect(list.closest("[data-pane='commits']")).toHaveFocus();
+    expect(filter).toHaveValue("graphics");
+    expect(screen.getByRole("button", { name: "History" })).toHaveAttribute("aria-pressed", "true");
+    await user.keyboard("{ArrowDown}");
+    expect(within(list).getAllByRole("option", { selected: true })).toHaveLength(1);
+    expect(filter).toHaveValue("graphics");
+  });
+
   it.each(["Escape", "clear", "cancel"])("restores history and files after clearing search with %s", async (action) => {
     const { backend, user } = setup();
     const list = await openHistory(user);

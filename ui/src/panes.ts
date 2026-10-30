@@ -1,5 +1,3 @@
-import { matchesShortcut } from "./shortcuts";
-
 export type PaneName = "commits" | "files" | "diff";
 
 export function paneOf(target: EventTarget | null): PaneName | null {
@@ -31,16 +29,4 @@ export function focusPaneFilter(scope: ParentNode | null, name: PaneName): boole
   input?.focus();
   input?.select();
   return input != null;
-}
-
-export function clearFilterOnEscape(event: KeyboardEvent & { currentTarget: HTMLInputElement }, onClear: () => void): void {
-  if (!matchesShortcut(event, "dismiss")) return;
-  event.preventDefault();
-  event.stopPropagation();
-  if (event.currentTarget.value !== "") onClear();
-  event.currentTarget.closest<HTMLElement>("[data-pane]")?.focus({ preventScroll: true });
-}
-
-export function searchInputEvents(onValue: (value: string) => void) {
-  return { onsearch: (event: Event) => onValue((event.currentTarget as HTMLInputElement).value) };
 }

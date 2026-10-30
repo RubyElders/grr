@@ -1,5 +1,4 @@
-import { useLayoutEffect, useRef } from "preact/hooks";
-import { searchInputEvents } from "../panes";
+import { useSearchField } from "../useSearchField";
 import { shortcutTitle } from "../shortcuts";
 import { Icon } from "./Icon";
 import styles from "./FindPopover.module.css";
@@ -15,11 +14,9 @@ interface FindPopoverProps {
 }
 
 export function FindPopover(props: FindPopoverProps) {
-  const input = useRef<HTMLInputElement>(null);
-  useLayoutEffect(() => {
-    input.current?.focus();
-    input.current?.select();
-  }, []);
+  const search = useSearchField({
+    value: props.query, onChange: props.onQuery, resultsPane: "diff", autoFocus: true, onDismiss: props.onClose,
+  });
 
   const result = props.query.length === 0
     ? "Type to search"
@@ -31,19 +28,15 @@ export function FindPopover(props: FindPopoverProps) {
     <section class={styles.popover} role="search" aria-label="Find in diff">
       <span class={styles.searchIcon}><Icon name="search" /></span>
       <input
-        ref={input}
-        {...searchInputEvents(props.onQuery)}
+        {...search.inputProps}
         data-find-input
-        type="search"
         aria-label="Find in code"
         placeholder="Find in code"
-        value={props.query}
-        onInput={(event) => props.onQuery(event.currentTarget.value)}
       />
       <span class={styles.result} role="status">{result}</span>
       <button type="button" disabled={props.matchCount === 0} aria-label="Previous match" title={shortcutTitle("previousMatch")} onClick={props.onPrevious}>Prev</button>
       <button type="button" disabled={props.matchCount === 0} aria-label="Next match" title={shortcutTitle("nextMatch")} onClick={props.onNext}>Next</button>
-      <button type="button" class={styles.close} aria-label="Close find" title={shortcutTitle("dismiss")} onClick={props.onClose}><Icon name="close" /></button>
+      <button type="button" class={styles.close} aria-label="Close find" title={shortcutTitle("dismiss")} onClick={search.cancel}><Icon name="close" /></button>
     </section>
   );
 }
