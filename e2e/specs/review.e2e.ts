@@ -587,12 +587,13 @@ describe("grr review window", () => {
 });
 
 async function setInputValue(selector: string, value: string): Promise<void> {
-  await browser.execute((targetSelector, targetValue) => {
+  await browser.waitUntil(async () => await browser.execute((targetSelector, targetValue) => {
     const input = document.querySelector<HTMLInputElement | HTMLTextAreaElement>(targetSelector);
-    if (!input) throw new Error(`No input matched ${targetSelector}`);
+    if (!input) return false;
     input.value = targetValue;
     input.dispatchEvent(new Event("input", { bubbles: true }));
-  }, selector, value);
+    return true;
+  }, selector, value), { timeout: 5_000, interval: 50, timeoutMsg: `No input matched ${selector}` });
 }
 
 async function clickElement(selector: string): Promise<void> {
