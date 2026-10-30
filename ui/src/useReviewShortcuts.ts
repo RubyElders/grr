@@ -79,7 +79,7 @@ export function useReviewShortcuts({
         }
         return;
       }
-      if (!changes && matchesShortcut(event, "historyBack") && state.openLineId === null && !event.defaultPrevented && !isTextEntryTarget(event.target)) {
+      if (!changes && !findOpen && matchesShortcut(event, "historyBack") && state.openLineId === null && !event.defaultPrevented && !isTextEntryTarget(event.target)) {
         event.preventDefault();
         showView("changes");
         return;
@@ -118,13 +118,8 @@ export function useReviewShortcuts({
       const findFunction = matchesShortcut(event, "find", "function");
       const openFind = (findNative(event) || (!findOpen && findFunction)
         || (!changes && pane !== "commits" && matchesShortcut(event, "historyFilter", "slash") && !isTextEntryTarget(event.target)));
-      const findInput = event.target instanceof HTMLElement && event.target.matches("[data-find-input]");
-      const nextMatch = findOpen
-        && matchesShortcut(event, "nextMatch")
-        && (!matchesShortcut(event, "nextMatch", "enter") || findInput);
-      const previousMatch = findOpen
-        && matchesShortcut(event, "previousMatch")
-        && (!matchesShortcut(event, "previousMatch", "enter") || findInput);
+      const nextMatch = findOpen && matchesShortcut(event, "nextMatch");
+      const previousMatch = findOpen && matchesShortcut(event, "previousMatch");
       const dismissFind = dismiss && findOpen;
       const dismissSelector = dismiss && commitSelectorOpen;
       const closeWithEscape = dismiss && state.openLineId === null && !commitSelectorOpen && !findOpen && !isTextEntryTarget(event.target);
@@ -198,7 +193,7 @@ export function useReviewShortcuts({
         return;
       }
       if (dismissFind) {
-        setFindOpen(false);
+        document.querySelector<HTMLButtonElement>("button[aria-label='Close find']")?.click();
         return;
       }
       if (pageDiff) {

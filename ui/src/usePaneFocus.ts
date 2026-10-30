@@ -35,6 +35,7 @@ export function usePaneFocus(view: ReviewView, owner: FocusOwner, enabled: boole
     const overlay = current.owner === "panes" ? scope?.querySelector<HTMLElement>("[role='search']")
       : document.querySelector<HTMLElement>(owners[current.owner]);
     if (overlay) {
+      if (current.owner === "find" && scope?.contains(document.activeElement) && paneOf(document.activeElement) === "diff") return;
       const name = paneOf(overlay);
       if (name) remembered.current[current.view] = name;
       if (current.owner === "find") remembered.current[current.view] = "diff";

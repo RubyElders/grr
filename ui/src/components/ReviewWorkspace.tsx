@@ -3,7 +3,8 @@ import { memo } from "preact/compat";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { fullMessageBody, summarizeCommitAuthors } from "../commitPresentation";
 import { historyGraph, type GraphRow } from "../historyGraph";
-import { clearFilterOnEscape, focusPaneFilter, paneOf, searchInputEvents } from "../panes";
+import { focusPaneFilter, paneOf } from "../panes";
+import { useSearchField } from "../useSearchField";
 import { matchesShortcut, shortcutTitle } from "../shortcuts";
 import { toggleRangeEndpoint } from "../commitRange";
 import { reviewBoundary } from "../reviewBoundary";
@@ -37,6 +38,7 @@ interface ReviewWorkspaceProps {
 }
 
 export function ReviewWorkspace(props: ReviewWorkspaceProps) {
+  const search = useSearchField({ value: props.filter, onChange: props.onFilter });
   const list = useRef<HTMLDivElement>(null);
   const root = useRef<HTMLElement>(null);
   const [anchor, setAnchor] = useState(0);
@@ -95,6 +97,7 @@ export function ReviewWorkspace(props: ReviewWorkspaceProps) {
         focusPaneFilter(scope, "commits");
         return;
       }
+      if (typing) return;
       const step = matchesShortcut(event, "historyPrevious", "arrow") || (!typing && matchesShortcut(event, "historyPrevious", "vim")) ? -1
         : matchesShortcut(event, "historyNext", "arrow") || (!typing && matchesShortcut(event, "historyNext", "vim")) ? 1 : 0;
       const extend = matchesShortcut(event, "historyExtend", "up") || matchesShortcut(event, "historyExtend", "down");
@@ -158,10 +161,8 @@ export function ReviewWorkspace(props: ReviewWorkspaceProps) {
       {props.view !== "history" ? null : <>
         <div class={styles.commitsPane} data-pane="commits" tabIndex={-1}>
           <div class={styles.toolbar}>
-            <input {...searchInputEvents(props.onFilter)} class={styles.filter} type="search" aria-label="Filter commits"
-              placeholder="Filter commits by message, author, hash or ref..." value={props.filter} disabled={props.selectionLocked}
-              onInput={(event) => props.onFilter(event.currentTarget.value)}
-              onKeyDown={(event) => clearFilterOnEscape(event, () => props.onFilter(""))} />
+            <input {...search.inputProps} class={styles.filter} aria-label="Filter commits"
+              placeholder="Filter commits by message, author, hash or ref..." disabled={props.selectionLocked} />
             <span class={styles.count}>{query === "" ? `${props.commits.length}${props.hasMore ? "+" : ""} commits` : `${visible.length} of ${props.commits.length} commits`}</span>
           </div>
           <div ref={list} class={styles.list} role="listbox" aria-label="Commits" aria-multiselectable="true">

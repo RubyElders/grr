@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "preact/hooks";
 import type { FileDiff } from "../types";
 import { baseName, buildFileTree, type FileTreeNode } from "../tree";
-import { clearFilterOnEscape, searchInputEvents } from "../panes";
+import { useSearchField } from "../useSearchField";
 import { Icon } from "./Icon";
 import styles from "./FileTree.module.css";
 
@@ -19,6 +19,7 @@ interface FileTreeProps {
 
 export function FileTree(props: FileTreeProps) {
   const tree = useRef<HTMLElement>(null);
+  const search = useSearchField({ value: props.filter, onChange: props.onFilter });
   const visible = props.files;
   const root = useMemo(() => buildFileTree(visible), [visible]);
   useEffect(() => {
@@ -38,13 +39,9 @@ export function FileTree(props: FileTreeProps) {
       <div class={styles.searchBox}>
         <Icon name="search" />
         <input
-          {...searchInputEvents(props.onFilter)}
+          {...search.inputProps}
           aria-label="Filter files"
-          type="search"
           placeholder="Filter files…"
-          value={props.filter}
-          onInput={(event) => props.onFilter(event.currentTarget.value)}
-          onKeyDown={(event) => clearFilterOnEscape(event, () => props.onFilter(""))}
         />
       </div>
       <div class={styles.count}>{visible.length} of {props.totalFileCount} files</div>

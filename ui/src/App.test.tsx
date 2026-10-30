@@ -566,6 +566,30 @@ describe("ReviewApp", () => {
     expect(screen.getByTitle("engine/GraphicsPage.cpp")).toBeInTheDocument();
   });
 
+  it("moves from file search to the filtered tree with Enter", async () => {
+    const { user, backend } = setup();
+    await screen.findByText("5 commits against origin/main");
+    const filter = screen.getByRole("searchbox", { name: "Filter files" });
+    const files = screen.getByRole("complementary", { name: "Changed files" });
+    const tree = screen.getByRole("navigation", { name: "File tree" });
+    screen.getByRole("main", { name: "Commit diff" }).scrollTo = vi.fn();
+    await user.type(filter, ".");
+    const rows = tree.querySelectorAll<HTMLElement>("[data-file-id]");
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toHaveAttribute("aria-current", "true");
+
+    await user.keyboard("{Enter}");
+
+    expect(files).toHaveFocus();
+    expect(filter).toHaveValue(".");
+    await user.keyboard("{ArrowDown}");
+    expect(rows[1]).toHaveAttribute("aria-current", "true");
+    expect(filter).toHaveValue(".");
+    await user.keyboard("{ArrowUp}");
+    expect(rows[0]).toHaveAttribute("aria-current", "true");
+    expect(backend.cancelReview).not.toHaveBeenCalled();
+  });
+
   it.each(["Escape", "clear", "cancel"])("restores files after clearing a file search with %s", async (action) => {
     const { user, backend } = setup();
     await screen.findByText("5 commits against origin/main");
@@ -919,6 +943,11 @@ describe("ReviewApp", () => {
 
     expect(input).toHaveFocus();
     fireEvent.keyDown(input, { key: "Enter" });
+    expect(screen.getByRole("main", { name: "Commit diff" })).toHaveFocus();
+    expect(input).toHaveValue("const");
+    expect(screen.getByRole("status")).toHaveTextContent("1 of 3");
+    expect(document.querySelector('[data-search-match="0"]')).toHaveClass(/activeMatch/);
+    fireEvent.keyDown(document, { key: "F3" });
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("2 of 3"));
     fireEvent.keyDown(document, { key: "F3" });
     await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("3 of 3"));
