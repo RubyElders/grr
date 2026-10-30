@@ -1,6 +1,39 @@
 # Contributing
 
-Use Rust 1.90+, Node 22.20+ within Node 22, and the checked-in lockfiles. Native development currently targets Fedora Linux 44; see the system dependencies in [README.md](README.md).
+Use Rust 1.90+, Node 22.20+ within Node 22, and the checked-in lockfiles. Native development currently targets Fedora Linux 44; see the [installation requirements](#installation-requirements).
+
+## Installation requirements
+
+The Linux release binary is built on Ubuntu 26.04 and requires compatible system libraries. On Fedora 44:
+
+```sh
+sudo dnf install webkit2gtk4.1 libgit2 openssl-libs libappindicator-gtk3 librsvg2 libxdo wl-clipboard
+```
+
+Clipboard copying on Wayland uses `wl-copy` from `wl-clipboard`. Windows needs WebView2, which is included with Windows 10 and 11. macOS native window chrome requires macOS 11 or later.
+
+## Build from source
+
+Requires Rust 1.90+, Node.js 22.20+ (Node 22), npm, and system libgit2 1.9.x.
+
+```sh
+sudo dnf install webkit2gtk4.1-devel libgit2-devel openssl-devel \
+  libappindicator-gtk3-devel librsvg2-devel libxdo-devel
+sudo dnf group install "c-development"
+
+npm ci
+npm run install:local
+```
+
+Make sure Cargo's bin directory is on your `PATH`. Installation includes the Linux desktop icon. Clipboard copying requires `wl-copy` from `wl-clipboard`.
+
+On macOS, install the Xcode command line tools (`xcode-select --install`) and libgit2 (`brew install libgit2`), then use the build commands below. On Windows, install the Visual Studio C++ build tools instead of the Fedora packages. libgit2 is built from source and WebView2 ships with Windows 10 and 11:
+
+```sh
+npm ci
+npm run build
+cargo install --path src-tauri --locked --features custom-protocol
+```
 
 ## Development
 
@@ -12,7 +45,7 @@ npm run check
 
 The Preact frontend lives in `ui/`. The Rust app, Tauri configuration, capabilities and icons live in `src-tauri/`. Git parsing uses libgit2; review data and window chrome are separate from the UI.
 
-`npm run build:app` uses the Tauri CLI to build the executable. `npm run install:local` also installs the Linux desktop integration. macOS 11+ uses an AppKit toolbar for native window chrome. Packaged releases are not available yet.
+`npm run build:app` uses the Tauri CLI to build the executable. `npm run install:local` also installs the Linux desktop integration. macOS 11+ uses an AppKit toolbar for native window chrome.
 
 On macOS, Cargo uses a compatible system libgit2 when available and builds its bundled copy otherwise. For a direct production build on any platform, run `npm run build` at the project root, then `cargo build --release --locked` from `src-tauri`. The default `custom-protocol` feature embeds the frontend; rebuild it after frontend changes. `tauri dev` disables this feature to use the development server.
 
@@ -55,4 +88,8 @@ The native test stack overrides WebdriverIO's transitive Mocha, diff parser, Jav
 
 CI has independent jobs for frontend checks, Rust tests and coverage, Windows and macOS Rust checks, native Linux tests, dependency audits, secret scanning and workflow validation. It runs on pushes, pull requests or manual dispatch with read-only permissions and no repository secrets. The Rust and native Linux jobs run directly on Ubuntu 26.04 and share the setup action in `.github/actions/setup-linux`. Windows and macOS share `.github/actions/check-desktop` for setup, formatting, Clippy, Rust tests and the release build. The macOS job uses an Apple Silicon runner on macOS 15.
 
-Require `Frontend`, `Rust checks and coverage`, `Rust checks (Windows)`, `Rust checks (macOS)`, `Native tests (Linux)`, `Dependency audit`, `Secret scan` and `Workflow lint` checks for `main` after the first hosted run succeeds. CI does not publish releases. Native macOS window behavior still needs manual validation.
+Require `Frontend`, `Rust checks and coverage`, `Rust checks (Windows)`, `Rust checks (macOS)`, `Native tests (Linux)`, `Dependency audit`, `Secret scan` and `Workflow lint` checks for `main` after the first hosted run succeeds. Version tags publish releases through `.github/workflows/release.yml` after Linux, Apple Silicon macOS, and Windows builds succeed.
+
+## Release
+
+Update the version in `package.json`, `package-lock.json`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`, and `src-tauri/tauri.conf.json` together. Commit the version change on `main`, then tag that commit with the matching `v` version (for example, `v0.6.2`) and push the tag. The release workflow rejects mismatched versions, builds all three executables, and publishes them with checksums and generated release notes. Tags containing a prerelease suffix publish a GitHub prerelease.

@@ -1,30 +1,39 @@
 # grr
 
-A small local Git review app. Browse a unified diff, add line comments, and send the review back to your terminal.
+A small local Git review app. Browse diffs and commit history, add line comments, and send the review back to your terminal.
 
-Currently tested on Fedora Linux 44 and Windows 10. Native macOS window chrome is available on macOS 11+, with broader platform validation still in progress.
+Tested on Fedora Linux 44, Windows 10, and macOS.
 
 ## Install
 
-Requires Rust 1.90+, Node.js 22.20+ (Node 22), npm, and system libgit2 1.9.x.
+Download the [latest release](https://github.com/RubyElders/grr/releases/latest) for your platform:
+
+### Linux (x86_64)
 
 ```sh
-sudo dnf install webkit2gtk4.1-devel libgit2-devel openssl-devel \
-  libappindicator-gtk3-devel librsvg2-devel libxdo-devel
-sudo dnf group install "c-development"
-
-npm ci
-npm run install:local
+mkdir -p ~/.local/bin
+curl -fL https://github.com/RubyElders/grr/releases/latest/download/grr-linux-x86_64 -o ~/.local/bin/grr
+chmod +x ~/.local/bin/grr
 ```
 
-Make sure Cargo's bin directory is on your `PATH`. Installation includes the Linux desktop icon. Clipboard copying requires `wl-copy` from `wl-clipboard`.
+Requires WebKitGTK 4.1 and libgit2 1.9.x. See [Linux dependencies](CONTRIBUTING.md#installation-requirements).
 
-On Windows, install the Visual Studio C++ build tools instead of the Fedora packages. libgit2 is built from source and WebView2 ships with Windows 10 and 11:
+### macOS (Apple Silicon)
 
 ```sh
-npm ci
-npm run build
-cargo install --path src-tauri --locked --features custom-protocol
+mkdir -p ~/.local/bin
+curl -fL https://github.com/RubyElders/grr/releases/latest/download/grr-macos-arm64 -o ~/.local/bin/grr
+chmod +x ~/.local/bin/grr
+```
+
+Releases are unsigned. If blocked, allow the app in System Settings > Privacy & Security.
+
+For Linux and macOS, make sure `~/.local/bin` is on your `PATH`.
+
+### Windows (x86_64)
+
+```powershell
+Invoke-WebRequest https://github.com/RubyElders/grr/releases/latest/download/grr-windows-x86_64.exe -OutFile "$env:LOCALAPPDATA\Microsoft\WindowsApps\grr.exe"
 ```
 
 ## Use
@@ -36,14 +45,8 @@ grr log
 grr -C ../another-project
 ```
 
-`grr` (or `grr diff`) opens the changes and `grr log` opens the commit history; press `v` to switch between them. The app detects the base branch automatically; pass a revision such as `main` (or `--merge-base main`) to choose it. Like Git, `-C` opens another repository. Run `grr help` for all options. Uncommitted changes open as a separate virtual commit; use the commit picker to review individual commits or the whole branch.
+Press `?` for shortcuts. Run `grr help` for options. Reviews stay local and results are printed to stdout.
 
-Add comments with the line's `+` button. `Ctrl+Enter` approves or shares comments; `Ctrl+Alt+Enter` also copies the result. Press `?` for all shortcuts. Closing the window cancels the review.
-
-Reviews stay local and results are printed to stdout. Use `npm run uninstall:local` to remove the app.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development and tests.
-
-## License
+See [CONTRIBUTING.md](CONTRIBUTING.md) to build from source or contribute.
 
 [MIT](LICENSE), including the app icon. Third-party dependencies retain their own licenses.
