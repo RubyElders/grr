@@ -525,8 +525,9 @@ describe("grr review window", () => {
     await setInputValue("input[aria-label='Filter files']", "");
     await pressShortcut("v");
     await browser.waitUntil(async () => await browser.execute(() =>
-      Boolean(document.querySelector("[data-view='changes']")),
-    ), { timeout: 5_000, interval: 50, timeoutMsg: "Changes did not reopen before choosing all commits" });
+      Boolean(document.querySelector("[data-view='changes']"))
+        && !document.querySelector("main[aria-label='Commit diff'] [role='status']"),
+    ), { timeout: 5_000, interval: 50, timeoutMsg: "Changes did not finish loading before choosing all commits" });
     await pressShortcut("c");
     await clickButton("Show all");
     await browser.waitUntil(async () => await browser.execute(
@@ -605,12 +606,13 @@ async function clickElement(selector: string): Promise<void> {
 }
 
 async function clickButton(label: string): Promise<void> {
-  await browser.execute((targetLabel) => {
+  await browser.waitUntil(async () => await browser.execute((targetLabel) => {
     const button = Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
       .find((candidate) => candidate.textContent === targetLabel);
-    if (!button) throw new Error(`No button matched ${targetLabel}`);
+    if (!button || button.disabled) return false;
     button.click();
-  }, label);
+    return true;
+  }, label), { timeout: 5_000, interval: 50, timeoutMsg: `No enabled button matched ${label}` });
 }
 
 async function pressShortcut(key: string, modifiers: Pick<KeyboardEventInit, "ctrlKey" | "altKey" | "shiftKey" | "metaKey"> = {}): Promise<void> {
